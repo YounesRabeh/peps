@@ -1,2 +1,2 @@
 # peps
-The finiest programming language, only using emaojies 
+The finest programming language, only using emojis 👀
