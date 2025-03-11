@@ -2,6 +2,12 @@ plugins {
     id("java")
     id("application")
 }
+val junitVersion = "5.10.0"
+
+java {
+    sourceCompatibility = JavaVersion.VERSION_21
+    targetCompatibility = JavaVersion.VERSION_21
+}
 
 repositories {
     mavenCentral()
@@ -9,6 +15,8 @@ repositories {
 
 dependencies {
     implementation("org.apache.commons:commons-text:1.10.0")
+    testImplementation("org.junit.jupiter:junit-jupiter-api:$junitVersion")
+    testRuntimeOnly("org.junit.jupiter:junit-jupiter-engine:$junitVersion")
 }
 
 application {
