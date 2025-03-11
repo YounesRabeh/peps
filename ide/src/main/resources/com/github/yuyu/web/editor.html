@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Code Editor</title>
+
+    <!-- CodeMirror Styles -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.5/codemirror.min.css">
+
+    <!-- Your custom styles -->
+    <link rel="stylesheet" href="editor.css">
+
+    <!-- CodeMirror Scripts -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.5/codemirror.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.5/mode/clike/clike.min.js"></script>
+
+    <script>
+        function initEditor() {
+            window.editor = CodeMirror(document.body, {
+                lineNumbers: true,
+                mode: "text/x-java",  // Adjust mode for different languages
+                theme: "default",
+                tabSize: 4,
+                indentWithTabs: true
+            });
+        }
+        window.onload = initEditor;
+    </script>
+</head>
+<body>
+</body>
+</html>

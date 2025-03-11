@@ -20,6 +20,6 @@ dependencies {
 }
 
 application {
-    // Define the main class for the application.
+    mainModule.set("com.github.yuyu")
     mainClass.set("com.github.yuyu.InterpreterMain")
 }

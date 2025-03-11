@@ -17,6 +17,7 @@ repositories {
 
 dependencies {
     implementation("org.controlsfx:controlsfx:11.1.2")
+    implementation("org.openjfx:javafx-web:17.0.2")
     implementation("org.apache.commons:commons-text:1.10.0")
     testImplementation("org.junit.jupiter:junit-jupiter-api:$junitVersion")
     testRuntimeOnly("org.junit.jupiter:junit-jupiter-engine:$junitVersion")
@@ -25,10 +26,10 @@ dependencies {
 
 javafx {
     version = "21"
-    modules = listOf("javafx.controls", "javafx.fxml")
+    modules = listOf("javafx.controls", "javafx.fxml", "javafx.web")
 }
 
 application {
-    // Define the main class for the application.
+    mainModule.set("com.github.yuyu")
     mainClass.set("com.github.yuyu.IdeMain")
 }

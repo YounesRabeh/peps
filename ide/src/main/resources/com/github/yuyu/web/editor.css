@@ -1,0 +1,45 @@
+/* Light Theme for CodeMirror */
+html, body {
+    margin: 0;
+    padding: 0;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    background-color: #ffffff; /* Light background */
+    overflow: hidden;
+    color: #000000;
+}
+
+/* Main CodeMirror Editor */
+.CodeMirror {
+    font-family: 'Fira Code', monospace;
+    font-size: 14px;
+    width: 100%;
+    height: 100%;
+    box-sizing: border-box;
+
+    background-color: #ffffff;
+    color: #1e1e1e;
+    line-height: 1.5;
+    padding: 8px;
+}
+
+/* Hide unnecessary scrollbars */
+.CodeMirror-scroll {
+    overflow: hidden !important;
+}
+
+/* Syntax Highlighting */
+.cm-keyword { color: #d73a49; font-weight: bold; }  /* Red for keywords */
+.cm-string { color: #008000; }  /* Green for strings */
+.cm-comment { color: #6a737d; font-style: italic; }  /* Gray for comments */
+.cm-number { color: #005cc5; }  /* Blue for numbers */
+.cm-variable { color: #333; }  /* Dark gray for variables */
+.cm-function { color: #6f42c1; } /* Purple for functions */
+
+/* Line Numbers */
+.CodeMirror-linenumbers {
+    background: #f0f0f0;
+    color: #555;
+}
