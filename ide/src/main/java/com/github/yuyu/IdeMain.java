@@ -1,6 +1,7 @@
 package com.github.yuyu;
 
 import javafx.application.Application;
+import javafx.application.Platform;
 import javafx.scene.Scene;
 import javafx.scene.layout.StackPane;
 import javafx.scene.web.WebView;
@@ -11,6 +12,12 @@ import java.util.Objects;
 public class IdeMain extends Application {
     @Override
     public void start(Stage primaryStage) {
+        SplashScreen splash = new SplashScreen();
+        splash.show(() -> Platform.runLater(() -> launchIDE(primaryStage)));
+
+    }
+
+    private void launchIDE(Stage primaryStage) {
         WebView webView = new WebView();
 
         // Load the HTML file from resources
