@@ -108,6 +108,40 @@ If `peps!` is installed on your `PATH`, run files like this:
 Compiler or runtime errors are printed with diagnostics. Valid programs print
 only the program output.
 
+## Local IDE
+
+The Peps IDE is a separate local web app. It does not contain its own compiler:
+the browser sends source text to the Rust IDE server, and the server calls the
+same `peps::run_source` API used by the normal runner.
+
+Build the frontend once:
+
+```sh
+cd ide
+npm install
+npm run build
+cd ..
+```
+
+Start the IDE server:
+
+```sh
+cargo run --bin peps-ide
+```
+
+Then open:
+
+```text
+http://127.0.0.1:5179
+```
+
+For frontend-only development, you can also run Vite separately:
+
+```sh
+cd ide
+npm run dev
+```
+
 ## Build a Standalone `peps!` Command
 
 On Linux or macOS:

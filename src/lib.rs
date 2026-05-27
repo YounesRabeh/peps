@@ -7,6 +7,7 @@
 pub mod backend;
 pub mod common;
 pub mod frontend;
+pub mod ide;
 pub mod middle_end;
 pub mod runtime;
 
