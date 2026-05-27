@@ -25,7 +25,7 @@ pub fn check(program: Program) -> Result<CheckedProgram, Vec<Diagnostic>> {
     };
 
     for statement in &program.statements {
-        checker.check_statement(statement, 0);
+        checker.check_statement(statement, 0, 0);
     }
 
     if checker.diagnostics.is_empty() {
@@ -47,7 +47,7 @@ struct Checker {
 }
 
 impl Checker {
-    fn check_statement(&mut self, statement: &Stmt, depth: usize) {
+    fn check_statement(&mut self, statement: &Stmt, depth: usize, loop_depth: usize) {
         match statement {
             Stmt::Assign { name, expr, span } => {
                 if depth > 0 {
@@ -73,6 +73,18 @@ impl Checker {
             Stmt::Print { expr, .. } => {
                 self.infer_expr(expr);
             }
+            Stmt::Break { span } => {
+                if loop_depth == 0 {
+                    self.diagnostics
+                        .push(Diagnostic::at("break can only be used inside loops", *span));
+                }
+            }
+            Stmt::Continue { span } => {
+                if loop_depth == 0 {
+                    self.diagnostics
+                        .push(Diagnostic::at("continue can only be used inside loops", *span));
+                }
+            }
             Stmt::If {
                 condition,
                 then_branch,
@@ -81,11 +93,11 @@ impl Checker {
             } => {
                 self.check_condition(condition, "if", *span);
                 for statement in then_branch {
-                    self.check_statement(statement, depth + 1);
+                    self.check_statement(statement, depth + 1, loop_depth);
                 }
                 if let Some(else_branch) = else_branch {
                     for statement in else_branch {
-                        self.check_statement(statement, depth + 1);
+                        self.check_statement(statement, depth + 1, loop_depth);
                     }
                 }
             }
@@ -96,7 +108,7 @@ impl Checker {
             } => {
                 self.check_condition(condition, "while", *span);
                 for statement in body {
-                    self.check_statement(statement, depth + 1);
+                    self.check_statement(statement, depth + 1, loop_depth + 1);
                 }
             }
             Stmt::For {
@@ -113,7 +125,7 @@ impl Checker {
                         self.push_scope();
                         self.insert_local(variable.clone(), loop_type);
                         for statement in body {
-                            self.check_statement(statement, depth + 1);
+                            self.check_statement(statement, depth + 1, loop_depth + 1);
                         }
                         self.pop_scope();
                     }

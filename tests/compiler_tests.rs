@@ -139,6 +139,34 @@ fn compiles_while() {
 }
 
 #[test]
+fn compiles_while_with_break() {
+    assert_eq!(
+        compile_source("🔁 ✅ 🔓 🛑 🔚 🔒").expect("source should compile"),
+        vec![
+            Instruction::LoadConst(Value::Bool(true)),
+            Instruction::JumpIfFalse(4),
+            Instruction::Jump(4),
+            Instruction::Jump(0),
+        ]
+    );
+}
+
+#[test]
+fn compiles_while_with_continue() {
+    assert_eq!(
+        compile_source("🔁 ✅ 🔓 ⏭️ 🔚 📢 1️⃣ 🔚 🔒").expect("source should compile"),
+        vec![
+            Instruction::LoadConst(Value::Bool(true)),
+            Instruction::JumpIfFalse(6),
+            Instruction::Jump(0),
+            Instruction::LoadConst(Value::Num(1)),
+            Instruction::Print,
+            Instruction::Jump(0),
+        ]
+    );
+}
+
+#[test]
 fn compiles_for_each_list() {
     assert_eq!(
         compile_source("🍎 🟰 📚 1️⃣ 2️⃣ 📚 🔚 🔁 🐾 🧭 🍎 🔓 📢 🐾 🔚 🔒")

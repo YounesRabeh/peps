@@ -16,6 +16,8 @@ Public re-exports keep convenient paths such as `peps::lexer::lex`,
 | 🤔 | if | Start an if statement | `🤔 🐶 🔓` |
 | 😐 | else | Start an else block | `🔒 😐 🔓` |
 | 🔁 | loop | Start a while loop or for loop | `🔁 🐶 🔓`, `🔁 🐾 🧭 🍎 🔓` |
+| 🛑 | break | Exit the nearest loop | `🛑 🔚` |
+| ⏭️ | continue | Skip to the next loop iteration | `⏭️ 🔚` |
 | 🧭 | in | Separates for-loop item from source | `🔁 🐾 🧭 🍎 🔓` |
 | 🔢 | range | Starts a numeric range source | `🔁 🐾 🧭 🔢 0️⃣ ➡️ 3️⃣ 🔓` |
 | ✅ | true | Boolean true | `🐶 🟰 ✅ 🔚` |
@@ -67,6 +69,15 @@ While loops still use `🔁 condition`:
 
 🔁 🌙 🔓
     📢 🌙 🔚
+🔒
+```
+
+Break and continue inside loops:
+
+```peps
+🔁 ✅ 🔓
+    ⏭️ 🔚
+    🛑 🔚
 🔒
 ```
 

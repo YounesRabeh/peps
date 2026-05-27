@@ -59,6 +59,19 @@ fn runs_range_loop() {
 }
 
 #[test]
+fn runs_break_in_loop() {
+    let output = run_source("🔁 ✅ 🔓 🛑 🔚 📢 1️⃣ 🔚 🔒").expect("source should run");
+    assert!(output.is_empty());
+}
+
+#[test]
+fn runs_continue_in_loop() {
+    let output = run_source("🔁 🐾 🧭 🔢 0️⃣ ➡️ 3️⃣ 🔓 ⏭️ 🔚 📢 🐾 🔚 🔒")
+        .expect("source should run");
+    assert!(output.is_empty());
+}
+
+#[test]
 fn descending_range_is_empty() {
     let output = run_source("🔁 🐾 🧭 🔢 3️⃣ ➡️ 0️⃣ 🔓 📢 🐾 🔚 🔒")
         .expect("source should run");

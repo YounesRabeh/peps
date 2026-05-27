@@ -205,7 +205,13 @@ impl Lexer {
             name.push_str(&grapheme.text);
         }
 
-        Token::new(TokenKind::Identifier(name), start.merge(end))
+        let kind = match name.as_str() {
+            "break" => TokenKind::Break,
+            "continue" => TokenKind::Continue,
+            _ => TokenKind::Identifier(name),
+        };
+
+        Token::new(kind, start.merge(end))
     }
 
     fn report_invalid_character(&mut self, grapheme: &Grapheme) {
@@ -260,6 +266,8 @@ fn single_token_kind(text: &str) -> Option<TokenKind> {
         "🤔" => Some(TokenKind::If),
         "😐" => Some(TokenKind::Else),
         "🔁" => Some(TokenKind::While),
+        "🛑" => Some(TokenKind::Break),
+        "⏭️" | "⏭" => Some(TokenKind::Continue),
         "🧭" => Some(TokenKind::In),
         "🔢" => Some(TokenKind::Range),
         "✅" => Some(TokenKind::Bool(true)),

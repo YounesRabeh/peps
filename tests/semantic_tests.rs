@@ -101,8 +101,23 @@ fn allows_for_range() {
 }
 
 #[test]
+fn allows_break_and_continue_inside_loops() {
+    check("🔁 ✅ 🔓 ⏭️ 🔚 🔒 🔁 ✅ 🔓 🛑 🔚 🔒").expect("source should check");
+}
+
+#[test]
 fn rejects_for_each_over_non_list() {
     assert!(first_error("🐶 🟰 5️⃣ 🔚 🔁 🐾 🧭 🐶 🔓 📢 🐾 🔚 🔒").contains("source must be a list"));
+}
+
+#[test]
+fn rejects_break_outside_loop() {
+    assert!(first_error("🛑 🔚").contains("inside loops"));
+}
+
+#[test]
+fn rejects_continue_outside_loop() {
+    assert!(first_error("⏭️ 🔚").contains("inside loops"));
 }
 
 #[test]

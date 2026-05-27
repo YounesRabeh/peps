@@ -127,3 +127,21 @@ fn lexes_ascii_variables() {
         ]
     );
 }
+
+#[test]
+fn lexes_break_and_continue_tokens() {
+    assert_eq!(
+        kinds("🛑 🔚 ⏭️ 🔚 break 🔚 continue 🔚"),
+        vec![
+            TokenKind::Break,
+            TokenKind::StatementEnd,
+            TokenKind::Continue,
+            TokenKind::StatementEnd,
+            TokenKind::Break,
+            TokenKind::StatementEnd,
+            TokenKind::Continue,
+            TokenKind::StatementEnd,
+            TokenKind::Eof,
+        ]
+    );
+}

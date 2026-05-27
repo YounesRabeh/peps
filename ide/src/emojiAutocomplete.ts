@@ -20,6 +20,8 @@ const PEPS_SUGGESTIONS: EmojiSuggestion[] = [
   entry("🤔", "if", ["if", "condition"], [], "Peps keyword"),
   entry("😐", "else", ["else"], [], "Peps keyword"),
   entry("🔁", "while", ["while", "loop", "for"], [], "Peps keyword"),
+  entry("🛑", "break", ["break", "stop", "exit"], [], "Peps keyword"),
+  entry("⏭️", "continue", ["continue", "next", "skip"], [], "Peps keyword"),
   entry("🧭", "in", ["in"], [], "Peps keyword"),
   entry("🔢", "range", ["range", "number"], [], "Peps keyword"),
   entry("✅", "true", ["true", "yes"], [], "Peps keyword"),

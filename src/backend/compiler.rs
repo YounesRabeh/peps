@@ -12,6 +12,7 @@ pub fn compile(checked: CheckedProgram) -> Result<Vec<Instruction>, Vec<Diagnost
         instructions: Vec::new(),
         emoji_literals: checked.emoji_literals,
         loop_counter: 0,
+        loop_stack: Vec::new(),
     };
 
     for statement in &checked.program.statements {
@@ -25,6 +26,13 @@ struct Compiler {
     instructions: Vec<Instruction>,
     emoji_literals: std::collections::HashSet<(usize, usize)>,
     loop_counter: usize,
+    loop_stack: Vec<LoopContext>,
+}
+
+#[derive(Default)]
+struct LoopContext {
+    break_jumps: Vec<usize>,
+    continue_jumps: Vec<usize>,
 }
 
 impl Compiler {
@@ -38,6 +46,8 @@ impl Compiler {
                 self.compile_expr(expr);
                 self.instructions.push(Instruction::Print);
             }
+            Stmt::Break { .. } => self.emit_loop_break(),
+            Stmt::Continue { .. } => self.emit_loop_continue(),
             Stmt::If {
                 condition,
                 then_branch,
@@ -73,6 +83,7 @@ impl Compiler {
                 let loop_start = self.instructions.len();
                 self.compile_expr(condition);
                 let jump_if_false = self.emit_placeholder_jump_if_false();
+                self.begin_loop();
 
                 for statement in body {
                     self.compile_statement(statement);
@@ -81,6 +92,7 @@ impl Compiler {
                 self.instructions.push(Instruction::Jump(loop_start));
                 let after_loop = self.instructions.len();
                 self.patch_jump(jump_if_false, after_loop);
+                self.end_loop(loop_start, after_loop);
             }
             Stmt::For {
                 variable,
@@ -124,11 +136,13 @@ impl Compiler {
         self.instructions.push(Instruction::ListGet);
         self.instructions
             .push(Instruction::StoreVar(variable.to_string()));
+        self.begin_loop();
 
         for statement in body {
             self.compile_statement(statement);
         }
 
+        let continue_target = self.instructions.len();
         self.instructions.push(Instruction::LoadVar(index_name.clone()));
         self.instructions.push(Instruction::LoadConst(Value::Num(1)));
         self.instructions.push(Instruction::Add);
@@ -137,6 +151,7 @@ impl Compiler {
 
         let after_loop = self.instructions.len();
         self.patch_jump(jump_if_false, after_loop);
+        self.end_loop(continue_target, after_loop);
     }
 
     fn compile_for_range(&mut self, variable: &str, start: &Expr, end: &Expr, body: &[Stmt]) {
@@ -159,11 +174,13 @@ impl Compiler {
         self.instructions.push(Instruction::LoadVar(index_name.clone()));
         self.instructions
             .push(Instruction::StoreVar(variable.to_string()));
+        self.begin_loop();
 
         for statement in body {
             self.compile_statement(statement);
         }
 
+        let continue_target = self.instructions.len();
         self.instructions.push(Instruction::LoadVar(index_name.clone()));
         self.instructions.push(Instruction::LoadConst(Value::Num(1)));
         self.instructions.push(Instruction::Add);
@@ -172,6 +189,7 @@ impl Compiler {
 
         let after_loop = self.instructions.len();
         self.patch_jump(jump_if_false, after_loop);
+        self.end_loop(continue_target, after_loop);
     }
 
     fn compile_expr(&mut self, expr: &Expr) {
@@ -241,6 +259,41 @@ impl Compiler {
         let index = self.instructions.len();
         self.instructions.push(Instruction::JumpIfFalse(usize::MAX));
         index
+    }
+
+    fn begin_loop(&mut self) {
+        self.loop_stack.push(LoopContext::default());
+    }
+
+    fn end_loop(&mut self, continue_target: usize, break_target: usize) {
+        let context = self
+            .loop_stack
+            .pop()
+            .expect("compiler loop stack underflow");
+        for jump in context.continue_jumps {
+            self.patch_jump(jump, continue_target);
+        }
+        for jump in context.break_jumps {
+            self.patch_jump(jump, break_target);
+        }
+    }
+
+    fn emit_loop_break(&mut self) {
+        let jump = self.emit_placeholder_jump();
+        let context = self
+            .loop_stack
+            .last_mut()
+            .expect("break used outside loop during compilation");
+        context.break_jumps.push(jump);
+    }
+
+    fn emit_loop_continue(&mut self) {
+        let jump = self.emit_placeholder_jump();
+        let context = self
+            .loop_stack
+            .last_mut()
+            .expect("continue used outside loop during compilation");
+        context.continue_jumps.push(jump);
     }
 
     fn next_loop_id(&mut self) -> usize {

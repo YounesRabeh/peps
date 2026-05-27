@@ -64,6 +64,16 @@ fn parses_while_block() {
 }
 
 #[test]
+fn parses_break_and_continue_inside_loop() {
+    let program = parse("🔁 ✅ 🔓 🛑 🔚 ⏭️ 🔚 🔒");
+    let Stmt::While { body, .. } = &program.statements[0] else {
+        panic!("expected while");
+    };
+    assert!(matches!(body[0], Stmt::Break { .. }));
+    assert!(matches!(body[1], Stmt::Continue { .. }));
+}
+
+#[test]
 fn parses_for_each_list_block() {
     let program = parse("🔁 🐾 🧭 🍎 🔓 📢 🐾 🔚 🔒");
     assert!(matches!(
@@ -108,6 +118,20 @@ fn errors_on_malformed_for_loop() {
     let tokens = lexer::lex("🔁 🐾 🍎 🔓 📢 🐾 🔚 🔒").expect("lexing should succeed");
     let diagnostics = parser::parse(tokens).expect_err("malformed for loop should fail");
     assert!(!diagnostics[0].message.is_empty());
+}
+
+#[test]
+fn errors_on_break_outside_loop() {
+    let tokens = lexer::lex("🛑 🔚").expect("lexing should succeed");
+    let diagnostics = parser::parse(tokens).expect_err("break outside loop should fail");
+    assert!(diagnostics[0].message.contains("inside loops"));
+}
+
+#[test]
+fn errors_on_continue_outside_loop() {
+    let tokens = lexer::lex("⏭️ 🔚").expect("lexing should succeed");
+    let diagnostics = parser::parse(tokens).expect_err("continue outside loop should fail");
+    assert!(diagnostics[0].message.contains("inside loops"));
 }
 
 #[test]

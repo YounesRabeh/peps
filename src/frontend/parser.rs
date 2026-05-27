@@ -15,11 +15,16 @@ pub fn parse(tokens: Vec<Token>) -> Result<Program, Vec<Diagnostic>> {
 struct Parser {
     tokens: Vec<Token>,
     current: usize,
+    loop_depth: usize,
 }
 
 impl Parser {
     fn new(tokens: Vec<Token>) -> Self {
-        Self { tokens, current: 0 }
+        Self {
+            tokens,
+            current: 0,
+            loop_depth: 0,
+        }
     }
 
     fn parse_program(&mut self) -> Result<Program, Diagnostic> {
@@ -44,6 +49,8 @@ impl Parser {
         match &self.peek().kind {
             TokenKind::Identifier(_) => self.parse_assignment(),
             TokenKind::Print => self.parse_print(),
+            TokenKind::Break => self.parse_break(),
+            TokenKind::Continue => self.parse_continue(),
             TokenKind::If => self.parse_if(),
             TokenKind::While => self.parse_loop(),
             TokenKind::Else => Err(Diagnostic::at("else 😐 without matching if", self.peek().span)),
@@ -87,6 +94,28 @@ impl Parser {
         })
     }
 
+    fn parse_break(&mut self) -> Result<Stmt, Diagnostic> {
+        let start = self.advance().span;
+        if self.loop_depth == 0 {
+            return Err(Diagnostic::at("break can only be used inside loops", start));
+        }
+        let end = self.expect_statement_end()?;
+        Ok(Stmt::Break {
+            span: start.merge(end),
+        })
+    }
+
+    fn parse_continue(&mut self) -> Result<Stmt, Diagnostic> {
+        let start = self.advance().span;
+        if self.loop_depth == 0 {
+            return Err(Diagnostic::at("continue can only be used inside loops", start));
+        }
+        let end = self.expect_statement_end()?;
+        Ok(Stmt::Continue {
+            span: start.merge(end),
+        })
+    }
+
     fn parse_if(&mut self) -> Result<Stmt, Diagnostic> {
         let start = self.advance().span;
         let condition = self.parse_expression(0)?;
@@ -121,7 +150,7 @@ impl Parser {
         }
 
         let condition = self.parse_expression(0)?;
-        let body = self.parse_block()?;
+        let body = self.parse_loop_block()?;
         let span = start.merge(self.previous().span);
 
         Ok(Stmt::While {
@@ -145,7 +174,7 @@ impl Parser {
 
         self.expect_in()?;
         let source = self.parse_for_source()?;
-        let body = self.parse_block()?;
+        let body = self.parse_loop_block()?;
         let span = start.merge(self.previous().span);
 
         Ok(Stmt::For {
@@ -174,6 +203,13 @@ impl Parser {
     fn parse_block(&mut self) -> Result<Vec<Stmt>, Diagnostic> {
         self.expect_block_start()?;
         self.parse_block_body()
+    }
+
+    fn parse_loop_block(&mut self) -> Result<Vec<Stmt>, Diagnostic> {
+        self.loop_depth += 1;
+        let result = self.parse_block();
+        self.loop_depth -= 1;
+        result
     }
 
     fn parse_block_body(&mut self) -> Result<Vec<Stmt>, Diagnostic> {

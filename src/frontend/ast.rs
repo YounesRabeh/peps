@@ -19,6 +19,12 @@ pub enum Stmt {
         expr: Expr,
         span: Span,
     },
+    Break {
+        span: Span,
+    },
+    Continue {
+        span: Span,
+    },
     If {
         condition: Expr,
         then_branch: Vec<Stmt>,
@@ -43,6 +49,8 @@ impl Stmt {
         match self {
             Stmt::Assign { span, .. }
             | Stmt::Print { span, .. }
+            | Stmt::Break { span, .. }
+            | Stmt::Continue { span, .. }
             | Stmt::If { span, .. }
             | Stmt::While { span, .. }
             | Stmt::For { span, .. } => *span,
