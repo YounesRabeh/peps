@@ -113,3 +113,17 @@ fn lexes_emoji_variables() {
         ]
     );
 }
+
+#[test]
+fn lexes_ascii_variables() {
+    assert_eq!(
+        kinds("test_name 🟰 value2 🔚"),
+        vec![
+            TokenKind::Identifier("test_name".to_string()),
+            TokenKind::Assign,
+            TokenKind::Identifier("value2".to_string()),
+            TokenKind::StatementEnd,
+            TokenKind::Eof,
+        ]
+    );
+}

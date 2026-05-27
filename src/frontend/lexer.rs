@@ -106,6 +106,11 @@ impl Lexer {
                 continue;
             }
 
+            if is_ascii_identifier_start(&grapheme.text) {
+                tokens.push(self.lex_ascii_identifier());
+                continue;
+            }
+
             if let Some(kind) = single_token_kind(&grapheme.text) {
                 let span = grapheme.span;
                 self.advance();
@@ -189,6 +194,20 @@ impl Lexer {
         Token::new(TokenKind::Number(value), start.merge(end))
     }
 
+    fn lex_ascii_identifier(&mut self) -> Token {
+        let start = self.peek().span;
+        let mut end = start;
+        let mut name = String::new();
+
+        while !self.is_at_end() && is_ascii_identifier_continue(&self.peek().text) {
+            let grapheme = self.advance().clone();
+            end = grapheme.span;
+            name.push_str(&grapheme.text);
+        }
+
+        Token::new(TokenKind::Identifier(name), start.merge(end))
+    }
+
     fn report_invalid_character(&mut self, grapheme: &Grapheme) {
         let message = if grapheme.text.chars().all(|ch| ch.is_ascii_digit()) {
             "ASCII digits are not allowed outside strings. Use emoji digits.".to_string()
@@ -222,6 +241,17 @@ impl Lexer {
 
 fn is_whitespace(text: &str) -> bool {
     return matches!(text, " " | "\t" | "\n" | "\r" | "\r\n");
+}
+
+fn is_ascii_identifier_start(text: &str) -> bool {
+    matches!(text.as_bytes(), [b'a'..=b'z'] | [b'A'..=b'Z'] | [b'_'])
+}
+
+fn is_ascii_identifier_continue(text: &str) -> bool {
+    matches!(
+        text.as_bytes(),
+        [b'a'..=b'z'] | [b'A'..=b'Z'] | [b'0'..=b'9'] | [b'_']
+    )
 }
 
 fn single_token_kind(text: &str) -> Option<TokenKind> {

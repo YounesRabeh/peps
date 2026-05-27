@@ -38,7 +38,7 @@ Public re-exports keep convenient paths such as `peps::lexer::lex`,
 | 💬 | string delimiter | Wrap string content | `🐶 🟰 💬hello💬 🔚` |
 | 📚 | list delimiter | Start and end a list | `📚 1️⃣ 2️⃣ 📚` |
 | 0️⃣ ... 9️⃣ | digits | Whole-number digits | `1️⃣2️⃣3️⃣` |
-| any other single emoji | variable or emoji literal | Variable name, or literal on assignment RHS | `📦 🟰 🥊 🔚` |
+| any other emoji, or ASCII identifier (`a-z`, `A-Z`, `_`, digits after first char) | variable or emoji literal | Variable name, or literal on assignment RHS | `📦 🟰 🥊 🔚`, `count_1 🟰 5️⃣ 🔚` |
 
 ## Loop Examples
 

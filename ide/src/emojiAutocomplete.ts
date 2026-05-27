@@ -58,7 +58,7 @@ export function findColonPrefixBeforeCursor(
   column: number
 ): ColonPrefix | null {
   const beforeCursor = line.slice(0, column - 1);
-  const match = /:([a-z]*)$/.exec(beforeCursor);
+  const match = /:([A-Za-z0-9_]*)$/.exec(beforeCursor);
   if (!match || match.index < 0) {
     return null;
   }
@@ -90,7 +90,7 @@ export function applyEmojiCompletion(
 
 export function getEmojiSuggestions(prefix: string): EmojiSuggestion[] {
   const normalizedPrefix = prefix.toLowerCase();
-  if (normalizedPrefix !== prefix || /[^a-z]/.test(prefix)) {
+  if (/[^a-zA-Z0-9_]/.test(prefix)) {
     return [];
   }
 
@@ -127,26 +127,33 @@ export function provideEmojiCompletionItems(
     return { suggestions: [] };
   }
 
-  const suggestions = getEmojiSuggestions(colonPrefix.prefix).map((suggestion) => ({
-    label: `${suggestion.emoji} ${suggestion.name}`,
-    filterText: [
+  const suggestions = getEmojiSuggestions(colonPrefix.prefix).map((suggestion) => {
+    const filterTerms = [
       suggestion.name,
       ...suggestion.aliases,
       ...suggestion.keywords
-    ].join(" "),
-    kind:
-      suggestion.detail === "Emoji"
-        ? monaco.languages.CompletionItemKind.Text
-        : monaco.languages.CompletionItemKind.Keyword,
-    detail: suggestion.detail,
-    insertText: suggestion.emoji,
-    range: new monaco.Range(
-      position.lineNumber,
-      colonPrefix.startColumn,
-      position.lineNumber,
-      colonPrefix.endColumn
-    )
-  }));
+    ];
+
+    return {
+      label: `${suggestion.emoji} ${suggestion.name}`,
+      filterText: [
+        ...filterTerms,
+        ...filterTerms.map((term) => `:${term}`)
+      ].join(" "),
+      kind:
+        suggestion.detail === "Emoji"
+          ? monaco.languages.CompletionItemKind.Text
+          : monaco.languages.CompletionItemKind.Keyword,
+      detail: suggestion.detail,
+      insertText: suggestion.emoji,
+      range: new monaco.Range(
+        position.lineNumber,
+        colonPrefix.startColumn,
+        position.lineNumber,
+        colonPrefix.endColumn
+      )
+    };
+  });
 
   return { suggestions };
 }

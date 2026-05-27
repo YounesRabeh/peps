@@ -17,6 +17,12 @@ fn infers_variable_declaration() {
 }
 
 #[test]
+fn infers_ascii_variable_declaration() {
+    let checked = check("count 🟰 5️⃣ 🔚").expect("source should check");
+    assert_eq!(checked.symbols.get("count"), Some(&Type::Num));
+}
+
+#[test]
 fn infers_emoji_literal_assignment() {
     let checked = check("📦 🟰 🥊 🔚").expect("source should check");
     assert_eq!(checked.symbols.get("📦"), Some(&Type::Emoji));

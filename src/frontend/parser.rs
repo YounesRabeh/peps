@@ -6,6 +6,7 @@ use crate::{
     source::Span,
     token::{Token, TokenKind},
 };
+use unicode_segmentation::UnicodeSegmentation;
 
 pub fn parse(tokens: Vec<Token>) -> Result<Program, Vec<Diagnostic>> {
     Parser::new(tokens).parse_program().map_err(|err| vec![err])
@@ -57,7 +58,7 @@ impl Parser {
             unreachable!("parse_assignment called only for identifiers");
         };
 
-        if matches!(self.peek().kind, TokenKind::Identifier(_)) {
+        if !is_single_emoji_identifier(&name) || matches!(self.peek().kind, TokenKind::Identifier(_)) {
             return Err(Diagnostic::at(
                 "variable identifiers must be exactly one emoji long",
                 name_token.span.merge(self.peek().span),
@@ -135,6 +136,12 @@ impl Parser {
         let TokenKind::Identifier(variable) = variable_token.kind else {
             unreachable!("parse_for called only after seeing an identifier");
         };
+        if !is_single_emoji_identifier(&variable) {
+            return Err(Diagnostic::at(
+                "variable identifiers must be exactly one emoji long",
+                variable_token.span,
+            ));
+        }
 
         self.expect_in()?;
         let source = self.parse_for_source()?;
@@ -236,10 +243,19 @@ impl Parser {
                 value,
                 span: token.span,
             }),
-            TokenKind::Identifier(name) => Ok(Expr::Variable {
-                name,
-                span: token.span,
-            }),
+            TokenKind::Identifier(name) => {
+                if !is_single_emoji_identifier(&name) {
+                    Err(Diagnostic::at(
+                        "variable identifiers must be exactly one emoji long",
+                        token.span,
+                    ))
+                } else {
+                    Ok(Expr::Variable {
+                        name,
+                        span: token.span,
+                    })
+                }
+            }
             TokenKind::ListDelimiter => self.parse_list(token.span),
             _ => Err(Diagnostic::at("expected expression", token.span)),
         }
@@ -372,4 +388,11 @@ impl Parser {
             self.peek()
         }
     }
+}
+
+fn is_single_emoji_identifier(name: &str) -> bool {
+    if name.chars().any(|ch| ch.is_ascii()) {
+        return false;
+    }
+    name.graphemes(true).count() == 1
 }

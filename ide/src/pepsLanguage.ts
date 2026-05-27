@@ -68,7 +68,7 @@ export function registerPepsLanguage(monaco: typeof Monaco): void {
       "editor.selectionBackground": "#334155"
     }
   });
-    monaco.languages.registerCompletionItemProvider("peps", {
+  monaco.languages.registerCompletionItemProvider("peps", {
     triggerCharacters: [":"],
     provideCompletionItems(model, position) {
       return provideEmojiCompletionItems(monaco, model, position);

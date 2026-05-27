@@ -1,4 +1,6 @@
 import Editor, { type BeforeMount, type OnMount } from "@monaco-editor/react";
+import { useEffect, useRef } from "react";
+import type { editor as MonacoEditor } from "monaco-editor";
 import { registerPepsLanguage } from "../pepsLanguage";
 
 type EditorPaneProps = {
@@ -36,12 +38,39 @@ const pepsEditorOptions = {
   renderWhitespace: "none" as const
 };
 
+const LETTER_FALLBACK_KEYS = new Set(["a", "A", "s", "S", "d", "D"]);
+
 export function EditorPane({ source, onChange }: EditorPaneProps) {
+  const editorRef = useRef<MonacoEditor.IStandaloneCodeEditor | null>(null);
+
+  useEffect(() => {
+    const onWindowKeyDown = (event: KeyboardEvent) => {
+      const editor = editorRef.current;
+      if (!editor || !editor.hasTextFocus()) {
+        return;
+      }
+      if (event.ctrlKey || event.metaKey || event.altKey || event.isComposing) {
+        return;
+      }
+      if (!LETTER_FALLBACK_KEYS.has(event.key)) {
+        return;
+      }
+
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      editor.trigger("keyboard", "type", { text: event.key });
+    };
+
+    window.addEventListener("keydown", onWindowKeyDown, true);
+    return () => window.removeEventListener("keydown", onWindowKeyDown, true);
+  }, []);
+
   const handleBeforeMount: BeforeMount = (monaco) => {
     registerPepsLanguage(monaco);
   };
 
   const handleMount: OnMount = (editor, monaco) => {
+    editorRef.current = editor;
     monaco.editor.setTheme("peps-dark");
 
     editor.updateOptions(pepsEditorOptions);

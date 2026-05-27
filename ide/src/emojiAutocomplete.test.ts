@@ -19,9 +19,13 @@ describe("emoji autocomplete helpers", () => {
     });
   });
 
-  it("rejects uppercase prefixes", () => {
+  it("extracts uppercase prefixes", () => {
     const line = "📢 :Happ";
-    expect(findColonPrefixBeforeCursor(line, line.length + 1)).toBeNull();
+    expect(findColonPrefixBeforeCursor(line, line.length + 1)).toEqual({
+      prefix: "Happ",
+      startColumn: 4,
+      endColumn: 9
+    });
   });
 
   it("returns at most ten happy suggestions with prefix matches", () => {
@@ -93,5 +97,11 @@ describe("emoji autocomplete helpers", () => {
 
     expect(printSuggestion).toBeDefined();
     expect(printSuggestion?.filterText).toContain("print");
+    expect(printSuggestion?.filterText).toContain(":print");
+  });
+
+  it("supports uppercase emoji search prefixes", () => {
+    const suggestions = getEmojiSuggestions("Prin");
+    expect(suggestions.some((item) => item.name === "print")).toBe(true);
   });
 });

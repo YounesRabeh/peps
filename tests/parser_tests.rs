@@ -14,6 +14,15 @@ fn parses_assignment() {
 }
 
 #[test]
+fn parses_ascii_assignment() {
+    let program = parse("counter 🟰 5️⃣ 🔚");
+    assert!(matches!(
+        &program.statements[0],
+        Stmt::Assign { name, .. } if name == "counter"
+    ));
+}
+
+#[test]
 fn parses_print() {
     let program = parse("📢 🐶 🔚");
     assert!(matches!(program.statements[0], Stmt::Print { .. }));
@@ -79,6 +88,19 @@ fn parses_for_range_block() {
             source: ForSource::Range { .. },
             ..
         } if variable == "🐾"
+    ));
+}
+
+#[test]
+fn parses_for_range_block_with_ascii_variable() {
+    let program = parse("🔁 idx 🧭 🔢 0️⃣ ➡️ 3️⃣ 🔓 📢 idx 🔚 🔒");
+    assert!(matches!(
+        &program.statements[0],
+        Stmt::For {
+            variable,
+            source: ForSource::Range { .. },
+            ..
+        } if variable == "idx"
     ));
 }
 
