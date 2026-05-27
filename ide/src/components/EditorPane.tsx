@@ -6,13 +6,50 @@ type EditorPaneProps = {
   onChange: (source: string) => void;
 };
 
+const pepsEditorOptions = {
+  automaticLayout: true,
+  fontSize: 16,
+  fontFamily: `"JetBrains Mono", "Fira Code", "Noto Color Emoji", "Segoe UI Emoji", "Apple Color Emoji", monospace`,
+  minimap: { enabled: false },
+  tabSize: 4,
+  wordWrap: "on" as const,
+
+  hover: {
+    enabled: false
+  },
+
+  unicodeHighlight: {
+    invisibleCharacters: false,
+    ambiguousCharacters: false,
+    nonBasicASCII: false,
+    includeComments: false,
+    includeStrings: false,
+    allowedCharacters: {
+      "\ufe0f": true, // emoji variation selector
+      "\ufe0e": true, // text variation selector
+      "\u200d": true, // zero-width joiner
+      "\u20e3": true  // keycap combining mark
+    }
+  },
+
+  renderControlCharacters: false,
+  renderWhitespace: "none" as const
+};
+
 export function EditorPane({ source, onChange }: EditorPaneProps) {
   const handleBeforeMount: BeforeMount = (monaco) => {
     registerPepsLanguage(monaco);
   };
 
-  const handleMount: OnMount = (_editor, monaco) => {
+  const handleMount: OnMount = (editor, monaco) => {
     monaco.editor.setTheme("peps-dark");
+
+    editor.updateOptions(pepsEditorOptions);
+
+    console.log(
+      "Peps Monaco unicodeHighlight option:",
+      editor.getOption(monaco.editor.EditorOption.unicodeHighlight)
+    );
   };
 
   return (
@@ -24,14 +61,7 @@ export function EditorPane({ source, onChange }: EditorPaneProps) {
         theme="peps-dark"
         value={source}
         onChange={(value) => onChange(value ?? "")}
-        options={{
-          automaticLayout: true,
-          fontSize: 16,
-          fontFamily: `"Noto Color Emoji", "Segoe UI Emoji", "Apple Color Emoji", monospace`,
-          minimap: { enabled: false },
-          tabSize: 4,
-          wordWrap: "on"
-        }}
+        options={pepsEditorOptions}
       />
     </section>
   );

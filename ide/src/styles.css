@@ -134,3 +134,19 @@ button {
     min-width: 0;
   }
 }
+
+.monaco-editor .unicode-highlight,
+.monaco-editor .unicode-highlight-invisible,
+.monaco-editor .unicode-highlight-ambiguous,
+.monaco-editor .unicode-highlight-non-basic-ascii {
+  background: transparent !important;
+  border: none !important;
+  outline: none !important;
+}
+
+.monaco-hover,
+.monaco-hover-content,
+.monaco-editor-hover {
+  display: none !important;
+  visibility: hidden !important;
+}
