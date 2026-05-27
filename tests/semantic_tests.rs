@@ -85,6 +85,39 @@ fn rejects_declaration_inside_block() {
 }
 
 #[test]
+fn allows_for_each_over_list() {
+    check("🍎 🟰 📚 1️⃣ 2️⃣ 📚 🔚 🔁 🐾 🧭 🍎 🔓 📢 🐾 🔚 🔒")
+        .expect("source should check");
+}
+
+#[test]
+fn allows_for_range() {
+    check("🔁 🐾 🧭 🔢 0️⃣ ➡️ 3️⃣ 🔓 📢 🐾 🔚 🔒").expect("source should check");
+}
+
+#[test]
+fn rejects_for_each_over_non_list() {
+    assert!(first_error("🐶 🟰 5️⃣ 🔚 🔁 🐾 🧭 🐶 🔓 📢 🐾 🔚 🔒").contains("source must be a list"));
+}
+
+#[test]
+fn rejects_non_num_range_bounds() {
+    assert!(first_error("🔁 🐾 🧭 🔢 ✅ ➡️ 3️⃣ 🔓 📢 🐾 🔚 🔒").contains("range bounds"));
+}
+
+#[test]
+fn rejects_loop_variable_after_loop() {
+    assert!(first_error("🔁 🐾 🧭 🔢 0️⃣ ➡️ 1️⃣ 🔓 📢 🐾 🔚 🔒 📢 🐾 🔚")
+        .contains("not declared"));
+}
+
+#[test]
+fn rejects_loop_variable_name_conflict() {
+    assert!(first_error("🐾 🟰 1️⃣ 🔚 🔁 🐾 🧭 🔢 0️⃣ ➡️ 1️⃣ 🔓 📢 🐾 🔚 🔒")
+        .contains("already declared"));
+}
+
+#[test]
 fn allows_string_list_assignment() {
     let checked = check("🐶 🟰 📚 💬 one 💬 💬 two 💬 📚 🔚").expect("source should check");
     assert_eq!(

@@ -1,3 +1,5 @@
+![Peps banner](.github/PEPS-logo.png)
+
 # Peps
 
 Peps is an emoji-first programming language. This project includes a compiler and
@@ -10,7 +12,9 @@ a small bytecode runner for local `.peps` files.
 | 📢 | print | Print an expression | `📢 🐶 🔚` |
 | 🤔 | if | Start an if statement | `🤔 🐶 🔓` |
 | 😐 | else | Start an else block | `🔒 😐 🔓` |
-| 🔁 | while | Start a while loop | `🔁 🐶 🔓` |
+| 🔁 | loop | Start a while loop or for loop | `🔁 🐶 🔓`, `🔁 🐾 🧭 🍎 🔓` |
+| 🧭 | in | Separates for-loop item from source | `🔁 🐾 🧭 🍎 🔓` |
+| 🔢 | range | Starts a numeric range source | `🔁 🐾 🧭 🔢 0️⃣ ➡️ 3️⃣ 🔓` |
 | ✅ | true | Boolean true | `🐶 🟰 ✅ 🔚` |
 | ❌ | false / not-equal prefix | Boolean false, or part of `❌🟰` | `🐶 🟰 ❌ 🔚` |
 | 🟰 | assign | Assign once / declare variable | `🐶 🟰 5️⃣ 🔚` |
@@ -24,6 +28,7 @@ a small bytecode runner for local `.peps` files.
 | ▶️ | greater than | Numeric greater-than comparison | `5️⃣ ▶️ 3️⃣` |
 | ◀️🟰 | less or equal | Numeric less-than-or-equal comparison | `2️⃣ ◀️🟰 3️⃣` |
 | ▶️🟰 | greater or equal | Numeric greater-than-or-equal comparison | `5️⃣ ▶️🟰 3️⃣` |
+| ➡️ | range end | Separates range start and end | `🔢 0️⃣ ➡️ 3️⃣` |
 | 🔓 | block start | Open an if/else/while block | `🤔 ✅ 🔓` |
 | 🔒 | block end | Close a block | `🔒` |
 | 🔚 | statement end | End an assignment or print statement | `📢 🐶 🔚` |
@@ -31,6 +36,36 @@ a small bytecode runner for local `.peps` files.
 | 📚 | list delimiter | Start and end a list | `📚 1️⃣ 2️⃣ 📚` |
 | 0️⃣ ... 9️⃣ | digits | Whole-number digits | `1️⃣2️⃣3️⃣` |
 | any other single emoji | variable or emoji literal | Variable name, or literal on assignment RHS | `📦 🟰 🥊 🔚` |
+
+## Loop Examples
+
+For each item in a list:
+
+```peps
+🍎 🟰 📚 1️⃣ 2️⃣ 3️⃣ 📚 🔚
+
+🔁 🐾 🧭 🍎 🔓
+    📢 🐾 🔚
+🔒
+```
+
+For each number in a range. The end is exclusive, so this prints `0`, `1`, `2`:
+
+```peps
+🔁 🐾 🧭 🔢 0️⃣ ➡️ 3️⃣ 🔓
+    📢 🐾 🔚
+🔒
+```
+
+While loops still use `🔁 condition`:
+
+```peps
+🌙 🟰 ❌ 🔚
+
+🔁 🌙 🔓
+    📢 🌙 🔚
+🔒
+```
 
 ## Run a Peps File During Development
 

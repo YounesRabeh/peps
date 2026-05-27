@@ -1,5 +1,5 @@
 use peps::{
-    ast::{BinaryOp, Expr, Stmt},
+    ast::{BinaryOp, Expr, ForSource, Stmt},
     lexer, parser,
 };
 
@@ -54,6 +54,46 @@ fn parses_if_else_block() {
 fn parses_while_block() {
     let program = parse("🔁 ✅ 🔓 📢 1️⃣ 🔚 🔒");
     assert!(matches!(program.statements[0], Stmt::While { .. }));
+}
+
+#[test]
+fn parses_for_each_list_block() {
+    let program = parse("🔁 🐾 🧭 🍎 🔓 📢 🐾 🔚 🔒");
+    assert!(matches!(
+        &program.statements[0],
+        Stmt::For {
+            variable,
+            source: ForSource::List { .. },
+            ..
+        } if variable == "🐾"
+    ));
+}
+
+#[test]
+fn parses_for_range_block() {
+    let program = parse("🔁 🐾 🧭 🔢 0️⃣ ➡️ 3️⃣ 🔓 📢 🐾 🔚 🔒");
+    assert!(matches!(
+        &program.statements[0],
+        Stmt::For {
+            variable,
+            source: ForSource::Range { .. },
+            ..
+        } if variable == "🐾"
+    ));
+}
+
+#[test]
+fn errors_on_missing_range_arrow() {
+    let tokens = lexer::lex("🔁 🐾 🧭 🔢 0️⃣ 3️⃣ 🔓 📢 🐾 🔚 🔒").expect("lexing should succeed");
+    let diagnostics = parser::parse(tokens).expect_err("missing range arrow should fail");
+    assert!(diagnostics[0].message.contains("range end arrow"));
+}
+
+#[test]
+fn errors_on_malformed_for_loop() {
+    let tokens = lexer::lex("🔁 🐾 🍎 🔓 📢 🐾 🔚 🔒").expect("lexing should succeed");
+    let diagnostics = parser::parse(tokens).expect_err("malformed for loop should fail");
+    assert!(!diagnostics[0].message.is_empty());
 }
 
 #[test]

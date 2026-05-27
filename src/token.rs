@@ -23,6 +23,8 @@ pub enum TokenKind {
     If,
     Else,
     While,
+    In,
+    Range,
 
     Assign,
     Plus,
@@ -36,6 +38,7 @@ pub enum TokenKind {
     Gt,
     LtEq,
     GtEq,
+    Arrow,
 
     BlockStart,
     BlockEnd,

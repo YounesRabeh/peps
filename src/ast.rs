@@ -28,6 +28,12 @@ pub enum Stmt {
         body: Vec<Stmt>,
         span: Span,
     },
+    For {
+        variable: String,
+        source: ForSource,
+        body: Vec<Stmt>,
+        span: Span,
+    },
 }
 
 impl Stmt {
@@ -36,7 +42,29 @@ impl Stmt {
             Stmt::Assign { span, .. }
             | Stmt::Print { span, .. }
             | Stmt::If { span, .. }
-            | Stmt::While { span, .. } => *span,
+            | Stmt::While { span, .. }
+            | Stmt::For { span, .. } => *span,
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub enum ForSource {
+    List {
+        expr: Expr,
+        span: Span,
+    },
+    Range {
+        start: Expr,
+        end: Expr,
+        span: Span,
+    },
+}
+
+impl ForSource {
+    pub fn span(&self) -> Span {
+        match self {
+            ForSource::List { span, .. } | ForSource::Range { span, .. } => *span,
         }
     }
 }

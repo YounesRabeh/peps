@@ -1,7 +1,7 @@
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 
 use crate::{
-    ast::{BinaryOp, Expr, Program, Stmt, UnaryOp},
+    ast::{BinaryOp, Expr, ForSource, Program, Stmt, UnaryOp},
     diagnostic::Diagnostic,
     symbol_table::SymbolTable,
     types::Type,
@@ -17,6 +17,7 @@ pub struct CheckedProgram {
 pub fn check(program: Program) -> Result<CheckedProgram, Vec<Diagnostic>> {
     let mut checker = Checker {
         symbols: SymbolTable::new(),
+        local_scopes: Vec::new(),
         diagnostics: Vec::new(),
         emoji_literals: HashSet::new(),
     };
@@ -38,6 +39,7 @@ pub fn check(program: Program) -> Result<CheckedProgram, Vec<Diagnostic>> {
 
 struct Checker {
     symbols: SymbolTable,
+    local_scopes: Vec<HashMap<String, Type>>,
     diagnostics: Vec<Diagnostic>,
     emoji_literals: HashSet<(usize, usize)>,
 }
@@ -95,6 +97,63 @@ impl Checker {
                     self.check_statement(statement, depth + 1);
                 }
             }
+            Stmt::For {
+                variable,
+                source,
+                body,
+                span,
+            } => {
+                let variable_available = self.check_loop_variable_available(variable, *span);
+                let loop_type = self.infer_for_source(source);
+
+                if variable_available {
+                    if let Some(loop_type) = loop_type {
+                        self.push_scope();
+                        self.insert_local(variable.clone(), loop_type);
+                        for statement in body {
+                            self.check_statement(statement, depth + 1);
+                        }
+                        self.pop_scope();
+                    }
+                }
+            }
+        }
+    }
+
+    fn check_loop_variable_available(&mut self, variable: &str, span: crate::source::Span) -> bool {
+        if self.lookup(variable).is_some() {
+            self.diagnostics.push(Diagnostic::at(
+                format!("loop variable {} is already declared", variable),
+                span,
+            ));
+            false
+        } else {
+            true
+        }
+    }
+
+    fn infer_for_source(&mut self, source: &ForSource) -> Option<Type> {
+        match source {
+            ForSource::List { expr, span } => match self.infer_expr(expr) {
+                Some(Type::List(element_type)) => Some(*element_type),
+                Some(_) => {
+                    self.diagnostics
+                        .push(Diagnostic::at("for-each source must be a list", *span));
+                    None
+                }
+                None => None,
+            },
+            ForSource::Range { start, end, span } => {
+                let start_type = self.infer_expr(start);
+                let end_type = self.infer_expr(end);
+                if start_type == Some(Type::Num) && end_type == Some(Type::Num) {
+                    Some(Type::Num)
+                } else {
+                    self.diagnostics
+                        .push(Diagnostic::at("range bounds must be num", *span));
+                    None
+                }
+            }
         }
     }
 
@@ -110,7 +169,7 @@ impl Checker {
     fn infer_assignment_rhs(&mut self, expr: &Expr) -> Option<Type> {
         match expr {
             Expr::String { .. } => Some(Type::Str),
-            Expr::Variable { name, span } => match self.symbols.get(name) {
+            Expr::Variable { name, span } => match self.lookup(name) {
                 Some(ty) => Some(ty.clone()),
                 None => {
                     self.emoji_literals.insert((span.start, span.end));
@@ -146,7 +205,7 @@ impl Checker {
             }
             Expr::Bool { .. } => Some(Type::Bool),
             Expr::Emoji { .. } => Some(Type::Emoji),
-            Expr::Variable { name, span } => match self.symbols.get(name) {
+            Expr::Variable { name, span } => match self.lookup(name) {
                 Some(ty) => Some(ty.clone()),
                 None => {
                     self.diagnostics.push(Diagnostic::at(
@@ -281,7 +340,7 @@ impl Checker {
                     return None;
                 }
                 Expr::Variable { name, span }
-                    if allow_emoji_literals && self.symbols.get(name).is_none() =>
+                    if allow_emoji_literals && self.lookup(name).is_none() =>
                 {
                     self.emoji_literals.insert((span.start, span.end));
                     Type::Emoji
@@ -303,6 +362,29 @@ impl Checker {
         }
 
         element_type.map(|ty| Type::List(Box::new(ty)))
+    }
+
+    fn lookup(&self, name: &str) -> Option<&Type> {
+        for scope in self.local_scopes.iter().rev() {
+            if let Some(ty) = scope.get(name) {
+                return Some(ty);
+            }
+        }
+        self.symbols.get(name)
+    }
+
+    fn push_scope(&mut self) {
+        self.local_scopes.push(HashMap::new());
+    }
+
+    fn pop_scope(&mut self) {
+        self.local_scopes.pop();
+    }
+
+    fn insert_local(&mut self, name: String, ty: Type) {
+        if let Some(scope) = self.local_scopes.last_mut() {
+            scope.insert(name, ty);
+        }
     }
 }
 

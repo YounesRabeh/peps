@@ -126,3 +126,66 @@ fn compiles_while() {
         ]
     );
 }
+
+#[test]
+fn compiles_for_each_list() {
+    assert_eq!(
+        compile_source("🍎 🟰 📚 1️⃣ 2️⃣ 📚 🔚 🔁 🐾 🧭 🍎 🔓 📢 🐾 🔚 🔒")
+            .expect("source should compile"),
+        vec![
+            Instruction::LoadConst(Value::Num(1)),
+            Instruction::LoadConst(Value::Num(2)),
+            Instruction::MakeList(2),
+            Instruction::StoreVar("🍎".to_string()),
+            Instruction::LoadVar("🍎".to_string()),
+            Instruction::StoreVar("__peps_for_0_list".to_string()),
+            Instruction::LoadConst(Value::Num(0)),
+            Instruction::StoreVar("__peps_for_0_index".to_string()),
+            Instruction::LoadVar("__peps_for_0_list".to_string()),
+            Instruction::ListLen,
+            Instruction::StoreVar("__peps_for_0_len".to_string()),
+            Instruction::LoadVar("__peps_for_0_index".to_string()),
+            Instruction::LoadVar("__peps_for_0_len".to_string()),
+            Instruction::Lt,
+            Instruction::JumpIfFalse(26),
+            Instruction::LoadVar("__peps_for_0_list".to_string()),
+            Instruction::LoadVar("__peps_for_0_index".to_string()),
+            Instruction::ListGet,
+            Instruction::StoreVar("🐾".to_string()),
+            Instruction::LoadVar("🐾".to_string()),
+            Instruction::Print,
+            Instruction::LoadVar("__peps_for_0_index".to_string()),
+            Instruction::LoadConst(Value::Num(1)),
+            Instruction::Add,
+            Instruction::StoreVar("__peps_for_0_index".to_string()),
+            Instruction::Jump(11),
+        ]
+    );
+}
+
+#[test]
+fn compiles_for_range() {
+    assert_eq!(
+        compile_source("🔁 🐾 🧭 🔢 0️⃣ ➡️ 3️⃣ 🔓 📢 🐾 🔚 🔒")
+            .expect("source should compile"),
+        vec![
+            Instruction::LoadConst(Value::Num(0)),
+            Instruction::StoreVar("__peps_for_0_index".to_string()),
+            Instruction::LoadConst(Value::Num(3)),
+            Instruction::StoreVar("__peps_for_0_end".to_string()),
+            Instruction::LoadVar("__peps_for_0_index".to_string()),
+            Instruction::LoadVar("__peps_for_0_end".to_string()),
+            Instruction::Lt,
+            Instruction::JumpIfFalse(17),
+            Instruction::LoadVar("__peps_for_0_index".to_string()),
+            Instruction::StoreVar("🐾".to_string()),
+            Instruction::LoadVar("🐾".to_string()),
+            Instruction::Print,
+            Instruction::LoadVar("__peps_for_0_index".to_string()),
+            Instruction::LoadConst(Value::Num(1)),
+            Instruction::Add,
+            Instruction::StoreVar("__peps_for_0_index".to_string()),
+            Instruction::Jump(4),
+        ]
+    );
+}

@@ -1,5 +1,5 @@
 use crate::{
-    ast::{BinaryOp, Expr, Program, Stmt, UnaryOp},
+    ast::{BinaryOp, Expr, ForSource, Program, Stmt, UnaryOp},
     diagnostic::Diagnostic,
     source::Span,
     token::{Token, TokenKind},
@@ -42,7 +42,7 @@ impl Parser {
             TokenKind::Identifier(_) => self.parse_assignment(),
             TokenKind::Print => self.parse_print(),
             TokenKind::If => self.parse_if(),
-            TokenKind::While => self.parse_while(),
+            TokenKind::While => self.parse_loop(),
             TokenKind::Else => Err(Diagnostic::at("else 😐 without matching if", self.peek().span)),
             TokenKind::Eof => Err(Diagnostic::at("unexpected end of file", self.peek().span)),
             _ => Err(Diagnostic::at("expected statement", self.peek().span)),
@@ -108,8 +108,15 @@ impl Parser {
         })
     }
 
-    fn parse_while(&mut self) -> Result<Stmt, Diagnostic> {
+    fn parse_loop(&mut self) -> Result<Stmt, Diagnostic> {
         let start = self.advance().span;
+
+        if matches!(self.peek().kind, TokenKind::Identifier(_))
+            && matches!(self.peek_next_kind(), Some(TokenKind::In))
+        {
+            return self.parse_for(start);
+        }
+
         let condition = self.parse_expression(0)?;
         let body = self.parse_block()?;
         let span = start.merge(self.previous().span);
@@ -119,6 +126,40 @@ impl Parser {
             body,
             span,
         })
+    }
+
+    fn parse_for(&mut self, start: Span) -> Result<Stmt, Diagnostic> {
+        let variable_token = self.advance().clone();
+        let TokenKind::Identifier(variable) = variable_token.kind else {
+            unreachable!("parse_for called only after seeing an identifier");
+        };
+
+        self.expect_in()?;
+        let source = self.parse_for_source()?;
+        let body = self.parse_block()?;
+        let span = start.merge(self.previous().span);
+
+        Ok(Stmt::For {
+            variable,
+            source,
+            body,
+            span,
+        })
+    }
+
+    fn parse_for_source(&mut self) -> Result<ForSource, Diagnostic> {
+        if matches!(self.peek().kind, TokenKind::Range) {
+            let start_token = self.advance().span;
+            let start = self.parse_expression(0)?;
+            self.expect_arrow()?;
+            let end = self.parse_expression(0)?;
+            let span = start_token.merge(end.span());
+            Ok(ForSource::Range { start, end, span })
+        } else {
+            let expr = self.parse_expression(0)?;
+            let span = expr.span();
+            Ok(ForSource::List { expr, span })
+        }
     }
 
     fn parse_block(&mut self) -> Result<Vec<Stmt>, Diagnostic> {
@@ -241,6 +282,10 @@ impl Parser {
         }
     }
 
+    fn peek_next_kind(&self) -> Option<&TokenKind> {
+        self.tokens.get(self.current + 1).map(|token| &token.kind)
+    }
+
     fn next_token_starts_expression(&self) -> bool {
         self.tokens
             .get(self.current + 1)
@@ -263,6 +308,22 @@ impl Parser {
             Ok(self.advance().span)
         } else {
             Err(Diagnostic::at("expected assignment operator 🟰", self.peek().span))
+        }
+    }
+
+    fn expect_in(&mut self) -> Result<Span, Diagnostic> {
+        if matches!(self.peek().kind, TokenKind::In) {
+            Ok(self.advance().span)
+        } else {
+            Err(Diagnostic::at("expected loop in marker 🧭", self.peek().span))
+        }
+    }
+
+    fn expect_arrow(&mut self) -> Result<Span, Diagnostic> {
+        if matches!(self.peek().kind, TokenKind::Arrow) {
+            Ok(self.advance().span)
+        } else {
+            Err(Diagnostic::at("expected range end arrow ➡️", self.peek().span))
         }
     }
 

@@ -1,5 +1,5 @@
 use crate::{
-    ast::{BinaryOp, Expr, Stmt, UnaryOp},
+    ast::{BinaryOp, Expr, ForSource, Stmt, UnaryOp},
     bytecode::{Instruction, Value},
     diagnostic::Diagnostic,
     semantic::CheckedProgram,
@@ -9,6 +9,7 @@ pub fn compile(checked: CheckedProgram) -> Result<Vec<Instruction>, Vec<Diagnost
     let mut compiler = Compiler {
         instructions: Vec::new(),
         emoji_literals: checked.emoji_literals,
+        loop_counter: 0,
     };
 
     for statement in &checked.program.statements {
@@ -21,6 +22,7 @@ pub fn compile(checked: CheckedProgram) -> Result<Vec<Instruction>, Vec<Diagnost
 struct Compiler {
     instructions: Vec<Instruction>,
     emoji_literals: std::collections::HashSet<(usize, usize)>,
+    loop_counter: usize,
 }
 
 impl Compiler {
@@ -78,7 +80,96 @@ impl Compiler {
                 let after_loop = self.instructions.len();
                 self.patch_jump(jump_if_false, after_loop);
             }
+            Stmt::For {
+                variable,
+                source,
+                body,
+                ..
+            } => self.compile_for(variable, source, body),
         }
+    }
+
+    fn compile_for(&mut self, variable: &str, source: &ForSource, body: &[Stmt]) {
+        match source {
+            ForSource::List { expr, .. } => self.compile_for_list(variable, expr, body),
+            ForSource::Range { start, end, .. } => self.compile_for_range(variable, start, end, body),
+        }
+    }
+
+    fn compile_for_list(&mut self, variable: &str, source: &Expr, body: &[Stmt]) {
+        let id = self.next_loop_id();
+        let list_name = format!("__peps_for_{}_list", id);
+        let index_name = format!("__peps_for_{}_index", id);
+        let len_name = format!("__peps_for_{}_len", id);
+
+        self.compile_expr(source);
+        self.instructions.push(Instruction::StoreVar(list_name.clone()));
+        self.instructions.push(Instruction::LoadConst(Value::Num(0)));
+        self.instructions
+            .push(Instruction::StoreVar(index_name.clone()));
+        self.instructions.push(Instruction::LoadVar(list_name.clone()));
+        self.instructions.push(Instruction::ListLen);
+        self.instructions.push(Instruction::StoreVar(len_name.clone()));
+
+        let loop_start = self.instructions.len();
+        self.instructions.push(Instruction::LoadVar(index_name.clone()));
+        self.instructions.push(Instruction::LoadVar(len_name));
+        self.instructions.push(Instruction::Lt);
+        let jump_if_false = self.emit_placeholder_jump_if_false();
+
+        self.instructions.push(Instruction::LoadVar(list_name));
+        self.instructions.push(Instruction::LoadVar(index_name.clone()));
+        self.instructions.push(Instruction::ListGet);
+        self.instructions
+            .push(Instruction::StoreVar(variable.to_string()));
+
+        for statement in body {
+            self.compile_statement(statement);
+        }
+
+        self.instructions.push(Instruction::LoadVar(index_name.clone()));
+        self.instructions.push(Instruction::LoadConst(Value::Num(1)));
+        self.instructions.push(Instruction::Add);
+        self.instructions.push(Instruction::StoreVar(index_name));
+        self.instructions.push(Instruction::Jump(loop_start));
+
+        let after_loop = self.instructions.len();
+        self.patch_jump(jump_if_false, after_loop);
+    }
+
+    fn compile_for_range(&mut self, variable: &str, start: &Expr, end: &Expr, body: &[Stmt]) {
+        let id = self.next_loop_id();
+        let index_name = format!("__peps_for_{}_index", id);
+        let end_name = format!("__peps_for_{}_end", id);
+
+        self.compile_expr(start);
+        self.instructions
+            .push(Instruction::StoreVar(index_name.clone()));
+        self.compile_expr(end);
+        self.instructions.push(Instruction::StoreVar(end_name.clone()));
+
+        let loop_start = self.instructions.len();
+        self.instructions.push(Instruction::LoadVar(index_name.clone()));
+        self.instructions.push(Instruction::LoadVar(end_name));
+        self.instructions.push(Instruction::Lt);
+        let jump_if_false = self.emit_placeholder_jump_if_false();
+
+        self.instructions.push(Instruction::LoadVar(index_name.clone()));
+        self.instructions
+            .push(Instruction::StoreVar(variable.to_string()));
+
+        for statement in body {
+            self.compile_statement(statement);
+        }
+
+        self.instructions.push(Instruction::LoadVar(index_name.clone()));
+        self.instructions.push(Instruction::LoadConst(Value::Num(1)));
+        self.instructions.push(Instruction::Add);
+        self.instructions.push(Instruction::StoreVar(index_name));
+        self.instructions.push(Instruction::Jump(loop_start));
+
+        let after_loop = self.instructions.len();
+        self.patch_jump(jump_if_false, after_loop);
     }
 
     fn compile_expr(&mut self, expr: &Expr) {
@@ -148,6 +239,12 @@ impl Compiler {
         let index = self.instructions.len();
         self.instructions.push(Instruction::JumpIfFalse(usize::MAX));
         index
+    }
+
+    fn next_loop_id(&mut self) -> usize {
+        let id = self.loop_counter;
+        self.loop_counter += 1;
+        id
     }
 
     fn emit_placeholder_jump(&mut self) -> usize {

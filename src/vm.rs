@@ -106,6 +106,26 @@ impl Vm<'_> {
                     self.stack.push(RuntimeValue::List(elements));
                     self.ip += 1;
                 }
+                Instruction::ListLen => {
+                    let value = self.pop("list length")?;
+                    let RuntimeValue::List(elements) = value else {
+                        return self.fail("list length requires a list value");
+                    };
+                    self.stack.push(RuntimeValue::Num(elements.len() as i64));
+                    self.ip += 1;
+                }
+                Instruction::ListGet => {
+                    let index = self.pop_num("list index")?;
+                    let list = self.pop("list index")?;
+                    let RuntimeValue::List(elements) = list else {
+                        return self.fail("list index requires a list value");
+                    };
+                    if index < 0 || index as usize >= elements.len() {
+                        return self.fail(format!("list index {} is out of bounds", index));
+                    }
+                    self.stack.push(elements[index as usize].clone());
+                    self.ip += 1;
+                }
                 Instruction::Print => {
                     let value = self.pop("print")?;
                     self.output.push(format_runtime_value(&value));
@@ -113,11 +133,6 @@ impl Vm<'_> {
                 }
                 Instruction::Jump(target) => {
                     self.validate_jump(target)?;
-                    if target <= self.ip {
-                        return self.fail(
-                            "while loop did not terminate; Peps runtime stops backward jumps because variables cannot change in v0",
-                        );
-                    }
                     self.ip = target;
                 }
                 Instruction::JumpIfFalse(target) => {

@@ -38,6 +38,28 @@ fn runs_list_print() {
 }
 
 #[test]
+fn runs_for_each_list_loop() {
+    let output =
+        run_source("🍎 🟰 📚 1️⃣ 2️⃣ 3️⃣ 📚 🔚 🔁 🐾 🧭 🍎 🔓 📢 🐾 🔚 🔒")
+            .expect("source should run");
+    assert_eq!(output, vec!["1".to_string(), "2".to_string(), "3".to_string()]);
+}
+
+#[test]
+fn runs_range_loop() {
+    let output = run_source("🔁 🐾 🧭 🔢 0️⃣ ➡️ 3️⃣ 🔓 📢 🐾 🔚 🔒")
+        .expect("source should run");
+    assert_eq!(output, vec!["0".to_string(), "1".to_string(), "2".to_string()]);
+}
+
+#[test]
+fn descending_range_is_empty() {
+    let output = run_source("🔁 🐾 🧭 🔢 3️⃣ ➡️ 0️⃣ 🔓 📢 🐾 🔚 🔒")
+        .expect("source should run");
+    assert!(output.is_empty());
+}
+
+#[test]
 fn reports_division_by_zero() {
     let error = run_source("🐶 🟰 1️⃣ ➗ 0️⃣ 🔚 📢 🐶 🔚").expect_err("source should fail at runtime");
     assert!(error.diagnostics[0].message.contains("division by zero"));
@@ -45,11 +67,13 @@ fn reports_division_by_zero() {
 
 #[test]
 fn stops_non_terminating_while_loop() {
-    let error = run_source("🐶 🟰 ✅ 🔚 🔁 🐶 🔓 📢 🐶 🔚 🔒")
+    let bytecode = peps::compile_source("🐶 🟰 ✅ 🔚 🔁 🐶 🔓 📢 🐶 🔚 🔒")
+        .expect("source should compile");
+    let error = vm::execute_with_step_limit(&bytecode, 12)
         .expect_err("source should stop at runtime");
 
-    assert_eq!(error.output, vec!["✅".to_string()]);
-    assert!(error.diagnostics[0].message.contains("while loop did not terminate"));
+    assert!(!error.output.is_empty());
+    assert!(error.diagnostics[0].message.contains("step limit"));
 }
 
 #[test]
