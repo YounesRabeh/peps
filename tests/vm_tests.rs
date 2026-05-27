@@ -32,6 +32,12 @@ fn runs_emoji_literal_assignment_print() {
 }
 
 #[test]
+fn runs_undeclared_emoji_reference_as_literal_print() {
+    let output = run_source("📢 ✈️ 🔚").expect("source should run");
+    assert_eq!(output, vec!["✈️".to_string()]);
+}
+
+#[test]
 fn runs_list_print() {
     let output = run_source("🐶 🟰 📚 1️⃣ 2️⃣ 📚 🔚 📢 🐶 🔚").expect("source should run");
     assert_eq!(output, vec!["📚 1 2 📚".to_string()]);

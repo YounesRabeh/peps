@@ -14,12 +14,10 @@ fn parses_assignment() {
 }
 
 #[test]
-fn parses_ascii_assignment() {
-    let program = parse("counter 🟰 5️⃣ 🔚");
-    assert!(matches!(
-        &program.statements[0],
-        Stmt::Assign { name, .. } if name == "counter"
-    ));
+fn errors_on_ascii_variable_definition() {
+    let tokens = lexer::lex("counter 🟰 5️⃣ 🔚").expect("lexing should succeed");
+    let diagnostics = parser::parse(tokens).expect_err("ascii variable should fail");
+    assert!(diagnostics[0].message.contains("exactly one emoji"));
 }
 
 #[test]
@@ -92,16 +90,10 @@ fn parses_for_range_block() {
 }
 
 #[test]
-fn parses_for_range_block_with_ascii_variable() {
-    let program = parse("🔁 idx 🧭 🔢 0️⃣ ➡️ 3️⃣ 🔓 📢 idx 🔚 🔒");
-    assert!(matches!(
-        &program.statements[0],
-        Stmt::For {
-            variable,
-            source: ForSource::Range { .. },
-            ..
-        } if variable == "idx"
-    ));
+fn errors_on_ascii_for_loop_variable() {
+    let tokens = lexer::lex("🔁 idx 🧭 🔢 0️⃣ ➡️ 3️⃣ 🔓 📢 idx 🔚 🔒").expect("lexing should succeed");
+    let diagnostics = parser::parse(tokens).expect_err("ascii loop variable should fail");
+    assert!(diagnostics[0].message.contains("exactly one emoji"));
 }
 
 #[test]

@@ -17,9 +17,8 @@ fn infers_variable_declaration() {
 }
 
 #[test]
-fn infers_ascii_variable_declaration() {
-    let checked = check("count 🟰 5️⃣ 🔚").expect("source should check");
-    assert_eq!(checked.symbols.get("count"), Some(&Type::Num));
+fn rejects_ascii_variable_declaration() {
+    assert!(first_error("count 🟰 5️⃣ 🔚").contains("exactly one emoji"));
 }
 
 #[test]
@@ -29,8 +28,8 @@ fn infers_emoji_literal_assignment() {
 }
 
 #[test]
-fn rejects_undeclared_variable() {
-    assert!(first_error("📢 🐶 🔚").contains("not declared"));
+fn treats_undeclared_emoji_reference_as_literal() {
+    check("📢 🐶 🔚").expect("undeclared emoji references should be treated as literals");
 }
 
 #[test]
@@ -112,9 +111,9 @@ fn rejects_non_num_range_bounds() {
 }
 
 #[test]
-fn rejects_loop_variable_after_loop() {
-    assert!(first_error("🔁 🐾 🧭 🔢 0️⃣ ➡️ 1️⃣ 🔓 📢 🐾 🔚 🔒 📢 🐾 🔚")
-        .contains("not declared"));
+fn treats_loop_variable_reference_after_loop_as_literal() {
+    check("🔁 🐾 🧭 🔢 0️⃣ ➡️ 1️⃣ 🔓 📢 🐾 🔚 🔒 📢 🐾 🔚")
+        .expect("loop variable outside loop should be treated as emoji literal");
 }
 
 #[test]

@@ -210,11 +210,8 @@ impl Checker {
             Expr::Variable { name, span } => match self.lookup(name) {
                 Some(ty) => Some(ty.clone()),
                 None => {
-                    self.diagnostics.push(Diagnostic::at(
-                        format!("Variable {} is not declared.", name),
-                        *span,
-                    ));
-                    None
+                    self.emoji_literals.insert((span.start, span.end));
+                    Some(Type::Emoji)
                 }
             },
             Expr::List { elements, span } => self.infer_list(elements, *span, false, false),

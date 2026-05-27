@@ -36,6 +36,17 @@ fn compiles_print() {
 }
 
 #[test]
+fn compiles_print_undeclared_emoji_literal() {
+    assert_eq!(
+        compile_source("📢 ✈️ 🔚").expect("source should compile"),
+        vec![
+            Instruction::LoadConst(Value::Emoji("✈️".to_string())),
+            Instruction::Print,
+        ]
+    );
+}
+
+#[test]
 fn compiles_arithmetic_precedence() {
     assert_eq!(
         compile_source("🐶 🟰 1️⃣ ➕ 2️⃣ ✖️ 3️⃣ 🔚").expect("source should compile"),
