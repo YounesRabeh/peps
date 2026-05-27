@@ -136,6 +136,30 @@ Then open:
 http://127.0.0.1:5179
 ```
 
+## Build And Run
+
+Use the top-level helper when you want one command for the common local flows.
+
+On Linux or macOS:
+
+```sh
+sh scripts/build-run.sh compiler examples/basic.peps
+sh scripts/build-run.sh ide
+sh scripts/build-run.sh all examples/basic.peps
+```
+
+On Windows PowerShell:
+
+```powershell
+.\scripts\build-run.ps1 compiler examples\basic.peps
+.\scripts\build-run.ps1 ide
+.\scripts\build-run.ps1 all examples\basic.peps
+```
+
+`compiler` builds the standalone runner and runs a `.peps` file. `ide` builds
+and starts the local IDE at `http://127.0.0.1:5179`. `all` runs the compiler flow
+first, then builds and starts the IDE.
+
 For frontend-only development, you can also run Vite separately:
 
 ```sh
