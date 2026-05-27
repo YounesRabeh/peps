@@ -1,46 +1,8 @@
 ![Peps banner](.github/PEPS-logo.png)
 
 # Peps
-
 Peps is an emoji-first programming language. This project includes a compiler and
 a small bytecode runner for local `.peps` files.
-
-## Project Structure
-
-The Rust crate follows the compiler pipeline:
-
-```text
-src/
-  common.rs          shared diagnostics and source spans
-  common/
-    diagnostic.rs
-    source.rs
-
-  frontend.rs        lexing, parsing, and AST modules
-  frontend/
-    ast.rs
-    lexer.rs
-    parser.rs
-    token.rs
-
-  middle_end.rs      semantic analysis modules
-  middle_end/
-    semantic.rs
-    symbol_table.rs
-    types.rs
-
-  backend.rs         bytecode definitions and compiler
-  backend/
-    bytecode.rs
-    compiler.rs
-
-  runtime.rs         bytecode runner modules
-  runtime/
-    vm.rs
-
-  lib.rs             public library API and compatibility re-exports
-  main.rs            command-line runner
-```
 
 Public re-exports keep convenient paths such as `peps::lexer::lex`,
 `peps::compile_source`, and `peps::run_source` available.
