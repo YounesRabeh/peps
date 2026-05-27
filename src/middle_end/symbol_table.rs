@@ -1,3 +1,5 @@
+//! Symbol table for top-level Peps declarations.
+
 use std::collections::HashMap;
 
 use crate::types::Type;

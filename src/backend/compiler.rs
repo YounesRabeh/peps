@@ -1,3 +1,5 @@
+//! Bytecode compiler for semantically checked Peps programs.
+
 use crate::{
     ast::{BinaryOp, Expr, ForSource, Stmt, UnaryOp},
     bytecode::{Instruction, Value},

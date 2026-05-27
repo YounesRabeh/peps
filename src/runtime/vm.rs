@@ -1,3 +1,5 @@
+//! Stack-based bytecode runner for compiled Peps programs.
+
 use std::collections::HashMap;
 
 use crate::{

@@ -1,3 +1,5 @@
+//! Recursive-descent and precedence-climbing parser for Peps source tokens.
+
 use crate::{
     ast::{BinaryOp, Expr, ForSource, Program, Stmt, UnaryOp},
     diagnostic::Diagnostic,

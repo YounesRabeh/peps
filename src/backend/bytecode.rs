@@ -1,3 +1,5 @@
+//! Peps bytecode instructions and constant values.
+
 #[derive(Debug, Clone, PartialEq)]
 pub enum Instruction {
     LoadConst(Value),

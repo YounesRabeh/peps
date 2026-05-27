@@ -1,3 +1,5 @@
+//! Human-readable compiler and runtime diagnostics.
+
 use crate::source::Span;
 
 #[derive(Debug, Clone, PartialEq, Eq)]

@@ -1,3 +1,5 @@
+//! Source spans used to attach byte and line/column locations to compiler data.
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Span {
     pub start: usize,

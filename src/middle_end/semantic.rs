@@ -1,3 +1,5 @@
+//! Semantic checker for declaration rules, type inference, and v1 loop scopes.
+
 use std::collections::{HashMap, HashSet};
 
 use crate::{

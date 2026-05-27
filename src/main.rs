@@ -1,3 +1,5 @@
+//! Command-line entry point for running `.peps` files.
+
 use std::{env, fs, process};
 
 fn main() {

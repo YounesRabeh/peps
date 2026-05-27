@@ -1,3 +1,5 @@
+//! Abstract syntax tree definitions produced by the parser.
+
 use crate::source::Span;
 
 #[derive(Debug, Clone, PartialEq)]

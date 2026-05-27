@@ -1,3 +1,5 @@
+//! Emoji-aware lexer that tokenizes Peps source by Unicode grapheme cluster.
+
 use unicode_segmentation::UnicodeSegmentation;
 
 use crate::{

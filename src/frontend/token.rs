@@ -1,3 +1,5 @@
+//! Token types emitted by the emoji-aware lexer.
+
 use crate::source::Span;
 
 #[derive(Debug, Clone, PartialEq)]
