@@ -1,5 +1,6 @@
 ![Peps banner](.github/PEPS-logo.png)
 
+
 # Peps
 Peps is an emoji-first programming language. This project includes a compiler and
 a small bytecode runner for local `.peps` files.
@@ -203,3 +204,5 @@ The IDE starts at:
 ```text
 http://127.0.0.1:5179
 ```
+### IDE Preview:
+![Peps IDE](.github/peps-ide-2026-05-27.png)

@@ -13,6 +13,11 @@ struct Grapheme {
     text: String,
     span: Span,
 }
+// normalize to resolve the invidsibale character issue in some emojis, e.g. "1️⃣" can be represented as "1\u{FE0F}\u{20E3}" 
+
+//pub fn normalize_peps_source(source: &str) -> String {
+//    source.replace('\u{FE0F}', "")
+//}
 
 pub fn lex(source: &str) -> Result<Vec<Token>, Vec<Diagnostic>> {
     let graphemes = collect_graphemes(source);
