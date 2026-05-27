@@ -134,42 +134,42 @@ cargo run -- examples/basic.peps
 After building the standalone binary, run a file without Cargo:
 
 ```sh
-./dist/peps hello.peps
+'./dist/peps!' hello.peps
 ```
 
-If `peps` is installed on your `PATH`, run files like this:
+If `peps!` is installed on your `PATH`, run files like this:
 
 ```sh
-peps hello.peps
+'peps!' hello.peps
 ```
 
 Compiler or runtime errors are printed with diagnostics. Valid programs print
 only the program output.
 
-## Build a Standalone `peps` Command
+## Build a Standalone `peps!` Command
 
 On Linux or macOS:
 
 ```sh
 sh scripts/build-standalone.sh
-./dist/peps examples/basic.peps
+'./dist/peps!' examples/basic.peps
 ```
 
-To run it as `peps basic.peps` from any folder, copy the binary into a folder on
+To run it as `peps! basic.peps` from any folder, copy the binary into a folder on
 your `PATH`:
 
 ```sh
 mkdir -p "$HOME/.local/bin"
-cp dist/peps "$HOME/.local/bin/peps"
-peps examples/basic.peps
+cp 'dist/peps!' "$HOME/.local/bin/peps!"
+'peps!' examples/basic.peps
 ```
 
 On Windows PowerShell:
 
 ```powershell
 .\scripts\build-standalone.ps1
-.\dist\peps.exe examples\basic.peps
+.\dist\peps!.exe examples\basic.peps
 ```
 
 The machine that builds the binary needs Rust. The machine that runs the copied
-`dist/peps` or `dist/peps.exe` binary does not need Rust installed.
+`dist/peps!` or `dist/peps!.exe` binary does not need Rust installed.
