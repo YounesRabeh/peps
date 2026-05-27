@@ -1,4 +1,4 @@
-import Editor, { type BeforeMount } from "@monaco-editor/react";
+import Editor, { type BeforeMount, type OnMount } from "@monaco-editor/react";
 import { registerPepsLanguage } from "../pepsLanguage";
 
 type EditorPaneProps = {
@@ -11,10 +11,15 @@ export function EditorPane({ source, onChange }: EditorPaneProps) {
     registerPepsLanguage(monaco);
   };
 
+  const handleMount: OnMount = (_editor, monaco) => {
+    monaco.editor.setTheme("peps-dark");
+  };
+
   return (
     <section className="editor-pane" aria-label="Peps editor">
       <Editor
         beforeMount={handleBeforeMount}
+        onMount={handleMount}
         language="peps"
         theme="peps-dark"
         value={source}
@@ -22,6 +27,7 @@ export function EditorPane({ source, onChange }: EditorPaneProps) {
         options={{
           automaticLayout: true,
           fontSize: 16,
+          fontFamily: `"Noto Color Emoji", "Segoe UI Emoji", "Apple Color Emoji", monospace`,
           minimap: { enabled: false },
           tabSize: 4,
           wordWrap: "on"

@@ -1,6 +1,6 @@
 //! Local HTTP server for the Peps browser IDE.
 
-use std::{net::SocketAddr, path::PathBuf};
+use std::{env, net::SocketAddr, path::PathBuf};
 
 use axum::{
     extract::Json,
@@ -39,19 +39,54 @@ pub struct IdeDiagnostic {
 /// Start the local IDE server and serve the built frontend from `ide/dist`.
 pub async fn run() -> anyhow::Result<()> {
     let addr: SocketAddr = DEFAULT_ADDR.parse()?;
-    let dist_dir = PathBuf::from("ide/dist");
+    let dist_dir = frontend_dist_dir();
 
     if !dist_dir.exists() {
         eprintln!(
-            "warning: ide/dist was not found. Build the frontend first:\n  cd ide\n  npm install\n  npm run build"
+            "warning: IDE frontend assets were not found. Build the frontend first:\n  cd ide\n  npm install\n  npm run build"
         );
     }
 
     let app = router(dist_dir);
     let listener = tokio::net::TcpListener::bind(addr).await?;
-    println!("Peps IDE running at http://{}", addr);
+
+    let url = format!("http://{}", addr);
+    println!("Peps IDE running at {}", url);
+
+    println!("Opening browser...");
+    match open::that(&url) {
+        Ok(_) => println!("Browser open command sent."),
+        Err(error) => {
+            eprintln!("Could not open browser automatically: {error}");
+            eprintln!("Open it manually at: {url}");
+        }
+    }
+
     axum::serve(listener, app).await?;
     Ok(())
+}
+
+fn frontend_dist_dir() -> PathBuf {
+    let workspace_dist = PathBuf::from("ide/dist");
+    if workspace_dist.exists() {
+        return workspace_dist;
+    }
+
+    if let Ok(exe_path) = env::current_exe() {
+        if let Some(exe_dir) = exe_path.parent() {
+            let split_bundle_dist = exe_dir.join("frontend").join("dist");
+            if split_bundle_dist.exists() {
+                return split_bundle_dist;
+            }
+
+            let bundled_dist = exe_dir.join("ide").join("dist");
+            if bundled_dist.exists() {
+                return bundled_dist;
+            }
+        }
+    }
+
+    workspace_dist
 }
 
 pub fn router(dist_dir: PathBuf) -> Router {

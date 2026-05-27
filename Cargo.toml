@@ -7,6 +7,7 @@ default-run = "peps"
 [dependencies]
 anyhow = "1"
 axum = "0.7"
+open = "5.3.5"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 tokio = { version = "1", features = ["full"] }

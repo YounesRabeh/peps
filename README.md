@@ -96,7 +96,7 @@ cargo run -- examples/basic.peps
 After building the standalone binary, run a file without Cargo:
 
 ```sh
-'./dist/peps!' hello.peps
+'./dist/compiler/peps!' hello.peps
 ```
 
 If `peps!` is installed on your `PATH`, run files like this:
@@ -142,13 +142,13 @@ cd ide
 npm run dev
 ```
 
-## Build a Standalone `peps!` Command
+## Build the Compiler Runner
 
 On Linux or macOS:
 
 ```sh
-sh scripts/build-standalone.sh
-'./dist/peps!' examples/basic.peps
+sh scripts/compiler/build.sh
+'./dist/compiler/peps!' examples/basic.peps
 ```
 
 To run it as `peps! basic.peps` from any folder, copy the binary into a folder on
@@ -156,16 +156,50 @@ your `PATH`:
 
 ```sh
 mkdir -p "$HOME/.local/bin"
-cp 'dist/peps!' "$HOME/.local/bin/peps!"
+cp 'dist/compiler/peps!' "$HOME/.local/bin/peps!"
 'peps!' examples/basic.peps
 ```
 
 On Windows PowerShell:
 
 ```powershell
-.\scripts\build-standalone.ps1
-.\dist\peps!.exe examples\basic.peps
+.\scripts\compiler\build.ps1
+.\dist\compiler\peps!.exe examples\basic.peps
 ```
 
 The machine that builds the binary needs Rust. The machine that runs the copied
-`dist/peps!` or `dist/peps!.exe` binary does not need Rust installed.
+`dist/compiler/peps!` or `dist\compiler\peps!.exe` binary does not need Rust
+installed.
+
+## Build the Local IDE
+
+The IDE build is separate from the compiler runner build. It contains:
+
+- `peps-ide` / `peps-ide.exe` plus built web assets for the local browser IDE
+
+The IDE server still depends on the Peps compiler/runtime library internally, but
+the packaged IDE output does not include the standalone `peps!` runner. Build the
+runner separately with `scripts/compiler`.
+
+The machine that builds the IDE needs Rust and Node/npm. The machine that runs
+the finished IDE package does not need Rust or npm.
+
+On Linux or macOS:
+
+```sh
+sh scripts/ide/build.sh
+./dist/ide/peps-ide.sh
+```
+
+On Windows PowerShell:
+
+```powershell
+.\scripts\ide\build.ps1
+.\dist\ide\peps-ide.exe
+```
+
+The IDE starts at:
+
+```text
+http://127.0.0.1:5179
+```
