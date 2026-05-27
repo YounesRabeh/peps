@@ -129,6 +129,11 @@ export function provideEmojiCompletionItems(
 
   const suggestions = getEmojiSuggestions(colonPrefix.prefix).map((suggestion) => ({
     label: `${suggestion.emoji} ${suggestion.name}`,
+    filterText: [
+      suggestion.name,
+      ...suggestion.aliases,
+      ...suggestion.keywords
+    ].join(" "),
     kind:
       suggestion.detail === "Emoji"
         ? monaco.languages.CompletionItemKind.Text

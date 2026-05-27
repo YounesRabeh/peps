@@ -221,7 +221,7 @@ impl Lexer {
 }
 
 fn is_whitespace(text: &str) -> bool {
-    matches!(text, " " | "\t" | "\n" | "\r" | "\r\n")
+    return matches!(text, " " | "\t" | "\n" | "\r" | "\r\n");
 }
 
 fn single_token_kind(text: &str) -> Option<TokenKind> {
@@ -251,9 +251,9 @@ fn single_token_kind(text: &str) -> Option<TokenKind> {
 }
 
 fn is_reserved(text: &str) -> bool {
-    single_token_kind(text).is_some()
+    return single_token_kind(text).is_some()
         || matches!(text, "💬")
-        || is_emoji_digit(text)
+        || is_emoji_digit(text);
 }
 
 fn is_identifier_emoji(text: &str) -> bool {
@@ -261,17 +261,17 @@ fn is_identifier_emoji(text: &str) -> bool {
         return false;
     }
 
-    text.chars().any(is_emoji_like_scalar)
+    return text.chars().any(is_emoji_like_scalar);
 }
 
 fn is_emoji_like_scalar(ch: char) -> bool {
-    matches!(
+    return matches!(
         ch as u32,
         0x1F000..=0x1FAFF
             | 0x2600..=0x27BF
             | 0x2300..=0x23FF
             | 0x2B00..=0x2BFF
-    )
+    );
 }
 
 fn is_emoji_digit(text: &str) -> bool {

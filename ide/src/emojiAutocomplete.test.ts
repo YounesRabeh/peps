@@ -3,7 +3,8 @@ import {
   applyEmojiCompletion,
   findColonPrefixBeforeCursor,
   getEmojiSuggestions,
-  isInsidePepsString
+  isInsidePepsString,
+  provideEmojiCompletionItems
 } from "./emojiAutocomplete";
 
 describe("emoji autocomplete helpers", () => {
@@ -57,5 +58,40 @@ describe("emoji autocomplete helpers", () => {
   it("detects Peps string literals on the current line", () => {
     const line = "🐶 🟰 💬 hello :happ";
     expect(isInsidePepsString(line, line.length + 1)).toBe(true);
+  });
+
+  it("keeps text matching via filterText even when label starts with emoji", () => {
+    const monaco = {
+      languages: {
+        CompletionItemKind: {
+          Text: 1,
+          Keyword: 2
+        }
+      },
+      Range: class {
+        constructor(
+          public startLineNumber: number,
+          public startColumn: number,
+          public endLineNumber: number,
+          public endColumn: number
+        ) {}
+      }
+    } as any;
+
+    const model = {
+      getLineContent: () => ":print"
+    } as any;
+
+    const completion = provideEmojiCompletionItems(monaco, model, {
+      lineNumber: 1,
+      column: 7
+    } as any) as { suggestions: Array<{ label: string; filterText?: string }> };
+
+    const printSuggestion = completion.suggestions.find((item) =>
+      item.label.includes("print")
+    );
+
+    expect(printSuggestion).toBeDefined();
+    expect(printSuggestion?.filterText).toContain("print");
   });
 });
