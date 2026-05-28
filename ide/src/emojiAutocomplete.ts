@@ -96,22 +96,17 @@ export function getEmojiSuggestions(prefix: string): EmojiSuggestion[] {
     return [];
   }
 
-  const pepsMatches = PEPS_SUGGESTIONS.filter((candidate) =>
-    matchesAliasOrName(candidate, normalizedPrefix)
-  );
-  const emojiMatches = allGeneralEmojis().filter((candidate) =>
-    matchesAliasOrName(candidate, normalizedPrefix)
-  );
-  const keywordMatches = allGeneralEmojis().filter(
-    (candidate) =>
-      !matchesAliasOrName(candidate, normalizedPrefix) &&
-      candidate.keywords.some((keyword) => keyword.startsWith(normalizedPrefix))
-  );
+  const ranked = uniqueByEmoji([...PEPS_SUGGESTIONS, ...allGeneralEmojis()])
+    .map((candidate) => ({
+      candidate,
+      score: suggestionScore(candidate, normalizedPrefix)
+    }))
+    .filter((item) => item.score > 0)
+    .sort((left, right) => right.score - left.score)
+    .slice(0, 10)
+    .map((item) => item.candidate);
 
-  return uniqueByEmoji([...pepsMatches, ...emojiMatches, ...keywordMatches]).slice(
-    0,
-    10
-  );
+  return ranked;
 }
 
 export function provideEmojiCompletionItems(
@@ -121,12 +116,12 @@ export function provideEmojiCompletionItems(
 ): Monaco.languages.ProviderResult<Monaco.languages.CompletionList> {
   const line = model.getLineContent(position.lineNumber);
   if (isInsidePepsString(line, position.column)) {
-    return { suggestions: [] };
+    return { suggestions: [], incomplete: true };
   }
 
   const colonPrefix = findColonPrefixBeforeCursor(line, position.column);
   if (!colonPrefix) {
-    return { suggestions: [] };
+    return { suggestions: [], incomplete: true };
   }
 
   const suggestions = getEmojiSuggestions(colonPrefix.prefix).map((suggestion) => {
@@ -157,14 +152,46 @@ export function provideEmojiCompletionItems(
     };
   });
 
-  return { suggestions };
+  return { suggestions, incomplete: true };
 }
 
 function matchesAliasOrName(candidate: EmojiSuggestion, prefix: string): boolean {
-  return (
-    candidate.name.toLowerCase().startsWith(prefix) ||
-    candidate.aliases.some((alias) => alias.toLowerCase().startsWith(prefix))
-  );
+  return suggestionScore(candidate, prefix) > 0;
+}
+
+function suggestionScore(candidate: EmojiSuggestion, query: string): number {
+  const normalizedQuery = normalizeLookupText(query);
+  if (!normalizedQuery) {
+    return 0;
+  }
+
+  const fields = [candidate.name, ...candidate.aliases, ...candidate.keywords];
+  let best = 0;
+
+  for (const field of fields) {
+    const normalizedField = normalizeLookupText(field);
+    if (!normalizedField) {
+      continue;
+    }
+
+    if (normalizedField === normalizedQuery) {
+      best = Math.max(best, 100);
+    } else if (normalizedField.startsWith(normalizedQuery)) {
+      best = Math.max(best, 80);
+    } else if (normalizedField.includes(normalizedQuery)) {
+      best = Math.max(best, 50);
+    }
+  }
+
+  if (candidate.detail !== "Emoji" && best > 0) {
+    best += 10;
+  }
+
+  return best;
+}
+
+function normalizeLookupText(text: string): string {
+  return text.toLowerCase().replace(/[^a-z0-9]/g, "");
 }
 
 let cachedGeneralEmojis: EmojiSuggestion[] | null = null;

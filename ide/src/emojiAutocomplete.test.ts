@@ -104,4 +104,9 @@ describe("emoji autocomplete helpers", () => {
     const suggestions = getEmojiSuggestions("Prin");
     expect(suggestions.some((item) => item.name === "print")).toBe(true);
   });
+
+  it("matches normalized query without punctuation separators", () => {
+    const suggestions = getEmojiSuggestions("raisedbackofhand");
+    expect(suggestions.length).toBeGreaterThan(0);
+  });
 });
