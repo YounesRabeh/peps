@@ -79,4 +79,4 @@ Windows PowerShell:
 ```
 
 ### IDE Preview
-![Peps IDE](.github/peps-ide-2026-05-27.png)
+![Peps IDE](.github/peps-ide.png)
