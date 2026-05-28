@@ -7,9 +7,17 @@ type OutputPanelProps = {
 };
 
 export function OutputPanel({ running, response, error }: OutputPanelProps) {
+  const hasDiagnostics = Boolean(response && response.diagnostics.length > 0);
+  const isSuccess = Boolean(!running && !error && response?.ok && !hasDiagnostics);
+
   return (
     <aside className="output-panel">
-      <h2>Output</h2>
+      <div className="output-header">
+        <h2>Output</h2>
+        <span className={`status-pill ${running ? "status-running" : isSuccess ? "status-ok" : hasDiagnostics || error ? "status-error" : "status-idle"}`}>
+          {running ? "Running" : isSuccess ? "Success" : hasDiagnostics || error ? "Issues" : "Idle"}
+        </span>
+      </div>
       {running && <p className="muted">Running...</p>}
       {!running && error && <p className="error">IDE server error: {error}</p>}
       {!running && !error && !response && (

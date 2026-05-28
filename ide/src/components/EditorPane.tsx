@@ -35,7 +35,8 @@ const pepsEditorOptions = {
   },
 
   renderControlCharacters: false,
-  renderWhitespace: "none" as const
+  renderWhitespace: "none" as const,
+  mouseWheelZoom: true
 };
 
 const LETTER_FALLBACK_KEYS = new Set(["a", "A", "s", "S", "d", "D"]);
@@ -74,6 +75,20 @@ export function EditorPane({ source, onChange }: EditorPaneProps) {
     monaco.editor.setTheme("peps-dark");
 
     editor.updateOptions(pepsEditorOptions);
+
+    // Keep Ctrl+wheel zoom scoped to Monaco while pointer is over editor.
+    const editorNode = editor.getDomNode();
+    if (editorNode) {
+      editorNode.addEventListener(
+        "wheel",
+        (event) => {
+          if (event.ctrlKey) {
+            event.preventDefault();
+          }
+        },
+        { passive: false }
+      );
+    }
 
     console.log(
       "Peps Monaco unicodeHighlight option:",
