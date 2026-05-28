@@ -131,16 +131,28 @@ fn lexes_ascii_variables() {
 #[test]
 fn lexes_break_and_continue_tokens() {
     assert_eq!(
-        kinds("🛑 🔚 ⏭️ 🔚 break 🔚 continue 🔚"),
+        kinds("🛑 🔚 ⏭️ 🔚"),
         vec![
             TokenKind::Break,
             TokenKind::StatementEnd,
             TokenKind::Continue,
             TokenKind::StatementEnd,
-            TokenKind::Break,
+            TokenKind::Eof,
+        ]
+    );
+}
+
+#[test]
+fn lexes_newline_as_statement_separator() {
+    assert_eq!(
+        kinds("🐶 🟰 1️⃣\n📢 🐶"),
+        vec![
+            TokenKind::Identifier("🐶".to_string()),
+            TokenKind::Assign,
+            TokenKind::Number(1),
             TokenKind::StatementEnd,
-            TokenKind::Continue,
-            TokenKind::StatementEnd,
+            TokenKind::Print,
+            TokenKind::Identifier("🐶".to_string()),
             TokenKind::Eof,
         ]
     );

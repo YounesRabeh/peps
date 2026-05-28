@@ -12,6 +12,12 @@ fn runs_printed_values() {
 }
 
 #[test]
+fn runs_newline_separated_statements_without_statement_end_token() {
+    let output = run_source("🐶 🟰 5️⃣\n📢 🐶").expect("source should run");
+    assert_eq!(output, vec!["5".to_string()]);
+}
+
+#[test]
 fn runs_arithmetic_and_comparison() {
     let output = run_source("🐶 🟰 1️⃣ ➕ 2️⃣ ✖️ 3️⃣ 🔚 🐱 🟰 🐶 ▶️ 6️⃣ 🔚 📢 🐶 🔚 📢 🐱 🔚")
         .expect("source should run");

@@ -32,6 +32,10 @@ impl Parser {
         let mut statements = Vec::new();
 
         while !self.is_at_end() {
+            self.skip_statement_separators();
+            if self.is_at_end() {
+                break;
+            }
             if matches!(self.peek().kind, TokenKind::BlockEnd) {
                 return Err(Diagnostic::at("unexpected block end 🔒", self.peek().span));
             }
@@ -121,6 +125,7 @@ impl Parser {
         let condition = self.parse_expression(0)?;
         let then_branch = self.parse_block()?;
         let mut span = start.merge(self.previous().span);
+        self.skip_statement_separators();
 
         let else_branch = if matches!(self.peek().kind, TokenKind::Else) {
             self.advance();
@@ -215,7 +220,11 @@ impl Parser {
     fn parse_block_body(&mut self) -> Result<Vec<Stmt>, Diagnostic> {
         let mut statements = Vec::new();
 
-        while !matches!(self.peek().kind, TokenKind::BlockEnd | TokenKind::Eof) {
+        loop {
+            self.skip_statement_separators();
+            if matches!(self.peek().kind, TokenKind::BlockEnd | TokenKind::Eof) {
+                break;
+            }
             statements.push(self.parse_statement()?);
         }
 
@@ -301,6 +310,7 @@ impl Parser {
         let mut elements = Vec::new();
 
         while !matches!(self.peek().kind, TokenKind::Eof) {
+            self.skip_statement_separators();
             if matches!(self.peek().kind, TokenKind::ListDelimiter)
                 && !(elements.is_empty() && self.next_token_starts_expression())
             {
@@ -390,9 +400,22 @@ impl Parser {
         }
 
         if matches!(self.peek().kind, TokenKind::StatementEnd) {
-            Ok(self.advance().span)
+            let end = self.advance().span;
+            self.skip_statement_separators();
+            Ok(end)
+        } else if matches!(self.peek().kind, TokenKind::BlockEnd | TokenKind::Eof | TokenKind::Else) {
+            Ok(self.previous().span)
         } else {
-            Err(Diagnostic::at("missing statement end 🔚", self.peek().span))
+            Err(Diagnostic::at(
+                "missing statement separator (newline or 🔚)",
+                self.peek().span,
+            ))
+        }
+    }
+
+    fn skip_statement_separators(&mut self) {
+        while matches!(self.peek().kind, TokenKind::StatementEnd) {
+            self.advance();
         }
     }
 

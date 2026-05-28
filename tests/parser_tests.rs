@@ -27,6 +27,14 @@ fn parses_print() {
 }
 
 #[test]
+fn parses_newline_separated_statements_without_statement_end_token() {
+    let program = parse("🐶 🟰 5️⃣\n📢 🐶");
+    assert_eq!(program.statements.len(), 2);
+    assert!(matches!(program.statements[0], Stmt::Assign { .. }));
+    assert!(matches!(program.statements[1], Stmt::Print { .. }));
+}
+
+#[test]
 fn parses_arithmetic_precedence() {
     let program = parse("🐶 🟰 1️⃣ ➕ 2️⃣ ✖️ 3️⃣ 🔚");
     let Stmt::Assign { expr, .. } = &program.statements[0] else {
@@ -48,6 +56,18 @@ fn parses_if_block() {
 #[test]
 fn parses_if_else_block() {
     let program = parse("🤔 ✅ 🔓 📢 1️⃣ 🔚 🔒 😐 🔓 📢 2️⃣ 🔚 🔒");
+    assert!(matches!(
+        program.statements[0],
+        Stmt::If {
+            else_branch: Some(_),
+            ..
+        }
+    ));
+}
+
+#[test]
+fn parses_if_else_with_newline_separators() {
+    let program = parse("🤔 ✅ 🔓\n📢 1️⃣\n🔒\n😐 🔓\n📢 2️⃣\n🔒");
     assert!(matches!(
         program.statements[0],
         Stmt::If {
@@ -145,9 +165,9 @@ fn parses_list() {
 
 #[test]
 fn errors_on_missing_statement_end() {
-    let tokens = lexer::lex("🐶 🟰 5️⃣").expect("lexing should succeed");
+    let tokens = lexer::lex("🐶 🟰 5️⃣ 📢 🐶").expect("lexing should succeed");
     let diagnostics = parser::parse(tokens).expect_err("missing statement end should fail");
-    assert!(diagnostics[0].message.contains("missing statement end"));
+    assert!(diagnostics[0].message.contains("separator"));
 }
 
 #[test]

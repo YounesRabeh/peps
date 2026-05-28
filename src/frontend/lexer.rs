@@ -79,10 +79,19 @@ impl Lexer {
     }
 
     fn lex_tokens(&mut self) -> Result<Vec<Token>, Vec<Diagnostic>> {
-        let mut tokens = Vec::new();
+        let mut tokens: Vec<Token> = Vec::new();
 
         while !self.is_at_end() {
             let grapheme = self.peek().clone();
+
+            if is_newline(&grapheme.text) {
+                let span = grapheme.span;
+                self.advance();
+                if should_emit_statement_separator(tokens.last().map(|token| &token.kind)) {
+                    tokens.push(Token::new(TokenKind::StatementEnd, span));
+                }
+                continue;
+            }
 
             if is_whitespace(&grapheme.text) {
                 self.advance();
@@ -205,13 +214,7 @@ impl Lexer {
             name.push_str(&grapheme.text);
         }
 
-        let kind = match name.as_str() {
-            "break" => TokenKind::Break,
-            "continue" => TokenKind::Continue,
-            _ => TokenKind::Identifier(name),
-        };
-
-        Token::new(kind, start.merge(end))
+        Token::new(TokenKind::Identifier(name), start.merge(end))
     }
 
     fn report_invalid_character(&mut self, grapheme: &Grapheme) {
@@ -246,7 +249,15 @@ impl Lexer {
 }
 
 fn is_whitespace(text: &str) -> bool {
-    return matches!(text, " " | "\t" | "\n" | "\r" | "\r\n");
+    return matches!(text, " " | "\t");
+}
+
+fn is_newline(text: &str) -> bool {
+    matches!(text, "\n" | "\r" | "\r\n")
+}
+
+fn should_emit_statement_separator(previous: Option<&TokenKind>) -> bool {
+    !matches!(previous, None | Some(TokenKind::StatementEnd))
 }
 
 fn is_ascii_identifier_start(text: &str) -> bool {

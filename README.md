@@ -36,7 +36,7 @@ Public re-exports keep convenient paths such as `peps::lexer::lex`,
 | ➡️ | range end | Separates range start and end | `🔢 0️⃣ ➡️ 3️⃣` |
 | 🔓 | block start | Open an if/else/while block | `🤔 ✅ 🔓` |
 | 🔒 | block end | Close a block | `🔒` |
-| 🔚 | statement end | End an assignment or print statement | `📢 🐶 🔚` |
+| 🔚 | statement end (optional) | Optional explicit separator between statements | `📢 🐶 🔚` |
 | 💬 | string delimiter | Wrap string content | `🐶 🟰 💬hello💬 🔚` |
 | 📚 | list delimiter | Start and end a list | `📚 1️⃣ 2️⃣ 📚` |
 | 0️⃣ ... 9️⃣ | digits | Whole-number digits | `1️⃣2️⃣3️⃣` |
@@ -52,6 +52,13 @@ For each item in a list:
 🔁 🐾 🧭 🍎 🔓
     📢 🐾 🔚
 🔒
+```
+
+Newline is the default statement separator, so `🔚` is optional:
+
+```peps
+🐶 🟰 5️⃣
+📢 🐶
 ```
 
 For each number in a range. The end is exclusive, so this prints `0`, `1`, `2`:

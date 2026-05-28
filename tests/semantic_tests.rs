@@ -28,6 +28,11 @@ fn infers_emoji_literal_assignment() {
 }
 
 #[test]
+fn allows_newline_separated_statements_without_statement_end_token() {
+    check("🐶 🟰 5️⃣\n📢 🐶").expect("source should check");
+}
+
+#[test]
 fn treats_undeclared_emoji_reference_as_literal() {
     check("📢 🐶 🔚").expect("undeclared emoji references should be treated as literals");
 }

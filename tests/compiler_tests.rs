@@ -36,6 +36,19 @@ fn compiles_print() {
 }
 
 #[test]
+fn compiles_newline_separated_statements_without_statement_end_token() {
+    assert_eq!(
+        compile_source("🐶 🟰 5️⃣\n📢 🐶").expect("source should compile"),
+        vec![
+            Instruction::LoadConst(Value::Num(5)),
+            Instruction::StoreVar("🐶".to_string()),
+            Instruction::LoadVar("🐶".to_string()),
+            Instruction::Print,
+        ]
+    );
+}
+
+#[test]
 fn compiles_print_undeclared_emoji_literal() {
     assert_eq!(
         compile_source("📢 ✈️ 🔚").expect("source should compile"),
