@@ -109,4 +109,20 @@ describe("emoji autocomplete helpers", () => {
     const suggestions = getEmojiSuggestions("raisedbackofhand");
     expect(suggestions.length).toBeGreaterThan(0);
   });
+
+  it("expands semantic query terms like air", () => {
+    const suggestions = getEmojiSuggestions("air");
+    expect(suggestions.length).toBeGreaterThan(0);
+  });
+
+  it("prefers direct name matches over keyword-only matches", () => {
+    const suggestions = getEmojiSuggestions("air");
+    const firstNames = suggestions.slice(0, 3).map((item) => item.name);
+    expect(firstNames).toContain("airplane");
+  });
+
+  it("supports small typos in query text", () => {
+    const suggestions = getEmojiSuggestions("rovket");
+    expect(suggestions.some((item) => item.name === "rocket")).toBe(true);
+  });
 });

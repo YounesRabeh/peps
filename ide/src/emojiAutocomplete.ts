@@ -99,10 +99,20 @@ export function getEmojiSuggestions(prefix: string): EmojiSuggestion[] {
   const ranked = uniqueByEmoji([...PEPS_SUGGESTIONS, ...allGeneralEmojis()])
     .map((candidate) => ({
       candidate,
-      score: suggestionScore(candidate, normalizedPrefix)
+      match: candidateMatch(candidate, normalizedPrefix)
     }))
-    .filter((item) => item.score > 0)
-    .sort((left, right) => right.score - left.score)
+    .filter((item) => item.match.score > 0)
+    .sort((left, right) => {
+      if (right.match.score !== left.match.score) {
+        return right.match.score - left.match.score;
+      }
+      const leftLen = left.match.length;
+      const rightLen = right.match.length;
+      if (leftLen !== rightLen) {
+        return leftLen - rightLen;
+      }
+      return left.candidate.name.localeCompare(right.candidate.name);
+    })
     .slice(0, 10)
     .map((item) => item.candidate);
 
@@ -155,31 +165,31 @@ export function provideEmojiCompletionItems(
   return { suggestions, incomplete: true };
 }
 
-function matchesAliasOrName(candidate: EmojiSuggestion, prefix: string): boolean {
-  return suggestionScore(candidate, prefix) > 0;
-}
-
-function suggestionScore(candidate: EmojiSuggestion, query: string): number {
+function candidateMatch(
+  candidate: EmojiSuggestion,
+  query: string
+): { score: number; length: number } {
   const normalizedQuery = normalizeLookupText(query);
   if (!normalizedQuery) {
-    return 0;
+    return { score: 0, length: Number.MAX_SAFE_INTEGER };
   }
-
-  const fields = [candidate.name, ...candidate.aliases, ...candidate.keywords];
+  const queryTokens = tokenizeLookupText(query);
+  const fields: Array<{ text: string; weight: number }> = [
+    { text: candidate.name, weight: 1.0 },
+    ...candidate.aliases.map((alias) => ({ text: alias, weight: 0.9 })),
+    ...candidate.keywords.map((keyword) => ({ text: keyword, weight: 0.6 }))
+  ];
   let best = 0;
+  let bestLength = Number.MAX_SAFE_INTEGER;
 
   for (const field of fields) {
-    const normalizedField = normalizeLookupText(field);
-    if (!normalizedField) {
-      continue;
-    }
-
-    if (normalizedField === normalizedQuery) {
-      best = Math.max(best, 100);
-    } else if (normalizedField.startsWith(normalizedQuery)) {
-      best = Math.max(best, 80);
-    } else if (normalizedField.includes(normalizedQuery)) {
-      best = Math.max(best, 50);
+    const fieldMatch = scoreField(field.text, normalizedQuery, queryTokens);
+    const weightedScore = Math.round(fieldMatch.score * field.weight);
+    if (weightedScore > best) {
+      best = weightedScore;
+      bestLength = fieldMatch.length;
+    } else if (weightedScore === best) {
+      bestLength = Math.min(bestLength, fieldMatch.length);
     }
   }
 
@@ -187,7 +197,118 @@ function suggestionScore(candidate: EmojiSuggestion, query: string): number {
     best += 10;
   }
 
+  return { score: best, length: bestLength };
+}
+
+function scoreField(
+  field: string,
+  normalizedQuery: string,
+  queryTokens: string[]
+): { score: number; length: number } {
+  const normalizedField = normalizeLookupText(field);
+  if (!normalizedField) {
+    return { score: 0, length: Number.MAX_SAFE_INTEGER };
+  }
+
+  const fieldTokens = tokenizeLookupText(field);
+  const tokenStarts = fieldTokens.some((token) => token.startsWith(normalizedQuery));
+  const tokenExact = fieldTokens.some((token) => token === normalizedQuery);
+  const compactContains = normalizedField.includes(normalizedQuery);
+  const queryLooksLikeShortToken = normalizedQuery.length <= 3;
+
+  if (normalizedField === normalizedQuery || tokenExact) {
+    return { score: 1200, length: normalizedField.length };
+  }
+  if (normalizedField.startsWith(normalizedQuery)) {
+    return { score: 1000, length: normalizedField.length };
+  }
+  if (tokenStarts) {
+    const matchedToken = fieldTokens.find((token) => token.startsWith(normalizedQuery));
+    return { score: 900, length: matchedToken?.length ?? normalizedField.length };
+  }
+
+  // For very short queries, avoid noisy broad substring matches.
+  if (!queryLooksLikeShortToken && compactContains) {
+    return { score: 600, length: normalizedField.length };
+  }
+
+  // Fallback: each query token should be prefix-matched by some field token.
+  if (
+    queryTokens.length > 1 &&
+    queryTokens.every((queryToken) =>
+      fieldTokens.some((fieldToken) => fieldToken.startsWith(queryToken))
+    )
+  ) {
+    return { score: 700, length: normalizedField.length };
+  }
+
+  // Typo tolerance: allow close edits for longer single-token queries.
+  if (normalizedQuery.length >= 4) {
+    const bestDistance = minTokenDistance(normalizedQuery, fieldTokens);
+    const maxDistance = normalizedQuery.length >= 7 ? 2 : 1;
+    if (bestDistance <= maxDistance) {
+      return {
+        score: bestDistance === 0 ? 0 : 500 - bestDistance * 80,
+        length: normalizedField.length
+      };
+    }
+  }
+
+  return { score: 0, length: Number.MAX_SAFE_INTEGER };
+}
+
+function minTokenDistance(query: string, fieldTokens: string[]): number {
+  let best = Number.MAX_SAFE_INTEGER;
+  for (const token of fieldTokens) {
+    if (!token) {
+      continue;
+    }
+    const distance = levenshteinDistance(query, token);
+    if (distance < best) {
+      best = distance;
+    }
+  }
   return best;
+}
+
+function levenshteinDistance(left: string, right: string): number {
+  if (left === right) {
+    return 0;
+  }
+  if (!left.length) {
+    return right.length;
+  }
+  if (!right.length) {
+    return left.length;
+  }
+
+  const previous: number[] = Array.from({ length: right.length + 1 }, (_, idx) => idx);
+  const current: number[] = new Array(right.length + 1);
+
+  for (let i = 1; i <= left.length; i += 1) {
+    current[0] = i;
+    for (let j = 1; j <= right.length; j += 1) {
+      const substitutionCost = left[i - 1] === right[j - 1] ? 0 : 1;
+      current[j] = Math.min(
+        previous[j] + 1,
+        current[j - 1] + 1,
+        previous[j - 1] + substitutionCost
+      );
+    }
+    for (let j = 0; j <= right.length; j += 1) {
+      previous[j] = current[j];
+    }
+  }
+
+  return previous[right.length];
+}
+
+function tokenizeLookupText(text: string): string[] {
+  return text
+    .toLowerCase()
+    .split(/[^a-z0-9]+/)
+    .map((token) => normalizeLookupText(token))
+    .filter(Boolean);
 }
 
 function normalizeLookupText(text: string): string {
@@ -247,7 +368,8 @@ function normalizeArrayEntry(value: unknown): EmojiSuggestion[] {
 function normalizeObjectEntry(key: string, value: unknown): EmojiSuggestion[] {
   if (Array.isArray(value)) {
     const names = value.filter((item): item is string => typeof item === "string");
-    return [entry(key, names[0] ?? key, names, names.slice(1), "Emoji")];
+    const name = names[0] ?? key;
+    return [entry(key, name, [name], names.slice(1), "Emoji")];
   }
 
   if (value && typeof value === "object") {
