@@ -9,6 +9,7 @@ pub struct Diagnostic {
 }
 
 impl Diagnostic {
+    /// Creates a diagnostic without a source span.
     pub fn new(message: impl Into<String>) -> Self {
         Self {
             message: message.into(),
@@ -16,6 +17,7 @@ impl Diagnostic {
         }
     }
 
+    /// Creates a diagnostic attached to a source span.
     pub fn at(message: impl Into<String>, span: Span) -> Self {
         Self {
             message: message.into(),
@@ -23,6 +25,10 @@ impl Diagnostic {
         }
     }
 
+    /// Formats the diagnostic as a human-readable error message.
+    ///
+    /// If a span is available, the output includes the source path, line, and column.
+    /// When no path is provided, `"<source>"` is used.
     pub fn format(&self, path: Option<&str>) -> String {
         let mut output = format!("error: {}", self.message);
         if let Some(span) = self.span {
