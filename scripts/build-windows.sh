@@ -5,7 +5,8 @@ ROOT_DIR=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
 TARGET="${PEPS_WINDOWS_TARGET:-x86_64-pc-windows-gnu}"
 COMPILER_OUT="$ROOT_DIR/dist/compiler/windows"
 IDE_OUT="$ROOT_DIR/dist/ide/windows"
-TARGET_RELEASE_DIR="$ROOT_DIR/target/$TARGET/release"
+WINDOWS_TARGET_ROOT="${PEPS_WINDOWS_TARGET_DIR:-${TMPDIR:-/tmp}/peps-windows-target}"
+TARGET_RELEASE_DIR="$WINDOWS_TARGET_ROOT/$TARGET/release"
 
 cd "$ROOT_DIR"
 
@@ -23,14 +24,23 @@ if ! command -v x86_64-w64-mingw32-gcc >/dev/null 2>&1; then
     exit 1
 fi
 
-if ! rustc --print target-libdir --target "$TARGET" >/dev/null 2>&1; then
+TARGET_LIBDIR=$(rustc --print target-libdir --target "$TARGET" 2>/dev/null || true)
+if [ -z "$TARGET_LIBDIR" ] || [ ! -d "$TARGET_LIBDIR" ] || ! find "$TARGET_LIBDIR" -maxdepth 1 -name 'libcore-*.rlib' | grep -q .; then
     echo "error: Rust target '$TARGET' is not installed." >&2
-    echo "Install it, then run this script again:" >&2
-    echo "  rustup target add $TARGET" >&2
+    echo "Install it, then run this script again." >&2
+    if command -v rustup >/dev/null 2>&1; then
+        echo "rustup: rustup target add $TARGET" >&2
+    else
+        echo "rustup is not installed, so your Rust likely came from your distro packages." >&2
+        echo "Fedora: sudo dnf install rust-std-static-x86_64-pc-windows-gnu" >&2
+        echo "Alternative: install rustup from https://rustup.rs/ and then run:" >&2
+        echo "  rustup target add $TARGET" >&2
+    fi
     exit 1
 fi
 
 export CARGO_TARGET_X86_64_PC_WINDOWS_GNU_LINKER=x86_64-w64-mingw32-gcc
+export CARGO_TARGET_DIR="$WINDOWS_TARGET_ROOT"
 
 if [ ! -f Cargo.toml ]; then
     echo "error: Cargo.toml not found at project root: $ROOT_DIR" >&2
@@ -80,3 +90,4 @@ CMD
 echo "Built Peps Windows dists from Linux:"
 echo "  dist/compiler/windows/peps!.exe"
 echo "  dist/ide/windows/peps-ide.exe"
+echo "Windows Cargo target cache: $WINDOWS_TARGET_ROOT"

@@ -73,7 +73,8 @@ sh scripts/build-run.sh all
 
 Linux build artifacts are written to:
 - `dist/compiler/linux/linux.sh`
-- `dist/compiler/linux/peps-bytecode`
+- `dist/compiler/linux/peps!`
+- `dist/compiler/linux/peps!-bytecode`
 - `dist/compiler/linux/peps-compiler-x86_64.AppImage`
 - `dist/ide/linux/peps-ide-x86_64.AppImage`
 

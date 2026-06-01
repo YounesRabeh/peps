@@ -17,15 +17,16 @@ cargo build --release --bin peps
 rm -rf "$OUT_DIR"
 mkdir -p "$OUT_DIR" "$TMP_APPDIR/usr/bin"
 
-cp target/release/peps "$OUT_DIR/peps-bytecode"
-cp target/release/peps "$TMP_APPDIR/usr/bin/peps-bytecode"
+cp target/release/peps "$OUT_DIR/peps!"
+cp target/release/peps "$OUT_DIR/peps!-bytecode"
+cp target/release/peps "$TMP_APPDIR/usr/bin/peps!"
 
 cat > "$OUT_DIR/linux.sh" <<'LAUNCHER'
 #!/usr/bin/env sh
 set -eu
 
 DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
-exec "$DIR/peps-bytecode" "$@"
+exec "$DIR/peps!" "$@"
 LAUNCHER
 
 cat > "$TMP_APPDIR/AppRun" <<'APPRUN'
@@ -33,14 +34,14 @@ cat > "$TMP_APPDIR/AppRun" <<'APPRUN'
 set -eu
 
 HERE=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
-exec "$HERE/usr/bin/peps-bytecode" "$@"
+exec "$HERE/usr/bin/peps!" "$@"
 APPRUN
 
 cat > "$TMP_APPDIR/peps-compiler.desktop" <<'DESKTOP'
 [Desktop Entry]
 Type=Application
 Name=Peps Compiler
-Exec=peps-bytecode
+Exec=peps!
 Icon=peps
 Categories=Development;
 Terminal=true
@@ -49,8 +50,8 @@ DESKTOP
 cp ide/public/favicon.svg "$TMP_APPDIR/peps.svg"
 cp -R "$TMP_APPDIR" "$APPDIR"
 
-chmod +x "$OUT_DIR/peps-bytecode" "$OUT_DIR/linux.sh" "$TMP_APPDIR/AppRun" "$TMP_APPDIR/usr/bin/peps-bytecode"
-chmod +x "$APPDIR/AppRun" "$APPDIR/usr/bin/peps-bytecode"
+chmod +x "$OUT_DIR/peps!" "$OUT_DIR/peps!-bytecode" "$OUT_DIR/linux.sh" "$TMP_APPDIR/AppRun" "$TMP_APPDIR/usr/bin/peps!"
+chmod +x "$APPDIR/AppRun" "$APPDIR/usr/bin/peps!"
 
 APPIMAGETOOL="${APPIMAGETOOL:-}"
 if [ -z "$APPIMAGETOOL" ]; then
