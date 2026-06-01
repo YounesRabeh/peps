@@ -3,6 +3,7 @@
 debug
 target
 dist
+.tools
 ide/dist
 ide/node_modules
 node_modules

@@ -55,7 +55,8 @@ cargo run -- examples/basic.peps
 ## Start IDE
 
 ```sh
-sh scripts/build-run.sh ide
+sh scripts/ide/build.sh
+./dist/ide/linux/peps-ide-x86_64.AppImage
 ```
 
 Then open: `http://127.0.0.1:5179`
@@ -65,18 +66,38 @@ Then open: `http://127.0.0.1:5179`
 Linux/macOS:
 
 ```sh
-sh scripts/build-run.sh compiler examples/basic.peps
+sh scripts/build-run.sh compiler
 sh scripts/build-run.sh ide
-sh scripts/build-run.sh all examples/basic.peps
+sh scripts/build-run.sh all
 ```
+
+Linux build artifacts are written to:
+- `dist/compiler/linux/linux.sh`
+- `dist/compiler/linux/peps-bytecode`
+- `dist/compiler/linux/peps-compiler-x86_64.AppImage`
+- `dist/ide/linux/peps-ide-x86_64.AppImage`
 
 Windows PowerShell:
 
 ```powershell
-.\scripts\build-run.ps1 compiler examples\basic.peps
+.\scripts\build-run.ps1 compiler
 .\scripts\build-run.ps1 ide
-.\scripts\build-run.ps1 all examples\basic.peps
+.\scripts\build-run.ps1 all
 ```
+
+Windows build artifacts are written to:
+- `dist\compiler\windows\peps!.exe`
+- `dist\ide\windows\peps-ide.exe`
+
+Cross-build Windows `.exe` files from Linux:
+
+```sh
+sh scripts/build-windows.sh
+```
+
+Requires:
+- `x86_64-w64-mingw32-gcc`
+- Rust target `x86_64-pc-windows-gnu`
 
 ### IDE Preview
 ![Peps IDE](.github/peps-ide.png)
