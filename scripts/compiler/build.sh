@@ -12,7 +12,7 @@ mkdir -p "$OUT_DIR"
 
 cp target/release/peps "$OUT_DIR/peps!"
 
-cat > "$OUT_DIR/peps.sh" <<'LAUNCHER'
+cat > "$OUT_DIR/linux.sh" <<'LAUNCHER'
 #!/usr/bin/env sh
 set -eu
 
@@ -20,7 +20,9 @@ DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
 exec "$DIR/peps!" "$@"
 LAUNCHER
 
-chmod +x "$OUT_DIR/peps!" "$OUT_DIR/peps.sh"
+cp "$OUT_DIR/linux.sh" "$OUT_DIR/peps.sh"
+
+chmod +x "$OUT_DIR/peps!" "$OUT_DIR/linux.sh" "$OUT_DIR/peps.sh"
 
 echo "Built Peps compiler runner: dist/compiler"
-echo "Run it with: './dist/compiler/peps!' path/to/file.peps"
+echo "Run it with: './dist/compiler/linux.sh' path/to/file.peps"

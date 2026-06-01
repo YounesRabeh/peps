@@ -30,7 +30,7 @@ mkdir -p "$OUT_DIR/frontend"
 cp target/release/peps-ide "$OUT_DIR/peps-ide"
 cp -R ide/dist "$OUT_DIR/frontend/dist"
 
-cat > "$OUT_DIR/peps-ide.sh" <<'LAUNCHER'
+cat > "$OUT_DIR/linux.sh" <<'LAUNCHER'
 #!/usr/bin/env sh
 set -eu
 
@@ -39,7 +39,9 @@ cd "$DIR"
 exec "$DIR/peps-ide" "$@"
 LAUNCHER
 
-chmod +x "$OUT_DIR/peps-ide" "$OUT_DIR/peps-ide.sh"
+cp "$OUT_DIR/linux.sh" "$OUT_DIR/peps-ide.sh"
+
+chmod +x "$OUT_DIR/peps-ide" "$OUT_DIR/linux.sh" "$OUT_DIR/peps-ide.sh"
 
 echo "Built Peps IDE server and frontend: dist/ide"
-echo "Start the IDE with: ./dist/ide/peps-ide.sh"
+echo "Start the IDE with: ./dist/ide/linux.sh"
