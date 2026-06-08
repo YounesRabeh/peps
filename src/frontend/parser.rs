@@ -1,4 +1,14 @@
-//! Recursive-descent and precedence-climbing parser for Peps source tokens.
+//! Parser for Peps token streams.
+//!
+//! Statements are parsed with recursive descent, while expressions use
+//! precedence climbing so binary operators associate correctly without a large
+//! expression grammar. The parser owns language-shape checks that depend on
+//! token context, such as rejecting ASCII or multi-emoji identifiers and
+//! allowing `🛑` / `⏭️` only inside loop bodies.
+//!
+//! Blocks are delimited with `🔓` and `🔒`. Statement separators may be explicit
+//! `🔚` tokens or newlines that the lexer has already normalized into
+//! [`TokenKind::StatementEnd`].
 
 use crate::{
     ast::{BinaryOp, Expr, ForSource, Program, Stmt, UnaryOp},
@@ -8,6 +18,11 @@ use crate::{
 };
 use unicode_segmentation::UnicodeSegmentation;
 
+/// Build an abstract syntax tree from lexer tokens.
+///
+/// The input must include the trailing [`TokenKind::Eof`] token produced by the
+/// lexer. Parsing currently stops on the first syntax error and wraps it in a
+/// diagnostic vector to match the rest of the compiler pipeline.
 pub fn parse(tokens: Vec<Token>) -> Result<Program, Vec<Diagnostic>> {
     Parser::new(tokens).parse_program().map_err(|err| vec![err])
 }
@@ -15,6 +30,7 @@ pub fn parse(tokens: Vec<Token>) -> Result<Program, Vec<Diagnostic>> {
 struct Parser {
     tokens: Vec<Token>,
     current: usize,
+    /// Nesting count used to validate `break` and `continue` placement.
     loop_depth: usize,
 }
 
@@ -148,6 +164,8 @@ impl Parser {
     fn parse_loop(&mut self) -> Result<Stmt, Diagnostic> {
         let start = self.advance().span;
 
+        // `🔁 <identifier> 🧭 ...` is a for loop; every other `🔁` starts a
+        // while loop whose condition begins immediately after the loop token.
         if matches!(self.peek().kind, TokenKind::Identifier(_))
             && matches!(self.peek_next_kind(), Some(TokenKind::In))
         {
@@ -191,6 +209,8 @@ impl Parser {
     }
 
     fn parse_for_source(&mut self) -> Result<ForSource, Diagnostic> {
+        // A `🔢` marker selects range syntax. Otherwise the source is a normal
+        // expression, usually a list variable or list literal.
         if matches!(self.peek().kind, TokenKind::Range) {
             let start_token = self.advance().span;
             let start = self.parse_expression(0)?;
@@ -211,6 +231,8 @@ impl Parser {
     }
 
     fn parse_loop_block(&mut self) -> Result<Vec<Stmt>, Diagnostic> {
+        // Increment before parsing the required block so nested loops and loop
+        // control statements are validated against the current context.
         self.loop_depth += 1;
         let result = self.parse_block();
         self.loop_depth -= 1;
@@ -311,6 +333,8 @@ impl Parser {
 
         while !matches!(self.peek().kind, TokenKind::Eof) {
             self.skip_statement_separators();
+            // `📚` closes the list unless it is the first delimiter in a nested
+            // list expression like `📚 📚 1️⃣ 📚 📚`.
             if matches!(self.peek().kind, TokenKind::ListDelimiter)
                 && !(elements.is_empty() && self.next_token_starts_expression())
             {
@@ -331,6 +355,8 @@ impl Parser {
     }
 
     fn current_binary_op(&self) -> Option<(BinaryOp, u8)> {
+        // Higher numbers bind tighter. Equal-precedence operators are
+        // left-associative because the recursive call uses `precedence + 1`.
         match self.peek().kind {
             TokenKind::Eq => Some((BinaryOp::Eq, 1)),
             TokenKind::NotEq => Some((BinaryOp::NotEq, 1)),

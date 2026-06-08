@@ -1,4 +1,14 @@
-//! Emoji-aware lexer that tokenizes Peps source by Unicode grapheme cluster.
+//! Emoji-aware lexer for Peps source text.
+//!
+//! Peps syntax is built from emoji tokens, including emoji that are encoded as
+//! multiple Unicode scalar values. The lexer therefore walks the input by
+//! Unicode grapheme cluster instead of by byte or scalar value. Each emitted
+//! [`Token`] carries a [`Span`] with byte offsets and human-oriented line and
+//! column positions.
+//!
+//! Newlines and explicit `🔚` tokens both become [`TokenKind::StatementEnd`].
+//! Consecutive separators are collapsed by newline handling so the parser can
+//! accept blank lines without seeing empty statements.
 
 use unicode_segmentation::UnicodeSegmentation;
 
@@ -13,12 +23,12 @@ struct Grapheme {
     text: String,
     span: Span,
 }
-// normalize to resolve the invidsibale character issue in some emojis, e.g. "1️⃣" can be represented as "1\u{FE0F}\u{20E3}" 
 
-//pub fn normalize_peps_source(source: &str) -> String {
-//    source.replace('\u{FE0F}', "")
-//}
-
+/// Tokenize source text into a stream ending with [`TokenKind::Eof`].
+///
+/// The lexer reports all invalid characters it sees in one pass. ASCII
+/// identifiers are accepted here so the parser can issue the language-specific
+/// "exactly one emoji" diagnostic at identifier positions.
 pub fn lex(source: &str) -> Result<Vec<Token>, Vec<Diagnostic>> {
     let graphemes = collect_graphemes(source);
     let mut lexer = Lexer {
@@ -33,6 +43,10 @@ pub fn lex(source: &str) -> Result<Vec<Token>, Vec<Diagnostic>> {
     lexer.lex_tokens()
 }
 
+/// Collect source text into grapheme clusters with source positions.
+///
+/// A single Peps-visible character may contain variation selectors or combining
+/// marks, so column numbers advance by grapheme cluster rather than byte length.
 fn collect_graphemes(source: &str) -> Vec<Grapheme> {
     let mut line = 1;
     let mut column = 1;
@@ -66,6 +80,7 @@ struct Lexer {
 }
 
 impl Lexer {
+    /// Record the line and column where the synthetic EOF token should point.
     fn set_eof_position(&mut self) {
         if let Some(last) = self.graphemes.last() {
             if last.text == "\n" || last.text == "\r" || last.text == "\r\n" {
