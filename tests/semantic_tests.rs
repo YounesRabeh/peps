@@ -53,7 +53,7 @@ fn allows_list_ops() {
 
 #[test]
 fn allows_list_append_statements() {
-    check("🍎 🟰 📚 1️⃣ 2️⃣ 📚 🔚 🍎 📥 3️⃣ 🔚 🍎 📥 📚 4️⃣ 5️⃣ 📚 🔚")
+    check("🍎 🟰 📚 1️⃣ 2️⃣ 📚 🔚 🍎 📥 3️⃣ 🔚 🍎 📥 📚 4️⃣ 5️⃣ 📚 🔚 🍎 📥 6️⃣3️⃣ 1️⃣ 2️⃣ 🔚")
         .expect("source should check");
 }
 

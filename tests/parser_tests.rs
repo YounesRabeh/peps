@@ -137,6 +137,19 @@ fn parses_append_statement() {
 }
 
 #[test]
+fn parses_append_statement_with_implicit_list_payload() {
+    let program = parse("🍎 📥 6️⃣3️⃣ 1️⃣ 2️⃣ 🔚");
+    assert!(matches!(
+        &program.statements[0],
+        Stmt::Append {
+            name,
+            expr: Expr::List { elements, .. },
+            ..
+        } if name == "🍎" && elements.len() == 3
+    ));
+}
+
+#[test]
 fn parses_arithmetic_precedence() {
     let program = parse("🐶 🟰 1️⃣ ➕ 2️⃣ ✖️ 3️⃣ 🔚");
     let Stmt::Assign { expr, .. } = &program.statements[0] else {

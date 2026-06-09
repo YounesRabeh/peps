@@ -126,7 +126,7 @@ impl Parser {
         }
 
         let append_span = self.expect_list_append()?;
-        let expr = self.parse_expression(0)?;
+        let expr = self.parse_append_payload()?;
         let end = self.expect_statement_end()?;
 
         Ok(Stmt::Append {
@@ -134,6 +134,26 @@ impl Parser {
             expr,
             span: name_token.span.merge(append_span).merge(end),
         })
+    }
+
+    fn parse_append_payload(&mut self) -> Result<Expr, Diagnostic> {
+        let first = self.parse_expression(0)?;
+        let mut elements = vec![first];
+
+        while self.token_starts_expression(self.peek()) {
+            elements.push(self.parse_expression(0)?);
+        }
+
+        if elements.len() == 1 {
+            Ok(elements.pop().expect("append payload should contain one expression"))
+        } else {
+            let start = elements.first().expect("append payload should be non-empty").span();
+            let end = elements.last().expect("append payload should be non-empty").span();
+            Ok(Expr::List {
+                elements,
+                span: start.merge(end),
+            })
+        }
     }
 
     fn parse_print(&mut self) -> Result<Stmt, Diagnostic> {
@@ -438,20 +458,22 @@ impl Parser {
     fn next_token_starts_expression(&self) -> bool {
         self.tokens
             .get(self.current + 1)
-            .map(|token| {
-                matches!(
-                    token.kind,
-                    TokenKind::Identifier(_)
-                        | TokenKind::Number(_)
-                        | TokenKind::StringLiteral(_)
-                        | TokenKind::Bool(_)
-                        | TokenKind::Minus
-                        | TokenKind::Not
-                        | TokenKind::ListLen
-                        | TokenKind::ListDelimiter
-                )
-            })
+            .map(|token| self.token_starts_expression(token))
             .unwrap_or(false)
+    }
+
+    fn token_starts_expression(&self, token: &Token) -> bool {
+        matches!(
+            token.kind,
+            TokenKind::Identifier(_)
+                | TokenKind::Number(_)
+                | TokenKind::StringLiteral(_)
+                | TokenKind::Bool(_)
+                | TokenKind::Minus
+                | TokenKind::Not
+                | TokenKind::ListLen
+                | TokenKind::ListDelimiter
+        )
     }
 
     fn expect_assign(&mut self) -> Result<Span, Diagnostic> {
