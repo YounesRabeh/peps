@@ -128,6 +128,16 @@ impl Vm<'_> {
                     self.stack.push(elements[index as usize].clone());
                     self.ip += 1;
                 }
+                Instruction::ListAppend => {
+                    let value = self.pop("list append")?;
+                    let list = self.pop("list append")?;
+                    let RuntimeValue::List(mut elements) = list else {
+                        return self.fail("list append requires a list value");
+                    };
+                    elements.push(value);
+                    self.stack.push(RuntimeValue::List(elements));
+                    self.ip += 1;
+                }
                 Instruction::Print => {
                     let value = self.pop("print")?;
                     self.output.push(format_runtime_value(&value));

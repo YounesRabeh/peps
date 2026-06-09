@@ -38,6 +38,20 @@ fn allows_logical_ops() {
 }
 
 #[test]
+fn allows_list_ops() {
+    let checked = check(
+        "🍎 🟰 📚 1️⃣ 2️⃣ 3️⃣ 📚 🔚 🐶 🟰 📏 🍎 🔚 🐱 🟰 🍎 🔎 1️⃣ 🔚 🦊 🟰 🍎 📥 4️⃣ 🔚",
+    )
+    .expect("source should check");
+    assert_eq!(checked.symbols.get("🐶"), Some(&Type::Num));
+    assert_eq!(checked.symbols.get("🐱"), Some(&Type::Num));
+    assert_eq!(
+        checked.symbols.get("🦊"),
+        Some(&Type::List(Box::new(Type::Num)))
+    );
+}
+
+#[test]
 fn treats_undeclared_emoji_reference_as_literal() {
     check("📢 🐶 🔚").expect("undeclared emoji references should be treated as literals");
 }
@@ -61,6 +75,14 @@ fn rejects_comparison_type_error() {
 fn rejects_logical_type_error() {
     assert!(first_error("🐶 🟰 🚫 5️⃣ 🔚").contains("logical not"));
     assert!(first_error("🐶 🟰 5️⃣ 🤝 ✅ 🔚").contains("logical operator"));
+}
+
+#[test]
+fn rejects_list_op_type_errors() {
+    assert!(first_error("🐶 🟰 📏 5️⃣ 🔚").contains("list length"));
+    assert!(first_error("🐶 🟰 5️⃣ 🔎 0️⃣ 🔚").contains("list value on the left"));
+    assert!(first_error("🍎 🟰 📚 1️⃣ 2️⃣ 📚 🔚 🐶 🟰 🍎 🔎 ✅ 🔚").contains("num index"));
+    assert!(first_error("🍎 🟰 📚 1️⃣ 2️⃣ 📚 🔚 🐶 🟰 🍎 📥 ✅ 🔚").contains("element type"));
 }
 
 #[test]

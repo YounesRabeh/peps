@@ -21,6 +21,7 @@ pub enum Instruction {
     MakeList(usize),
     ListLen,
     ListGet,
+    ListAppend,
     Print,
 
     Jump(usize),

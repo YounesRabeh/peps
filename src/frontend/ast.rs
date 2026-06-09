@@ -137,16 +137,19 @@ impl Expr {
 pub enum UnaryOp {
     Negate,
     Not,
+    Len,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum BinaryOp {
+    Append,
     Add,
     Sub,
     Mul,
     Div,
     And,
     Or,
+    Index,
     Eq,
     NotEq,
     Lt,

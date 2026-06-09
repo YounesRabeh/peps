@@ -15,6 +15,12 @@ const pepsEditorOptions = {
   minimap: { enabled: false },
   tabSize: 4,
   wordWrap: "on" as const,
+  quickSuggestions: {
+    other: true,
+    comments: false,
+    strings: false
+  },
+  suggestOnTriggerCharacters: true,
 
   hover: {
     enabled: false

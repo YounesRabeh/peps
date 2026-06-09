@@ -3,9 +3,16 @@ export const BASIC_SAMPLE = `📝 🟰 💬 Peps IDE demo 💬
 🍎 🟰 📚 1️⃣ 2️⃣ 3️⃣ 4️⃣ 5️⃣ 📚
 🎨 🟰 📚 😀 😎 🤖 📚
 🚦 🟰 🎯 ▶️ 2️⃣
+🟢 🟰 💬 both true 💬
+🔴 🟰 💬 at least one false 💬
 
 📢 📝
 📢 🚦
+📢 📏 🍎
+📢 🍎 🔎 2️⃣
+
+🥝 🟰 🍎 📥 6️⃣
+📢 🥝
 
 🔁 🐾 🧭 🍎 🔓
     🤔 🐾 🟰🟰 2️⃣ 🔓
@@ -30,8 +37,8 @@ export const BASIC_SAMPLE = `📝 🟰 💬 Peps IDE demo 💬
 🔒
 
 🤔 🚦 🤝 ✅ 🔓
-    📢 💬 both true 💬
+    📢 🟢
 🔒 😐 🔓
-    📢 💬 at least one false 💬
+    📢 🔴
 🔒
 `;

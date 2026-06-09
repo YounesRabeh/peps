@@ -9,7 +9,7 @@ export type EmojiSuggestion = {
   detail: "Peps keyword" | "Peps operator" | "Peps syntax" | "Emoji";
 };
 
-export type ColonPrefix = {
+export type CompletionPrefix = {
   prefix: string;
   startColumn: number;
   endColumn: number;
@@ -29,6 +29,9 @@ const PEPS_SUGGESTIONS: EmojiSuggestion[] = [
   entry("🤝", "and", ["and", "both", "all"], [], "Peps operator"),
   entry("🔀", "or", ["or", "either", "any"], [], "Peps operator"),
   entry("🚫", "not", ["not", "negate", "invert"], [], "Peps operator"),
+  entry("📏", "length", ["length", "len", "size"], ["count", "list"], "Peps operator"),
+  entry("🔎", "index", ["index", "get", "item"], ["lookup", "position"], "Peps operator"),
+  entry("📥", "append", ["append", "push", "insert"], ["list", "end", "add"], "Peps operator"),
   entry("🟰", "assign", ["assign", "equals"], [], "Peps operator"),
   entry("➕", "plus", ["plus", "add"], [], "Peps operator"),
   entry("➖", "minus", ["minus", "subtract", "negative"], [], "Peps operator"),
@@ -61,7 +64,7 @@ function entry(
 export function findColonPrefixBeforeCursor(
   line: string,
   column: number
-): ColonPrefix | null {
+): CompletionPrefix | null {
   const beforeCursor = line.slice(0, column - 1);
   const match = /:([A-Za-z0-9_]*)$/.exec(beforeCursor);
   if (!match || match.index < 0) {
@@ -75,6 +78,34 @@ export function findColonPrefixBeforeCursor(
   };
 }
 
+export function findWordPrefixBeforeCursor(
+  line: string,
+  column: number
+): CompletionPrefix | null {
+  const beforeCursor = line.slice(0, column - 1);
+  const match = /(^|[^A-Za-z0-9_])([A-Za-z][A-Za-z0-9_]*)$/.exec(beforeCursor);
+  if (!match) {
+    return null;
+  }
+
+  const prefix = match[2];
+  return {
+    prefix,
+    startColumn: beforeCursor.length - prefix.length + 1,
+    endColumn: column
+  };
+}
+
+export function findCompletionPrefixBeforeCursor(
+  line: string,
+  column: number
+): CompletionPrefix | null {
+  return (
+    findColonPrefixBeforeCursor(line, column) ??
+    findWordPrefixBeforeCursor(line, column)
+  );
+}
+
 export function isInsidePepsString(line: string, column: number): boolean {
   const beforeCursor = line.slice(0, column - 1);
   const delimiterCount = [...beforeCursor.matchAll(/💬/g)].length;
@@ -83,7 +114,7 @@ export function isInsidePepsString(line: string, column: number): boolean {
 
 export function applyEmojiCompletion(
   line: string,
-  range: ColonPrefix,
+  range: CompletionPrefix,
   emoji: string
 ): string {
   return (
@@ -97,6 +128,9 @@ export function getEmojiSuggestions(prefix: string): EmojiSuggestion[] {
   const normalizedPrefix = prefix.toLowerCase();
   if (/[^a-zA-Z0-9_]/.test(prefix)) {
     return [];
+  }
+  if (!normalizedPrefix) {
+    return [...PEPS_SUGGESTIONS];
   }
 
   const ranked = uniqueByEmoji([...PEPS_SUGGESTIONS, ...allGeneralEmojis()])
@@ -132,12 +166,12 @@ export function provideEmojiCompletionItems(
     return { suggestions: [], incomplete: true };
   }
 
-  const colonPrefix = findColonPrefixBeforeCursor(line, position.column);
-  if (!colonPrefix) {
+  const completionPrefix = findCompletionPrefixBeforeCursor(line, position.column);
+  if (!completionPrefix) {
     return { suggestions: [], incomplete: true };
   }
 
-  const suggestions = getEmojiSuggestions(colonPrefix.prefix).map((suggestion) => {
+  const suggestions = getEmojiSuggestions(completionPrefix.prefix).map((suggestion) => {
     const filterTerms = [
       suggestion.name,
       ...suggestion.aliases,
@@ -158,9 +192,9 @@ export function provideEmojiCompletionItems(
       insertText: suggestion.emoji,
       range: new monaco.Range(
         position.lineNumber,
-        colonPrefix.startColumn,
+        completionPrefix.startColumn,
         position.lineNumber,
-        colonPrefix.endColumn
+        completionPrefix.endColumn
       )
     };
   });

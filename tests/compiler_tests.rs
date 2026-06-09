@@ -103,6 +103,43 @@ fn compiles_logical_not() {
 }
 
 #[test]
+fn compiles_list_length() {
+    assert_eq!(
+        compile_source("🐶 🟰 📏 📚 1️⃣ 2️⃣ 📚 🔚").expect("source should compile"),
+        vec![
+            Instruction::LoadConst(Value::Num(1)),
+            Instruction::LoadConst(Value::Num(2)),
+            Instruction::MakeList(2),
+            Instruction::ListLen,
+            Instruction::StoreVar("🐶".to_string()),
+        ]
+    );
+}
+
+#[test]
+fn compiles_list_index_and_append() {
+    assert_eq!(
+        compile_source("🐶 🟰 📚 1️⃣ 2️⃣ 3️⃣ 📚 🔎 1️⃣ 🔚 🐱 🟰 📚 1️⃣ 2️⃣ 📚 📥 3️⃣ 🔚")
+            .expect("source should compile"),
+        vec![
+            Instruction::LoadConst(Value::Num(1)),
+            Instruction::LoadConst(Value::Num(2)),
+            Instruction::LoadConst(Value::Num(3)),
+            Instruction::MakeList(3),
+            Instruction::LoadConst(Value::Num(1)),
+            Instruction::ListGet,
+            Instruction::StoreVar("🐶".to_string()),
+            Instruction::LoadConst(Value::Num(1)),
+            Instruction::LoadConst(Value::Num(2)),
+            Instruction::MakeList(2),
+            Instruction::LoadConst(Value::Num(3)),
+            Instruction::ListAppend,
+            Instruction::StoreVar("🐱".to_string()),
+        ]
+    );
+}
+
+#[test]
 fn compiles_list_construction() {
     assert_eq!(
         compile_source("🐶 🟰 📚 1️⃣ 2️⃣ 3️⃣ 📚 🔚").expect("source should compile"),

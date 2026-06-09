@@ -70,6 +70,18 @@ fn runs_list_print() {
 }
 
 #[test]
+fn runs_list_ops() {
+    let output = run_source(
+        "🍎 🟰 📚 1️⃣ 2️⃣ 3️⃣ 📚 🔚 📢 📏 🍎 🔚 📢 🍎 🔎 1️⃣ 🔚 🐶 🟰 🍎 📥 4️⃣ 🔚 📢 🐶 🔚",
+    )
+    .expect("source should run");
+    assert_eq!(
+        output,
+        vec!["3".to_string(), "2".to_string(), "📚 1 2 3 4 📚".to_string()]
+    );
+}
+
+#[test]
 fn runs_for_each_list_loop() {
     let output =
         run_source("🍎 🟰 📚 1️⃣ 2️⃣ 3️⃣ 📚 🔚 🔁 🐾 🧭 🍎 🔓 📢 🐾 🔚 🔒")
@@ -108,6 +120,13 @@ fn descending_range_is_empty() {
 fn reports_division_by_zero() {
     let error = run_source("🐶 🟰 1️⃣ ➗ 0️⃣ 🔚 📢 🐶 🔚").expect_err("source should fail at runtime");
     assert!(error.diagnostics[0].message.contains("division by zero"));
+}
+
+#[test]
+fn reports_list_index_out_of_bounds() {
+    let error = run_source("🍎 🟰 📚 1️⃣ 2️⃣ 📚 🔚 📢 🍎 🔎 2️⃣ 🔚")
+        .expect_err("source should fail at runtime");
+    assert!(error.diagnostics[0].message.contains("out of bounds"));
 }
 
 #[test]

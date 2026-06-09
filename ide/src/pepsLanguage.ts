@@ -2,6 +2,9 @@ import type * as Monaco from "monaco-editor";
 import { provideEmojiCompletionItems } from "./emojiAutocomplete";
 
 let registered = false;
+const COMPLETION_TRIGGER_CHARACTERS = Array.from(
+  ":_abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
+);
 
 export function registerPepsLanguage(monaco: typeof Monaco): void {
   if (registered) {
@@ -27,7 +30,7 @@ export function registerPepsLanguage(monaco: typeof Monaco): void {
         [/📢|🤔|😐|🔁|🛑|⏭️|⏭|✅|❌/, "keyword"],
 
         // Single operators
-        [/🟰|➕|➖|✖️|➗|◀️|▶️|🤝|🔀|🚫/, "operator"],
+        [/🟰|➕|➖|✖️|➗|◀️|▶️|🤝|🔀|🚫|📏|🔎|📥/, "operator"],
 
         // Delimiters
         [/🔓|🔒|🔚|📚/, "delimiter"],
@@ -69,7 +72,7 @@ export function registerPepsLanguage(monaco: typeof Monaco): void {
     }
   });
   monaco.languages.registerCompletionItemProvider("peps", {
-    triggerCharacters: [":"],
+    triggerCharacters: COMPLETION_TRIGGER_CHARACTERS,
     provideCompletionItems(model, position) {
       return provideEmojiCompletionItems(monaco, model, position);
     }

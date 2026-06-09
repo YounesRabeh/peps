@@ -32,6 +32,9 @@ pub enum TokenKind {
     And,
     Or,
     Not,
+    ListLen,
+    ListIndex,
+    ListAppend,
 
     Assign,
     Plus,

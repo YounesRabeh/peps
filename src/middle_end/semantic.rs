@@ -228,23 +228,42 @@ impl Checker {
             },
             Expr::List { elements, span } => self.infer_list(elements, *span, false, false),
             Expr::Unary { op, expr, span } => {
-                let ty = self.infer_expr(expr)?;
                 match op {
-                    UnaryOp::Negate if ty == Type::Num => Some(Type::Num),
                     UnaryOp::Negate => {
-                        self.diagnostics.push(Diagnostic::at(
-                            "numeric negation requires a num operand",
-                            *span,
+                        let ty = self.infer_expr(expr)?;
+                        if ty == Type::Num {
+                            Some(Type::Num)
+                        } else {
+                            self.diagnostics.push(Diagnostic::at(
+                                "numeric negation requires a num operand",
+                                *span,
                             ));
-                        None
+                            None
+                        }
                     }
-                    UnaryOp::Not if ty == Type::Bool => Some(Type::Bool),
                     UnaryOp::Not => {
-                        self.diagnostics.push(Diagnostic::at(
-                            "logical not requires a bool operand",
-                            *span,
-                        ));
-                        None
+                        let ty = self.infer_expr(expr)?;
+                        if ty == Type::Bool {
+                            Some(Type::Bool)
+                        } else {
+                            self.diagnostics.push(Diagnostic::at(
+                                "logical not requires a bool operand",
+                                *span,
+                            ));
+                            None
+                        }
+                    }
+                    UnaryOp::Len => {
+                        let ty = self.infer_expr(expr)?;
+                        if matches!(ty, Type::List(_)) {
+                            Some(Type::Num)
+                        } else {
+                            self.diagnostics.push(Diagnostic::at(
+                                "list length requires a list operand",
+                                *span,
+                            ));
+                            None
+                        }
                     }
                 }
             }
@@ -272,11 +291,55 @@ impl Checker {
             return None;
         }
 
-        let left_ty = self.infer_expr(left)?;
-        let right_ty = self.infer_expr(right)?;
-
         match op {
+            BinaryOp::Index => {
+                let left_ty = self.infer_expr(left)?;
+                let right_ty = self.infer_expr(right)?;
+                match (left_ty, right_ty) {
+                    (Type::List(element_type), Type::Num) => Some(*element_type),
+                    (Type::List(_), _) => {
+                        self.diagnostics.push(Diagnostic::at(
+                            "list index requires a num index",
+                            span,
+                        ));
+                        None
+                    }
+                    _ => {
+                        self.diagnostics.push(Diagnostic::at(
+                            "list index requires a list value on the left",
+                            span,
+                        ));
+                        None
+                    }
+                }
+            }
+            BinaryOp::Append => {
+                let left_ty = self.infer_expr(left)?;
+                let Type::List(element_type) = left_ty else {
+                    self.diagnostics.push(Diagnostic::at(
+                        "list append requires a list value on the left",
+                        span,
+                    ));
+                    return None;
+                };
+                let expected_type = (*element_type).clone();
+                let right_ty = match (&expected_type, right) {
+                    (Type::Str, Expr::String { .. }) => Type::Str,
+                    _ => self.infer_expr(right)?,
+                };
+                if right_ty == expected_type {
+                    Some(Type::List(Box::new(expected_type)))
+                } else {
+                    self.diagnostics.push(Diagnostic::at(
+                        "list append requires a value matching the list element type",
+                        span,
+                    ));
+                    None
+                }
+            }
             BinaryOp::And | BinaryOp::Or => {
+                let left_ty = self.infer_expr(left)?;
+                let right_ty = self.infer_expr(right)?;
                 if left_ty == Type::Bool && right_ty == Type::Bool {
                     Some(Type::Bool)
                 } else {
@@ -288,6 +351,8 @@ impl Checker {
                 }
             }
             BinaryOp::Add | BinaryOp::Sub | BinaryOp::Mul | BinaryOp::Div => {
+                let left_ty = self.infer_expr(left)?;
+                let right_ty = self.infer_expr(right)?;
                 if left_ty == Type::Num && right_ty == Type::Num {
                     Some(Type::Num)
                 } else if op == BinaryOp::Add && (left_ty == Type::Str || right_ty == Type::Str) {
@@ -305,6 +370,8 @@ impl Checker {
                 }
             }
             BinaryOp::Lt | BinaryOp::Gt | BinaryOp::LtEq | BinaryOp::GtEq => {
+                let left_ty = self.infer_expr(left)?;
+                let right_ty = self.infer_expr(right)?;
                 if left_ty == Type::Num && right_ty == Type::Num {
                     Some(Type::Bool)
                 } else {
@@ -316,6 +383,8 @@ impl Checker {
                 }
             }
             BinaryOp::Eq | BinaryOp::NotEq => {
+                let left_ty = self.infer_expr(left)?;
+                let right_ty = self.infer_expr(right)?;
                 if matches!(left_ty, Type::List(_)) || matches!(right_ty, Type::List(_)) {
                     self.diagnostics.push(Diagnostic::at(
                         "list equality is not supported in Peps v0",
@@ -434,8 +503,10 @@ fn op_symbol(op: BinaryOp) -> &'static str {
         BinaryOp::Sub => "➖",
         BinaryOp::Mul => "✖️",
         BinaryOp::Div => "➗",
+        BinaryOp::Append => "📥",
         BinaryOp::And => "🤝",
         BinaryOp::Or => "🔀",
+        BinaryOp::Index => "🔎",
         BinaryOp::Eq => "🟰🟰",
         BinaryOp::NotEq => "❌🟰",
         BinaryOp::Lt => "◀️",

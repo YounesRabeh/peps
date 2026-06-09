@@ -77,6 +77,53 @@ fn parses_logical_precedence() {
 }
 
 #[test]
+fn parses_list_ops() {
+    let program = parse("🐶 🟰 📏 🍎 🔚 🐱 🟰 🍎 🔎 1️⃣ ➕ 1️⃣ 🔚 🦊 🟰 🍎 📥 3️⃣ 🔚");
+
+    let Stmt::Assign { expr: len_expr, .. } = &program.statements[0] else {
+        panic!("expected length assignment");
+    };
+    assert!(matches!(
+        len_expr,
+        Expr::Unary {
+            op: peps::UnaryOp::Len,
+            ..
+        }
+    ));
+
+    let Stmt::Assign { expr: index_expr, .. } = &program.statements[1] else {
+        panic!("expected index assignment");
+    };
+    let Expr::Binary {
+        op: index_op,
+        right: index_right,
+        ..
+    } = index_expr
+    else {
+        panic!("expected index expression");
+    };
+    assert_eq!(*index_op, BinaryOp::Index);
+    assert!(matches!(
+        index_right.as_ref(),
+        Expr::Binary {
+            op: BinaryOp::Add,
+            ..
+        }
+    ));
+
+    let Stmt::Assign { expr: append_expr, .. } = &program.statements[2] else {
+        panic!("expected append assignment");
+    };
+    assert!(matches!(
+        append_expr,
+        Expr::Binary {
+            op: BinaryOp::Append,
+            ..
+        }
+    ));
+}
+
+#[test]
 fn parses_arithmetic_precedence() {
     let program = parse("🐶 🟰 1️⃣ ➕ 2️⃣ ✖️ 3️⃣ 🔚");
     let Stmt::Assign { expr, .. } = &program.statements[0] else {

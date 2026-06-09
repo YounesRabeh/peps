@@ -82,6 +82,22 @@ fn lexes_longest_match_operators() {
 }
 
 #[test]
+fn lexes_list_operators() {
+    assert_eq!(
+        kinds("📏 🍎 🔎 1️⃣ 📥 2️⃣"),
+        vec![
+            TokenKind::ListLen,
+            TokenKind::Identifier("🍎".to_string()),
+            TokenKind::ListIndex,
+            TokenKind::Number(1),
+            TokenKind::ListAppend,
+            TokenKind::Number(2),
+            TokenKind::Eof,
+        ]
+    );
+}
+
+#[test]
 fn lexes_for_loop_tokens() {
     assert_eq!(
         kinds("🔁 🐾 🧭 🔢 0️⃣ ➡️ 3️⃣ 🔓 🔒"),

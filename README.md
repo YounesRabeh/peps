@@ -35,11 +35,14 @@ Peps is an emoji-first programming language with:
 | 🧭 | in (for loops) | `🔁 🐾 🧭 🍎 🔓` |
 | 🔢 | range | `🔁 🐾 🧭 🔢 0️⃣ ➡️ 3️⃣ 🔓` |
 | 🟰 | assign | `🐶 🟰 5️⃣` |
+| 📏 | list length | `📏 🍎` |
+| 🔎 | list index | `🍎 🔎 1️⃣` |
+| 📥 | list append | `🍎 📥 4️⃣` |
 | 🔓 / 🔒 | block start / end | `🤔 ✅ 🔓 ... 🔒` |
 | 💬 | string delimiter | `🐶 🟰 💬hello💬` |
 | 📚 | list delimiter | `🍎 🟰 📚 1️⃣ 2️⃣ 3️⃣ 📚` |
 | `//` | line comment | `📢 1️⃣ // ignored` |
-| `🤝` / `🔀` / `🚫` | logical operators | `✅ 🤝 ❌` |
+| `🤝` / `🔀` / `🚫` | logical operators (AND/OR/NOT) | `✅ 🤝 ❌` |
 
 ## Example
 

@@ -235,6 +235,14 @@ impl Compiler {
                 }
             }
             Expr::Unary {
+                op: UnaryOp::Len,
+                expr,
+                ..
+            } => {
+                self.compile_expr(expr);
+                self.instructions.push(Instruction::ListLen);
+            }
+            Expr::Unary {
                 op: UnaryOp::Not,
                 expr,
                 ..
@@ -251,11 +259,13 @@ impl Compiler {
                 self.compile_expr(left);
                 self.compile_expr(right);
                 self.instructions.push(match op {
+                    BinaryOp::Append => Instruction::ListAppend,
                     BinaryOp::Add => Instruction::Add,
                     BinaryOp::Sub => Instruction::Sub,
                     BinaryOp::Mul => Instruction::Mul,
                     BinaryOp::Div => Instruction::Div,
                     BinaryOp::And | BinaryOp::Or => unreachable!(),
+                    BinaryOp::Index => Instruction::ListGet,
                     BinaryOp::Eq => Instruction::Eq,
                     BinaryOp::NotEq => Instruction::NotEq,
                     BinaryOp::Lt => Instruction::Lt,

@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
 import {
   applyEmojiCompletion,
+  findCompletionPrefixBeforeCursor,
   findColonPrefixBeforeCursor,
+  findWordPrefixBeforeCursor,
   getEmojiSuggestions,
   isInsidePepsString,
   provideEmojiCompletionItems
@@ -25,6 +27,24 @@ describe("emoji autocomplete helpers", () => {
       prefix: "Happ",
       startColumn: 4,
       endColumn: 9
+    });
+  });
+
+  it("extracts a plain word prefix before the cursor", () => {
+    const line = "📢 length";
+    expect(findWordPrefixBeforeCursor(line, line.length + 1)).toEqual({
+      prefix: "length",
+      startColumn: 4,
+      endColumn: 10
+    });
+  });
+
+  it("prefers colon prefixes when both styles are possible", () => {
+    const line = "📢 :length";
+    expect(findCompletionPrefixBeforeCursor(line, line.length + 1)).toEqual({
+      prefix: "length",
+      startColumn: 4,
+      endColumn: 11
     });
   });
 
@@ -55,6 +75,19 @@ describe("emoji autocomplete helpers", () => {
     expect(getEmojiSuggestions("and").some((item) => item.emoji === "🤝")).toBe(true);
     expect(getEmojiSuggestions("or").some((item) => item.emoji === "🔀")).toBe(true);
     expect(getEmojiSuggestions("not").some((item) => item.emoji === "🚫")).toBe(true);
+  });
+
+  it("finds list operator emojis by name", () => {
+    expect(getEmojiSuggestions("length").some((item) => item.emoji === "📏")).toBe(true);
+    expect(getEmojiSuggestions("index").some((item) => item.emoji === "🔎")).toBe(true);
+    expect(getEmojiSuggestions("append").some((item) => item.emoji === "📥")).toBe(true);
+  });
+
+  it("returns Peps suggestions for an empty colon prefix", () => {
+    const suggestions = getEmojiSuggestions("");
+    expect(suggestions.some((item) => item.emoji === "📏")).toBe(true);
+    expect(suggestions.some((item) => item.emoji === "🔎")).toBe(true);
+    expect(suggestions.some((item) => item.emoji === "📥")).toBe(true);
   });
 
   it("replaces the entire colon token", () => {
@@ -104,6 +137,66 @@ describe("emoji autocomplete helpers", () => {
     expect(printSuggestion).toBeDefined();
     expect(printSuggestion?.filterText).toContain("print");
     expect(printSuggestion?.filterText).toContain(":print");
+  });
+
+  it("provides completions for plain word prefixes too", () => {
+    const monaco = {
+      languages: {
+        CompletionItemKind: {
+          Text: 1,
+          Keyword: 2
+        }
+      },
+      Range: class {
+        constructor(
+          public startLineNumber: number,
+          public startColumn: number,
+          public endLineNumber: number,
+          public endColumn: number
+        ) {}
+      }
+    } as any;
+
+    const model = {
+      getLineContent: () => "length"
+    } as any;
+
+    const completion = provideEmojiCompletionItems(monaco, model, {
+      lineNumber: 1,
+      column: 7
+    } as any) as { suggestions: Array<{ label: string }> };
+
+    expect(completion.suggestions.some((item) => item.label.includes("📏 length"))).toBe(true);
+  });
+
+  it("provides suggestions immediately after a colon", () => {
+    const monaco = {
+      languages: {
+        CompletionItemKind: {
+          Text: 1,
+          Keyword: 2
+        }
+      },
+      Range: class {
+        constructor(
+          public startLineNumber: number,
+          public startColumn: number,
+          public endLineNumber: number,
+          public endColumn: number
+        ) {}
+      }
+    } as any;
+
+    const model = {
+      getLineContent: () => ":"
+    } as any;
+
+    const completion = provideEmojiCompletionItems(monaco, model, {
+      lineNumber: 1,
+      column: 2
+    } as any) as { suggestions: Array<{ label: string }> };
+
+    expect(completion.suggestions.some((item) => item.label.includes("📏 length"))).toBe(true);
   });
 
   it("supports uppercase emoji search prefixes", () => {
