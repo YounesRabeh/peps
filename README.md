@@ -52,6 +52,13 @@ Peps is an emoji-first programming language with:
 cargo run -- examples/basic.peps
 ```
 
+## Test
+
+```sh
+cargo test
+cd ide && npm test
+```
+
 ## Start IDE
 
 ```sh
