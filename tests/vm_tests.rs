@@ -25,6 +25,19 @@ fn runs_with_line_comments() {
 }
 
 #[test]
+fn runs_logical_ops_with_short_circuit() {
+    let output = run_source(
+        "📢 🚫 ✅ 🔚 📢 ❌ 🤝 1️⃣ ➗ 0️⃣ ▶️ 0️⃣ 🔚 📢 ✅ 🔀 1️⃣ ➗ 0️⃣ ▶️ 0️⃣ 🔚",
+    )
+    .expect("source should run");
+
+    assert_eq!(
+        output,
+        vec!["❌".to_string(), "❌".to_string(), "✅".to_string()]
+    );
+}
+
+#[test]
 fn runs_arithmetic_and_comparison() {
     let output = run_source("🐶 🟰 1️⃣ ➕ 2️⃣ ✖️ 3️⃣ 🔚 🐱 🟰 🐶 ▶️ 6️⃣ 🔚 📢 🐶 🔚 📢 🐱 🔚")
         .expect("source should run");

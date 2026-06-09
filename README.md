@@ -12,7 +12,8 @@ Peps is an emoji-first programming language with:
 3. Variable identifiers must be **exactly one emoji**.
 4. `break` (`🛑`) and `continue` (`⏭️`) are valid only inside loops.
 5. `//` starts a line comment that runs to the end of the line.
-6. Loop blocks use this structure:
+6. Logical operators use `🤝`, `🔀`, and `🚫`.
+7. Loop blocks use this structure:
 
 ```peps
 🔁 ✅ 🔓
@@ -38,6 +39,7 @@ Peps is an emoji-first programming language with:
 | 💬 | string delimiter | `🐶 🟰 💬hello💬` |
 | 📚 | list delimiter | `🍎 🟰 📚 1️⃣ 2️⃣ 3️⃣ 📚` |
 | `//` | line comment | `📢 1️⃣ // ignored` |
+| `🤝` / `🔀` / `🚫` | logical operators | `✅ 🤝 ❌` |
 
 ## Example
 

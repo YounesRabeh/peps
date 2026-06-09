@@ -143,6 +143,19 @@ fn lexes_break_and_continue_tokens() {
 }
 
 #[test]
+fn lexes_logical_operators() {
+    assert_eq!(
+        kinds("🤝 🔀 🚫"),
+        vec![
+            TokenKind::And,
+            TokenKind::Or,
+            TokenKind::Not,
+            TokenKind::Eof,
+        ]
+    );
+}
+
+#[test]
 fn lexes_newline_as_statement_separator() {
     assert_eq!(
         kinds("🐶 🟰 1️⃣\n📢 🐶"),

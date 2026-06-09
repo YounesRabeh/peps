@@ -33,6 +33,11 @@ fn allows_newline_separated_statements_without_statement_end_token() {
 }
 
 #[test]
+fn allows_logical_ops() {
+    check("🐶 🟰 🚫 ✅ 🤝 ❌ 🔀 ✅ 🔚").expect("source should check");
+}
+
+#[test]
 fn treats_undeclared_emoji_reference_as_literal() {
     check("📢 🐶 🔚").expect("undeclared emoji references should be treated as literals");
 }
@@ -50,6 +55,12 @@ fn rejects_arithmetic_type_error() {
 #[test]
 fn rejects_comparison_type_error() {
     assert!(first_error("🐶 🟰 ✅ ▶️ ❌ 🔚").contains("ordering comparison"));
+}
+
+#[test]
+fn rejects_logical_type_error() {
+    assert!(first_error("🐶 🟰 🚫 5️⃣ 🔚").contains("logical not"));
+    assert!(first_error("🐶 🟰 5️⃣ 🤝 ✅ 🔚").contains("logical operator"));
 }
 
 #[test]

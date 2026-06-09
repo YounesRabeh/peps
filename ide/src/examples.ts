@@ -28,4 +28,10 @@ export const BASIC_SAMPLE = `📝 🟰 💬 Peps IDE demo 💬
 🔒 😐 🔓
     📢 ❌
 🔒
+
+🤔 🚦 🤝 ✅ 🔓
+    📢 💬 both true 💬
+🔒 😐 🔓
+    📢 💬 at least one false 💬
+🔒
 `;

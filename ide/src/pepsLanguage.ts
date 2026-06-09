@@ -27,7 +27,7 @@ export function registerPepsLanguage(monaco: typeof Monaco): void {
         [/📢|🤔|😐|🔁|🛑|⏭️|⏭|✅|❌/, "keyword"],
 
         // Single operators
-        [/🟰|➕|➖|✖️|➗|◀️|▶️/, "operator"],
+        [/🟰|➕|➖|✖️|➗|◀️|▶️|🤝|🔀|🚫/, "operator"],
 
         // Delimiters
         [/🔓|🔒|🔚|📚/, "delimiter"],

@@ -235,6 +235,14 @@ impl Checker {
                         self.diagnostics.push(Diagnostic::at(
                             "numeric negation requires a num operand",
                             *span,
+                            ));
+                        None
+                    }
+                    UnaryOp::Not if ty == Type::Bool => Some(Type::Bool),
+                    UnaryOp::Not => {
+                        self.diagnostics.push(Diagnostic::at(
+                            "logical not requires a bool operand",
+                            *span,
                         ));
                         None
                     }
@@ -268,6 +276,17 @@ impl Checker {
         let right_ty = self.infer_expr(right)?;
 
         match op {
+            BinaryOp::And | BinaryOp::Or => {
+                if left_ty == Type::Bool && right_ty == Type::Bool {
+                    Some(Type::Bool)
+                } else {
+                    self.diagnostics.push(Diagnostic::at(
+                        format!("logical operator {} requires bool operands", op_symbol(op)),
+                        span,
+                    ));
+                    None
+                }
+            }
             BinaryOp::Add | BinaryOp::Sub | BinaryOp::Mul | BinaryOp::Div => {
                 if left_ty == Type::Num && right_ty == Type::Num {
                     Some(Type::Num)
@@ -415,6 +434,8 @@ fn op_symbol(op: BinaryOp) -> &'static str {
         BinaryOp::Sub => "➖",
         BinaryOp::Mul => "✖️",
         BinaryOp::Div => "➗",
+        BinaryOp::And => "🤝",
+        BinaryOp::Or => "🔀",
         BinaryOp::Eq => "🟰🟰",
         BinaryOp::NotEq => "❌🟰",
         BinaryOp::Lt => "◀️",

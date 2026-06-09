@@ -88,6 +88,21 @@ fn compiles_comparison() {
 }
 
 #[test]
+fn compiles_logical_not() {
+    assert_eq!(
+        compile_source("🐶 🟰 🚫 ✅ 🔚").expect("source should compile"),
+        vec![
+            Instruction::LoadConst(Value::Bool(true)),
+            Instruction::JumpIfFalse(4),
+            Instruction::LoadConst(Value::Bool(false)),
+            Instruction::Jump(5),
+            Instruction::LoadConst(Value::Bool(true)),
+            Instruction::StoreVar("🐶".to_string()),
+        ]
+    );
+}
+
+#[test]
 fn compiles_list_construction() {
     assert_eq!(
         compile_source("🐶 🟰 📚 1️⃣ 2️⃣ 3️⃣ 📚 🔚").expect("source should compile"),

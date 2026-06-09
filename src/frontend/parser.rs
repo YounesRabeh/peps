@@ -4,7 +4,8 @@
 //! precedence climbing so binary operators associate correctly without a large
 //! expression grammar. The parser owns language-shape checks that depend on
 //! token context, such as rejecting ASCII or multi-emoji identifiers and
-//! allowing `🛑` / `⏭️` only inside loop bodies.
+//! allowing `🛑` / `⏭️` only inside loop bodies and parsing boolean operators
+//! such as `🤝`, `🔀`, and `🚫`.
 //!
 //! Blocks are delimited with `🔓` and `🔒`. Statement separators may be explicit
 //! `🔚` tokens or newlines that the lexer has already normalized into
@@ -292,6 +293,17 @@ impl Parser {
             });
         }
 
+        if matches!(self.peek().kind, TokenKind::Not) {
+            let op_span = self.advance().span;
+            let expr = self.parse_unary()?;
+            let span = op_span.merge(expr.span());
+            return Ok(Expr::Unary {
+                op: UnaryOp::Not,
+                expr: Box::new(expr),
+                span,
+            });
+        }
+
         self.parse_primary()
     }
 
@@ -358,16 +370,18 @@ impl Parser {
         // Higher numbers bind tighter. Equal-precedence operators are
         // left-associative because the recursive call uses `precedence + 1`.
         match self.peek().kind {
-            TokenKind::Eq => Some((BinaryOp::Eq, 1)),
-            TokenKind::NotEq => Some((BinaryOp::NotEq, 1)),
-            TokenKind::Lt => Some((BinaryOp::Lt, 1)),
-            TokenKind::Gt => Some((BinaryOp::Gt, 1)),
-            TokenKind::LtEq => Some((BinaryOp::LtEq, 1)),
-            TokenKind::GtEq => Some((BinaryOp::GtEq, 1)),
-            TokenKind::Plus => Some((BinaryOp::Add, 2)),
-            TokenKind::Minus => Some((BinaryOp::Sub, 2)),
-            TokenKind::Star => Some((BinaryOp::Mul, 3)),
-            TokenKind::Slash => Some((BinaryOp::Div, 3)),
+            TokenKind::Or => Some((BinaryOp::Or, 0)),
+            TokenKind::And => Some((BinaryOp::And, 1)),
+            TokenKind::Eq => Some((BinaryOp::Eq, 2)),
+            TokenKind::NotEq => Some((BinaryOp::NotEq, 2)),
+            TokenKind::Lt => Some((BinaryOp::Lt, 3)),
+            TokenKind::Gt => Some((BinaryOp::Gt, 3)),
+            TokenKind::LtEq => Some((BinaryOp::LtEq, 3)),
+            TokenKind::GtEq => Some((BinaryOp::GtEq, 3)),
+            TokenKind::Plus => Some((BinaryOp::Add, 4)),
+            TokenKind::Minus => Some((BinaryOp::Sub, 4)),
+            TokenKind::Star => Some((BinaryOp::Mul, 5)),
+            TokenKind::Slash => Some((BinaryOp::Div, 5)),
             _ => None,
         }
     }
@@ -387,6 +401,7 @@ impl Parser {
                         | TokenKind::StringLiteral(_)
                         | TokenKind::Bool(_)
                         | TokenKind::Minus
+                        | TokenKind::Not
                         | TokenKind::ListDelimiter
                 )
             })

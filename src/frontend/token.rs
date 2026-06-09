@@ -29,6 +29,9 @@ pub enum TokenKind {
     Continue,
     In,
     Range,
+    And,
+    Or,
+    Not,
 
     Assign,
     Plus,

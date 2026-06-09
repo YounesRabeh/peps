@@ -51,6 +51,12 @@ describe("emoji autocomplete helpers", () => {
     expect(first.name).toBe("print");
   });
 
+  it("finds logical operator emojis by name", () => {
+    expect(getEmojiSuggestions("and").some((item) => item.emoji === "🤝")).toBe(true);
+    expect(getEmojiSuggestions("or").some((item) => item.emoji === "🔀")).toBe(true);
+    expect(getEmojiSuggestions("not").some((item) => item.emoji === "🚫")).toBe(true);
+  });
+
   it("replaces the entire colon token", () => {
     const line = "📢 :happy";
     const range = findColonPrefixBeforeCursor(line, line.length + 1);

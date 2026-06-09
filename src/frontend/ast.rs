@@ -136,6 +136,7 @@ impl Expr {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum UnaryOp {
     Negate,
+    Not,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -144,6 +145,8 @@ pub enum BinaryOp {
     Sub,
     Mul,
     Div,
+    And,
+    Or,
     Eq,
     NotEq,
     Lt,

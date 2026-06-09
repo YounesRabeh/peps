@@ -224,7 +224,7 @@ impl Lexer {
         Token::new(TokenKind::Number(value), start.merge(end))
     }
 
-    fn lex_ascii_identifier(&mut self) -> Token {
+fn lex_ascii_identifier(&mut self) -> Token {
         let start = self.peek().span;
         let mut end = start;
         let mut name = String::new();
@@ -235,7 +235,12 @@ impl Lexer {
             name.push_str(&grapheme.text);
         }
 
-        Token::new(TokenKind::Identifier(name), start.merge(end))
+        let span = start.merge(end);
+        if let Some(kind) = keyword_kind(&name) {
+            Token::new(kind, span)
+        } else {
+            Token::new(TokenKind::Identifier(name), span)
+        }
     }
 
     fn is_line_comment_start(&self) -> bool {
@@ -320,6 +325,9 @@ fn single_token_kind(text: &str) -> Option<TokenKind> {
         "🔢" => Some(TokenKind::Range),
         "✅" => Some(TokenKind::Bool(true)),
         "❌" => Some(TokenKind::Bool(false)),
+        "🤝" => Some(TokenKind::And),
+        "🔀" => Some(TokenKind::Or),
+        "🚫" => Some(TokenKind::Not),
         "🟰" => Some(TokenKind::Assign),
         "➕" => Some(TokenKind::Plus),
         "➖" => Some(TokenKind::Minus),
@@ -336,8 +344,18 @@ fn single_token_kind(text: &str) -> Option<TokenKind> {
     }
 }
 
+fn keyword_kind(text: &str) -> Option<TokenKind> {
+    match text {
+        "and" => Some(TokenKind::And),
+        "or" => Some(TokenKind::Or),
+        "not" => Some(TokenKind::Not),
+        _ => None,
+    }
+}
+
 fn is_reserved(text: &str) -> bool {
     return single_token_kind(text).is_some()
+        || keyword_kind(text).is_some()
         || matches!(text, "💬")
         || is_emoji_digit(text);
 }

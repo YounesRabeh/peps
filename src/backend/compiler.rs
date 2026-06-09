@@ -234,6 +234,17 @@ impl Compiler {
                     self.instructions.push(Instruction::Sub);
                 }
             }
+            Expr::Unary {
+                op: UnaryOp::Not,
+                expr,
+                ..
+            } => self.compile_unary_not(expr),
+            Expr::Binary {
+                left, op, right, ..
+            } if matches!(op, BinaryOp::And) => self.compile_logical_and(left, right),
+            Expr::Binary {
+                left, op, right, ..
+            } if matches!(op, BinaryOp::Or) => self.compile_logical_or(left, right),
             Expr::Binary {
                 left, op, right, ..
             } => {
@@ -244,6 +255,7 @@ impl Compiler {
                     BinaryOp::Sub => Instruction::Sub,
                     BinaryOp::Mul => Instruction::Mul,
                     BinaryOp::Div => Instruction::Div,
+                    BinaryOp::And | BinaryOp::Or => unreachable!(),
                     BinaryOp::Eq => Instruction::Eq,
                     BinaryOp::NotEq => Instruction::NotEq,
                     BinaryOp::Lt => Instruction::Lt,
@@ -253,6 +265,53 @@ impl Compiler {
                 });
             }
         }
+    }
+
+    fn compile_unary_not(&mut self, expr: &Expr) {
+        self.compile_expr(expr);
+        let jump_if_false = self.emit_placeholder_jump_if_false();
+        self.instructions.push(Instruction::LoadConst(Value::Bool(false)));
+        let jump_end = self.emit_placeholder_jump();
+        let true_branch = self.instructions.len();
+        self.patch_jump(jump_if_false, true_branch);
+        self.instructions.push(Instruction::LoadConst(Value::Bool(true)));
+        let after = self.instructions.len();
+        self.patch_jump(jump_end, after);
+    }
+
+    fn compile_logical_and(&mut self, left: &Expr, right: &Expr) {
+        self.compile_expr(left);
+        let left_false = self.emit_placeholder_jump_if_false();
+        self.compile_expr(right);
+        let right_false = self.emit_placeholder_jump_if_false();
+        self.instructions.push(Instruction::LoadConst(Value::Bool(true)));
+        let jump_end = self.emit_placeholder_jump();
+        let false_branch = self.instructions.len();
+        self.patch_jump(left_false, false_branch);
+        self.patch_jump(right_false, false_branch);
+        self.instructions.push(Instruction::LoadConst(Value::Bool(false)));
+        let after = self.instructions.len();
+        self.patch_jump(jump_end, after);
+    }
+
+    fn compile_logical_or(&mut self, left: &Expr, right: &Expr) {
+        self.compile_expr(left);
+        let left_false = self.emit_placeholder_jump_if_false();
+        self.instructions.push(Instruction::LoadConst(Value::Bool(true)));
+        let jump_end_left = self.emit_placeholder_jump();
+        let eval_right = self.instructions.len();
+        self.patch_jump(left_false, eval_right);
+
+        self.compile_expr(right);
+        let right_false = self.emit_placeholder_jump_if_false();
+        self.instructions.push(Instruction::LoadConst(Value::Bool(true)));
+        let jump_end_right = self.emit_placeholder_jump();
+        let false_branch = self.instructions.len();
+        self.patch_jump(right_false, false_branch);
+        self.instructions.push(Instruction::LoadConst(Value::Bool(false)));
+        let after = self.instructions.len();
+        self.patch_jump(jump_end_left, after);
+        self.patch_jump(jump_end_right, after);
     }
 
     fn emit_placeholder_jump_if_false(&mut self) -> usize {

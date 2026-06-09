@@ -43,6 +43,40 @@ fn parses_comments_between_statements() {
 }
 
 #[test]
+fn parses_logical_precedence() {
+    let program = parse("🐶 🟰 🚫 ✅ 🤝 ❌ 🔀 ✅ 🔚");
+    let Stmt::Assign { expr, .. } = &program.statements[0] else {
+        panic!("expected assignment");
+    };
+    let Expr::Binary { op, left, right, .. } = expr else {
+        panic!("expected binary expression");
+    };
+    assert_eq!(*op, BinaryOp::Or);
+    assert!(matches!(
+        right.as_ref(),
+        Expr::Bool { value: true, .. }
+    ));
+    let Expr::Binary {
+        op: and_op,
+        left: and_left,
+        right: and_right,
+        ..
+    } = left.as_ref()
+    else {
+        panic!("expected and expression");
+    };
+    assert_eq!(*and_op, BinaryOp::And);
+    assert!(matches!(
+        and_left.as_ref(),
+        Expr::Unary {
+            op: peps::UnaryOp::Not,
+            ..
+        }
+    ));
+    assert!(matches!(and_right.as_ref(), Expr::Bool { value: false, .. }));
+}
+
+#[test]
 fn parses_arithmetic_precedence() {
     let program = parse("🐶 🟰 1️⃣ ➕ 2️⃣ ✖️ 3️⃣ 🔚");
     let Stmt::Assign { expr, .. } = &program.statements[0] else {
