@@ -14,6 +14,7 @@ use tower_http::{cors::CorsLayer, services::ServeDir};
 use crate::{diagnostic::Diagnostic, run_source};
 
 const DEFAULT_ADDR: &str = "127.0.0.1:5179";
+const MISSING_FRONTEND_HTML: &str = include_str!("missing_frontend.html");
 
 #[derive(Debug, Deserialize)]
 pub struct RunRequest {
@@ -122,50 +123,7 @@ pub async fn run_handler(Json(request): Json<RunRequest>) -> Json<RunResponse> {
 }
 
 async fn missing_frontend_handler() -> impl IntoResponse {
-    Html(
-        r#"<!doctype html>
-<html lang="en">
-  <head>
-    <meta charset="utf-8" />
-    <title>Peps IDE</title>
-    <style>
-      body {
-        margin: 0;
-        min-height: 100vh;
-        display: grid;
-        place-items: center;
-        background: #101318;
-        color: #f3f7ff;
-        font-family: system-ui, sans-serif;
-      }
-      main {
-        max-width: 720px;
-        padding: 32px;
-      }
-      code, pre {
-        font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-      }
-      pre {
-        background: #181d25;
-        border: 1px solid #2b3443;
-        border-radius: 8px;
-        padding: 16px;
-      }
-    </style>
-  </head>
-  <body>
-    <main>
-      <h1>Peps IDE frontend is not built yet</h1>
-      <p>Build the browser app first, then restart the IDE server:</p>
-      <pre>cd ide
-npm install
-npm run build
-cd ..
-cargo run --bin peps-ide</pre>
-    </main>
-  </body>
-</html>"#,
-    )
+    Html(MISSING_FRONTEND_HTML)
 }
 
 impl From<&Diagnostic> for IdeDiagnostic {
