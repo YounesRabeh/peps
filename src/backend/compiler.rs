@@ -42,6 +42,12 @@ impl Compiler {
                 self.compile_expr(expr);
                 self.instructions.push(Instruction::StoreVar(name.clone()));
             }
+            Stmt::Append { name, expr, .. } => {
+                self.instructions.push(Instruction::LoadVar(name.clone()));
+                self.compile_expr(expr);
+                self.instructions.push(Instruction::ListAppend);
+                self.instructions.push(Instruction::StoreVar(name.clone()));
+            }
             Stmt::Print { expr, .. } => {
                 self.compile_expr(expr);
                 self.instructions.push(Instruction::Print);

@@ -82,6 +82,14 @@ fn runs_list_ops() {
 }
 
 #[test]
+fn runs_append_statement_and_list_extend() {
+    let output =
+        run_source("🍎 🟰 📚 1️⃣ 2️⃣ 📚 🔚 🍎 📥 3️⃣ 🔚 🍎 📥 📚 4️⃣ 5️⃣ 📚 🔚 📢 🍎 🔚")
+            .expect("source should run");
+    assert_eq!(output, vec!["📚 1 2 3 4 5 📚".to_string()]);
+}
+
+#[test]
 fn runs_for_each_list_loop() {
     let output =
         run_source("🍎 🟰 📚 1️⃣ 2️⃣ 3️⃣ 📚 🔚 🔁 🐾 🧭 🍎 🔓 📢 🐾 🔚 🔒")

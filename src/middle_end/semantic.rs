@@ -70,6 +70,9 @@ impl Checker {
                     self.symbols.insert(name.clone(), ty);
                 }
             }
+            Stmt::Append { name, expr, span } => {
+                self.check_append_statement(name, expr, *span);
+            }
             Stmt::Print { expr, .. } => {
                 self.infer_expr(expr);
             }
@@ -178,6 +181,26 @@ impl Checker {
                     .push(Diagnostic::at(format!("{} condition must be bool", kind), span));
             }
         }
+    }
+
+    fn check_append_statement(&mut self, name: &str, expr: &Expr, span: crate::source::Span) {
+        let Some(target_ty) = self.lookup(name).cloned() else {
+            self.diagnostics.push(Diagnostic::at(
+                format!("list append target {} is not declared", name),
+                span,
+            ));
+            return;
+        };
+
+        let Type::List(element_type) = target_ty else {
+            self.diagnostics.push(Diagnostic::at(
+                "list append requires a list variable on the left",
+                span,
+            ));
+            return;
+        };
+
+        self.check_append_rhs(expr, &element_type, span);
     }
 
     fn infer_assignment_rhs(&mut self, expr: &Expr) -> Option<Type> {
@@ -323,19 +346,8 @@ impl Checker {
                     return None;
                 };
                 let expected_type = (*element_type).clone();
-                let right_ty = match (&expected_type, right) {
-                    (Type::Str, Expr::String { .. }) => Type::Str,
-                    _ => self.infer_expr(right)?,
-                };
-                if right_ty == expected_type {
-                    Some(Type::List(Box::new(expected_type)))
-                } else {
-                    self.diagnostics.push(Diagnostic::at(
-                        "list append requires a value matching the list element type",
-                        span,
-                    ));
-                    None
-                }
+                self.check_append_rhs(right, &expected_type, span)?;
+                Some(Type::List(Box::new(expected_type)))
             }
             BinaryOp::And | BinaryOp::Or => {
                 let left_ty = self.infer_expr(left)?;
@@ -461,6 +473,40 @@ impl Checker {
         }
 
         element_type.map(|ty| Type::List(Box::new(ty)))
+    }
+
+    fn check_append_rhs(
+        &mut self,
+        expr: &Expr,
+        expected_type: &Type,
+        span: crate::source::Span,
+    ) -> Option<()> {
+        let right_ty = self.infer_append_rhs_type(expr, expected_type)?;
+        let expected_list_type = Type::List(Box::new(expected_type.clone()));
+
+        if right_ty == *expected_type || right_ty == expected_list_type {
+            Some(())
+        } else {
+            self.diagnostics.push(Diagnostic::at(
+                "list append requires a value or list matching the list element type",
+                span,
+            ));
+            None
+        }
+    }
+
+    fn infer_append_rhs_type(&mut self, expr: &Expr, expected_type: &Type) -> Option<Type> {
+        match (expected_type, expr) {
+            (Type::Str, Expr::String { .. }) => Some(Type::Str),
+            (
+                Type::Str,
+                Expr::List {
+                    elements,
+                    span,
+                },
+            ) => self.infer_list(elements, *span, true, true),
+            _ => self.infer_expr(expr),
+        }
     }
 
     fn lookup(&self, name: &str) -> Option<&Type> {

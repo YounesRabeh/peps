@@ -52,6 +52,12 @@ fn allows_list_ops() {
 }
 
 #[test]
+fn allows_list_append_statements() {
+    check("🍎 🟰 📚 1️⃣ 2️⃣ 📚 🔚 🍎 📥 3️⃣ 🔚 🍎 📥 📚 4️⃣ 5️⃣ 📚 🔚")
+        .expect("source should check");
+}
+
+#[test]
 fn treats_undeclared_emoji_reference_as_literal() {
     check("📢 🐶 🔚").expect("undeclared emoji references should be treated as literals");
 }
@@ -83,6 +89,10 @@ fn rejects_list_op_type_errors() {
     assert!(first_error("🐶 🟰 5️⃣ 🔎 0️⃣ 🔚").contains("list value on the left"));
     assert!(first_error("🍎 🟰 📚 1️⃣ 2️⃣ 📚 🔚 🐶 🟰 🍎 🔎 ✅ 🔚").contains("num index"));
     assert!(first_error("🍎 🟰 📚 1️⃣ 2️⃣ 📚 🔚 🐶 🟰 🍎 📥 ✅ 🔚").contains("element type"));
+    assert!(
+        first_error("🍎 🟰 📚 1️⃣ 2️⃣ 📚 🔚 🍎 📥 📚 ✅ 📚 🔚").contains("element type")
+    );
+    assert!(first_error("🍎 📥 1️⃣ 🔚").contains("not declared"));
 }
 
 #[test]

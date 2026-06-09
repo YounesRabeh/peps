@@ -68,7 +68,7 @@ impl Parser {
 
     fn parse_statement(&mut self) -> Result<Stmt, Diagnostic> {
         match &self.peek().kind {
-            TokenKind::Identifier(_) => self.parse_assignment(),
+            TokenKind::Identifier(_) => self.parse_identifier_statement(),
             TokenKind::Print => self.parse_print(),
             TokenKind::Break => self.parse_break(),
             TokenKind::Continue => self.parse_continue(),
@@ -77,6 +77,14 @@ impl Parser {
             TokenKind::Else => Err(Diagnostic::at("else 😐 without matching if", self.peek().span)),
             TokenKind::Eof => Err(Diagnostic::at("unexpected end of file", self.peek().span)),
             _ => Err(Diagnostic::at("expected statement", self.peek().span)),
+        }
+    }
+
+    fn parse_identifier_statement(&mut self) -> Result<Stmt, Diagnostic> {
+        match self.peek_next_kind() {
+            Some(TokenKind::Assign) => self.parse_assignment(),
+            Some(TokenKind::ListAppend) => self.parse_append_statement(),
+            _ => self.parse_assignment(),
         }
     }
 
@@ -101,6 +109,30 @@ impl Parser {
             name,
             span: name_token.span.merge(end),
             expr,
+        })
+    }
+
+    fn parse_append_statement(&mut self) -> Result<Stmt, Diagnostic> {
+        let name_token = self.advance().clone();
+        let TokenKind::Identifier(name) = name_token.kind else {
+            unreachable!("parse_append_statement called only for identifiers");
+        };
+
+        if !is_single_emoji_identifier(&name) || matches!(self.peek().kind, TokenKind::Identifier(_)) {
+            return Err(Diagnostic::at(
+                "variable identifiers must be exactly one emoji long",
+                name_token.span.merge(self.peek().span),
+            ));
+        }
+
+        let append_span = self.expect_list_append()?;
+        let expr = self.parse_expression(0)?;
+        let end = self.expect_statement_end()?;
+
+        Ok(Stmt::Append {
+            name,
+            expr,
+            span: name_token.span.merge(append_span).merge(end),
         })
     }
 
@@ -435,6 +467,14 @@ impl Parser {
             Ok(self.advance().span)
         } else {
             Err(Diagnostic::at("expected loop in marker 🧭", self.peek().span))
+        }
+    }
+
+    fn expect_list_append(&mut self) -> Result<Span, Diagnostic> {
+        if matches!(self.peek().kind, TokenKind::ListAppend) {
+            Ok(self.advance().span)
+        } else {
+            Err(Diagnostic::at("expected list append operator 📥", self.peek().span))
         }
     }
 

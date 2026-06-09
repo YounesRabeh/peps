@@ -134,7 +134,10 @@ impl Vm<'_> {
                     let RuntimeValue::List(mut elements) = list else {
                         return self.fail("list append requires a list value");
                     };
-                    elements.push(value);
+                    match value {
+                        RuntimeValue::List(values) => elements.extend(values),
+                        value => elements.push(value),
+                    }
                     self.stack.push(RuntimeValue::List(elements));
                     self.ip += 1;
                 }

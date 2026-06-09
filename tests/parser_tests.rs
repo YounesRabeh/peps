@@ -124,6 +124,19 @@ fn parses_list_ops() {
 }
 
 #[test]
+fn parses_append_statement() {
+    let program = parse("🍎 📥 📚 4️⃣ 5️⃣ 📚 🔚");
+    assert!(matches!(
+        &program.statements[0],
+        Stmt::Append {
+            name,
+            expr: Expr::List { .. },
+            ..
+        } if name == "🍎"
+    ));
+}
+
+#[test]
 fn parses_arithmetic_precedence() {
     let program = parse("🐶 🟰 1️⃣ ➕ 2️⃣ ✖️ 3️⃣ 🔚");
     let Stmt::Assign { expr, .. } = &program.statements[0] else {

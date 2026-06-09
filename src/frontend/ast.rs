@@ -15,6 +15,11 @@ pub enum Stmt {
         expr: Expr,
         span: Span,
     },
+    Append {
+        name: String,
+        expr: Expr,
+        span: Span,
+    },
     Print {
         expr: Expr,
         span: Span,
@@ -48,6 +53,7 @@ impl Stmt {
     pub fn span(&self) -> Span {
         match self {
             Stmt::Assign { span, .. }
+            | Stmt::Append { span, .. }
             | Stmt::Print { span, .. }
             | Stmt::Break { span, .. }
             | Stmt::Continue { span, .. }
