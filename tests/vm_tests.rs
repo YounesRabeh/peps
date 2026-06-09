@@ -92,6 +92,13 @@ fn runs_append_statement_and_list_extend() {
 }
 
 #[test]
+fn runs_append_expression_with_implicit_list_payload() {
+    let output = run_source("🍎 🟰 📚 1️⃣ 2️⃣ 📚 🔚 🥝 🟰 🍎 📥 6️⃣3️⃣ 1️⃣ 2️⃣ 🔚 📢 🥝 🔚")
+        .expect("source should run");
+    assert_eq!(output, vec!["📚 1 2 63 1 2 📚".to_string()]);
+}
+
+#[test]
 fn runs_for_each_list_loop() {
     let output =
         run_source("🍎 🟰 📚 1️⃣ 2️⃣ 3️⃣ 📚 🔚 🔁 🐾 🧭 🍎 🔓 📢 🐾 🔚 🔒")

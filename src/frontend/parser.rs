@@ -126,7 +126,7 @@ impl Parser {
         }
 
         let append_span = self.expect_list_append()?;
-        let expr = self.parse_append_payload()?;
+        let expr = self.parse_append_payload(0)?;
         let end = self.expect_statement_end()?;
 
         Ok(Stmt::Append {
@@ -136,8 +136,8 @@ impl Parser {
         })
     }
 
-    fn parse_append_payload(&mut self) -> Result<Expr, Diagnostic> {
-        let first = self.parse_expression(0)?;
+    fn parse_append_payload(&mut self, min_precedence: u8) -> Result<Expr, Diagnostic> {
+        let first = self.parse_expression(min_precedence)?;
         let mut elements = vec![first];
 
         while self.token_starts_expression(self.peek()) {
@@ -320,7 +320,11 @@ impl Parser {
             }
 
             self.advance();
-            let right = self.parse_expression(precedence + 1)?;
+            let right = if matches!(op, BinaryOp::Append) {
+                self.parse_append_payload(precedence + 1)?
+            } else {
+                self.parse_expression(precedence + 1)?
+            };
             let span = left.span().merge(right.span());
             left = Expr::Binary {
                 left: Box::new(left),

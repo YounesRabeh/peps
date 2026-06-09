@@ -40,13 +40,17 @@ fn allows_logical_ops() {
 #[test]
 fn allows_list_ops() {
     let checked = check(
-        "🍎 🟰 📚 1️⃣ 2️⃣ 3️⃣ 📚 🔚 🐶 🟰 📏 🍎 🔚 🐱 🟰 🍎 🔎 1️⃣ 🔚 🦊 🟰 🍎 📥 4️⃣ 🔚",
+        "🍎 🟰 📚 1️⃣ 2️⃣ 3️⃣ 📚 🔚 🐶 🟰 📏 🍎 🔚 🐱 🟰 🍎 🔎 1️⃣ 🔚 🦊 🟰 🍎 📥 4️⃣ 🔚 🥝 🟰 🍎 📥 6️⃣3️⃣ 1️⃣ 2️⃣ 🔚",
     )
     .expect("source should check");
     assert_eq!(checked.symbols.get("🐶"), Some(&Type::Num));
     assert_eq!(checked.symbols.get("🐱"), Some(&Type::Num));
     assert_eq!(
         checked.symbols.get("🦊"),
+        Some(&Type::List(Box::new(Type::Num)))
+    );
+    assert_eq!(
+        checked.symbols.get("🥝"),
         Some(&Type::List(Box::new(Type::Num)))
     );
 }
