@@ -81,7 +81,7 @@ impl Vm<'_> {
                     self.variables.insert(name, value);
                     self.ip += 1;
                 }
-                Instruction::Add => self.binary_num("add", |left, right| left + right)?,
+                Instruction::Add => self.add_values()?,
                 Instruction::Sub => self.binary_num("subtract", |left, right| left - right)?,
                 Instruction::Mul => self.binary_num("multiply", |left, right| left * right)?,
                 Instruction::Div => {
@@ -173,6 +173,22 @@ impl Vm<'_> {
         let right = self.pop_num(operation)?;
         let left = self.pop_num(operation)?;
         self.stack.push(RuntimeValue::Num(apply(left, right)));
+        self.ip += 1;
+        Ok(())
+    }
+
+    fn add_values(&mut self) -> Result<(), RunError> {
+        let right = self.pop("add")?;
+        let left = self.pop("add")?;
+        match (left, right) {
+            (RuntimeValue::Num(left), RuntimeValue::Num(right)) => {
+                self.stack.push(RuntimeValue::Num(left + right));
+            }
+            (RuntimeValue::Str(left), RuntimeValue::Str(right)) => {
+                self.stack.push(RuntimeValue::Str(format!("{}{}", left, right)));
+            }
+            _ => return self.fail("add requires matching num or text values"),
+        }
         self.ip += 1;
         Ok(())
     }

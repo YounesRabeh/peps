@@ -52,6 +52,12 @@ fn runs_string_assignment_print() {
 }
 
 #[test]
+fn runs_string_concatenation() {
+    let output = run_source("📢 💬 hello 💬 ➕ 💬 world 💬 🔚").expect("source should run");
+    assert_eq!(output, vec![" hello  world ".to_string()]);
+}
+
+#[test]
 fn runs_emoji_literal_assignment_print() {
     let output = run_source("📦 🟰 🥊 🔚 📢 📦 🔚").expect("source should run");
     assert_eq!(output, vec!["🥊".to_string()]);

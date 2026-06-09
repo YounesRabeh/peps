@@ -38,6 +38,12 @@ fn allows_logical_ops() {
 }
 
 #[test]
+fn allows_string_concatenation() {
+    let checked = check("📝 🟰 💬 hello 💬 ➕ 💬 world 💬 🔚").expect("source should check");
+    assert_eq!(checked.symbols.get("📝"), Some(&Type::Str));
+}
+
+#[test]
 fn allows_list_ops() {
     let checked = check(
         "🍎 🟰 📚 1️⃣ 2️⃣ 3️⃣ 📚 🔚 🐶 🟰 📏 🍎 🔚 🐱 🟰 🍎 🔎 1️⃣ 🔚 🦊 🟰 🍎 📥 4️⃣ 🔚 🥝 🟰 🍎 📥 6️⃣3️⃣ 1️⃣ 2️⃣ 🔚",
@@ -74,6 +80,7 @@ fn rejects_reassignment() {
 #[test]
 fn rejects_arithmetic_type_error() {
     assert!(first_error("🐶 🟰 ✅ ➕ 1️⃣ 🔚").contains("requires num operands"));
+    assert!(first_error("🐶 🟰 💬 hi 💬 ➕ 1️⃣ 🔚").contains("requires both operands to be text"));
 }
 
 #[test]
@@ -107,11 +114,6 @@ fn rejects_if_condition_type_error() {
 #[test]
 fn rejects_while_condition_type_error() {
     assert!(first_error("🔁 5️⃣ 🔓 📢 1️⃣ 🔚 🔒").contains("while condition must be bool"));
-}
-
-#[test]
-fn rejects_raw_string_in_print() {
-    assert!(first_error("📢 💬 hello 💬 🔚").contains("Raw string literals"));
 }
 
 #[test]

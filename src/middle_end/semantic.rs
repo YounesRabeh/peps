@@ -214,18 +214,6 @@ impl Checker {
                 }
             },
             Expr::List { elements, span } => self.infer_list(elements, *span, true, true),
-            Expr::Binary {
-                left,
-                op: BinaryOp::Add,
-                right,
-                span,
-            } if contains_raw_string(left) || contains_raw_string(right) => {
-                self.diagnostics.push(Diagnostic::at(
-                    "string concatenation is not supported in Peps v0",
-                    *span,
-                ));
-                None
-            }
             _ => self.infer_expr(expr),
         }
     }
@@ -306,14 +294,6 @@ impl Checker {
         right: &Expr,
         span: crate::source::Span,
     ) -> Option<Type> {
-        if matches!(op, BinaryOp::Add) && (contains_raw_string(left) || contains_raw_string(right)) {
-            self.diagnostics.push(Diagnostic::at(
-                "string concatenation is not supported in Peps v0",
-                span,
-            ));
-            return None;
-        }
-
         match op {
             BinaryOp::Index => {
                 let left_ty = self.infer_expr(left)?;
@@ -363,13 +343,25 @@ impl Checker {
                 }
             }
             BinaryOp::Add | BinaryOp::Sub | BinaryOp::Mul | BinaryOp::Div => {
-                let left_ty = self.infer_expr(left)?;
-                let right_ty = self.infer_expr(right)?;
+                let left_ty = if op == BinaryOp::Add {
+                    self.infer_expr_allow_raw_strings(left)?
+                } else {
+                    self.infer_expr(left)?
+                };
+                let right_ty = if op == BinaryOp::Add {
+                    self.infer_expr_allow_raw_strings(right)?
+                } else {
+                    self.infer_expr(right)?
+                };
                 if left_ty == Type::Num && right_ty == Type::Num {
                     Some(Type::Num)
-                } else if op == BinaryOp::Add && (left_ty == Type::Str || right_ty == Type::Str) {
+                } else if op == BinaryOp::Add && left_ty == Type::Str && right_ty == Type::Str {
+                    Some(Type::Str)
+                } else if op == BinaryOp::Add
+                    && (left_ty == Type::Str || right_ty == Type::Str)
+                {
                     self.diagnostics.push(Diagnostic::at(
-                        "string concatenation is not supported in Peps v0",
+                        "string concatenation requires both operands to be text",
                         span,
                     ));
                     None
@@ -475,6 +467,67 @@ impl Checker {
         element_type.map(|ty| Type::List(Box::new(ty)))
     }
 
+    fn infer_expr_allow_raw_strings(&mut self, expr: &Expr) -> Option<Type> {
+        match expr {
+            Expr::String { .. } => Some(Type::Str),
+            Expr::Number { .. } => Some(Type::Num),
+            Expr::Bool { .. } => Some(Type::Bool),
+            Expr::Emoji { .. } => Some(Type::Emoji),
+            Expr::Variable { name, span } => match self.lookup(name) {
+                Some(ty) => Some(ty.clone()),
+                None => {
+                    self.emoji_literals.insert((span.start, span.end));
+                    Some(Type::Emoji)
+                }
+            },
+            Expr::List { elements, span } => self.infer_list(elements, *span, true, false),
+            Expr::Unary { op, expr, span } => match op {
+                UnaryOp::Negate => {
+                    let ty = self.infer_expr_allow_raw_strings(expr)?;
+                    if ty == Type::Num {
+                        Some(Type::Num)
+                    } else {
+                        self.diagnostics.push(Diagnostic::at(
+                            "numeric negation requires a num operand",
+                            *span,
+                        ));
+                        None
+                    }
+                }
+                UnaryOp::Not => {
+                    let ty = self.infer_expr_allow_raw_strings(expr)?;
+                    if ty == Type::Bool {
+                        Some(Type::Bool)
+                    } else {
+                        self.diagnostics.push(Diagnostic::at(
+                            "logical not requires a bool operand",
+                            *span,
+                        ));
+                        None
+                    }
+                }
+                UnaryOp::Len => {
+                    let ty = self.infer_expr_allow_raw_strings(expr)?;
+                    if matches!(ty, Type::List(_)) {
+                        Some(Type::Num)
+                    } else {
+                        self.diagnostics.push(Diagnostic::at(
+                            "list length requires a list operand",
+                            *span,
+                        ));
+                        None
+                    }
+                }
+            },
+            Expr::Binary {
+                left,
+                op,
+                right,
+                span,
+            } => self.infer_binary(left, *op, right, *span),
+        }
+    }
+
     fn check_append_rhs(
         &mut self,
         expr: &Expr,
@@ -530,16 +583,6 @@ impl Checker {
         if let Some(scope) = self.local_scopes.last_mut() {
             scope.insert(name, ty);
         }
-    }
-}
-
-fn contains_raw_string(expr: &Expr) -> bool {
-    match expr {
-        Expr::String { .. } => true,
-        Expr::List { elements, .. } => elements.iter().any(contains_raw_string),
-        Expr::Unary { expr, .. } => contains_raw_string(expr),
-        Expr::Binary { left, right, .. } => contains_raw_string(left) || contains_raw_string(right),
-        _ => false,
     }
 }
 

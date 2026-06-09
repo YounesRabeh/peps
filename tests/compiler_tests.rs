@@ -75,6 +75,19 @@ fn compiles_arithmetic_precedence() {
 }
 
 #[test]
+fn compiles_string_concatenation() {
+    assert_eq!(
+        compile_source("📝 🟰 💬 hello 💬 ➕ 💬 world 💬 🔚").expect("source should compile"),
+        vec![
+            Instruction::LoadConst(Value::Str(" hello ".to_string())),
+            Instruction::LoadConst(Value::Str(" world ".to_string())),
+            Instruction::Add,
+            Instruction::StoreVar("📝".to_string()),
+        ]
+    );
+}
+
+#[test]
 fn compiles_comparison() {
     assert_eq!(
         compile_source("🐶 🟰 5️⃣ ▶️ 3️⃣ 🔚").expect("source should compile"),
