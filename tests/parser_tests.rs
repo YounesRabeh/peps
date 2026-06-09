@@ -35,6 +35,14 @@ fn parses_newline_separated_statements_without_statement_end_token() {
 }
 
 #[test]
+fn parses_comments_between_statements() {
+    let program = parse("🐶 🟰 5️⃣ // keep this value\n📢 🐶");
+    assert_eq!(program.statements.len(), 2);
+    assert!(matches!(program.statements[0], Stmt::Assign { .. }));
+    assert!(matches!(program.statements[1], Stmt::Print { .. }));
+}
+
+#[test]
 fn parses_arithmetic_precedence() {
     let program = parse("🐶 🟰 1️⃣ ➕ 2️⃣ ✖️ 3️⃣ 🔚");
     let Stmt::Assign { expr, .. } = &program.statements[0] else {

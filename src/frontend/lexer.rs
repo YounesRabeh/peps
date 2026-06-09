@@ -7,6 +7,7 @@
 //! column positions.
 //!
 //! Newlines and explicit `🔚` tokens both become [`TokenKind::StatementEnd`].
+//! Line comments starting with `//` are skipped until the end of the line.
 //! Consecutive separators are collapsed by newline handling so the parser can
 //! accept blank lines without seeing empty statements.
 
@@ -110,6 +111,11 @@ impl Lexer {
 
             if is_whitespace(&grapheme.text) {
                 self.advance();
+                continue;
+            }
+
+            if self.is_line_comment_start() {
+                self.skip_line_comment();
                 continue;
             }
 
@@ -230,6 +236,22 @@ impl Lexer {
         }
 
         Token::new(TokenKind::Identifier(name), start.merge(end))
+    }
+
+    fn is_line_comment_start(&self) -> bool {
+        matches!(
+            (self.peek().text.as_str(), self.peek_next().map(|grapheme| grapheme.text.as_str())),
+            ("/", Some("/"))
+        )
+    }
+
+    fn skip_line_comment(&mut self) {
+        self.advance();
+        self.advance();
+
+        while !self.is_at_end() && !is_newline(&self.peek().text) {
+            self.advance();
+        }
     }
 
     fn report_invalid_character(&mut self, grapheme: &Grapheme) {

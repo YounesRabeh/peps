@@ -157,3 +157,19 @@ fn lexes_newline_as_statement_separator() {
         ]
     );
 }
+
+#[test]
+fn skips_line_comments() {
+    assert_eq!(
+        kinds("🐶 🟰 1️⃣ // ignored\n📢 🐶"),
+        vec![
+            TokenKind::Identifier("🐶".to_string()),
+            TokenKind::Assign,
+            TokenKind::Number(1),
+            TokenKind::StatementEnd,
+            TokenKind::Print,
+            TokenKind::Identifier("🐶".to_string()),
+            TokenKind::Eof,
+        ]
+    );
+}
