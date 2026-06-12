@@ -7,6 +7,7 @@ use crate::{
     semantic::CheckedProgram,
 };
 
+/// Compile a semantically checked Peps program into bytecode instructions.
 pub fn compile(checked: CheckedProgram) -> Result<Vec<Instruction>, Vec<Diagnostic>> {
     let mut compiler = Compiler {
         instructions: Vec::new(),
@@ -36,6 +37,7 @@ struct LoopContext {
 }
 
 impl Compiler {
+    /// Compile one statement and append its bytecode to the instruction stream.
     fn compile_statement(&mut self, statement: &Stmt) {
         match statement {
             Stmt::Assign { name, expr, .. } => {
@@ -109,6 +111,7 @@ impl Compiler {
         }
     }
 
+    /// Compile a `for` statement according to the kind of source it iterates.
     fn compile_for(&mut self, variable: &str, source: &ForSource, body: &[Stmt]) {
         match source {
             ForSource::List { expr, .. } => self.compile_for_list(variable, expr, body),
@@ -116,6 +119,7 @@ impl Compiler {
         }
     }
 
+    /// Compile a `for` loop over a list using generated list, index, and length variables.
     fn compile_for_list(&mut self, variable: &str, source: &Expr, body: &[Stmt]) {
         let id = self.next_loop_id();
         let list_name = format!("__peps_for_{}_list", id);
@@ -160,6 +164,7 @@ impl Compiler {
         self.end_loop(continue_target, after_loop);
     }
 
+    /// Compile a numeric range loop with an exclusive upper bound.
     fn compile_for_range(&mut self, variable: &str, start: &Expr, end: &Expr, body: &[Stmt]) {
         let id = self.next_loop_id();
         let index_name = format!("__peps_for_{}_index", id);
@@ -198,6 +203,7 @@ impl Compiler {
         self.end_loop(continue_target, after_loop);
     }
 
+    /// Compile an expression so its value is left on the VM stack.
     fn compile_expr(&mut self, expr: &Expr) {
         match expr {
             Expr::Number { value, .. } => self
@@ -283,6 +289,7 @@ impl Compiler {
         }
     }
 
+    /// Compile logical not by branching to explicit boolean constants.
     fn compile_unary_not(&mut self, expr: &Expr) {
         self.compile_expr(expr);
         let jump_if_false = self.emit_placeholder_jump_if_false();
@@ -295,6 +302,7 @@ impl Compiler {
         self.patch_jump(jump_end, after);
     }
 
+    /// Compile short-circuiting logical `and`.
     fn compile_logical_and(&mut self, left: &Expr, right: &Expr) {
         self.compile_expr(left);
         let left_false = self.emit_placeholder_jump_if_false();
@@ -310,6 +318,7 @@ impl Compiler {
         self.patch_jump(jump_end, after);
     }
 
+    /// Compile short-circuiting logical `or`.
     fn compile_logical_or(&mut self, left: &Expr, right: &Expr) {
         self.compile_expr(left);
         let left_false = self.emit_placeholder_jump_if_false();
@@ -330,16 +339,19 @@ impl Compiler {
         self.patch_jump(jump_end_right, after);
     }
 
+    /// Emit a conditional jump with a placeholder target and return its index.
     fn emit_placeholder_jump_if_false(&mut self) -> usize {
         let index = self.instructions.len();
         self.instructions.push(Instruction::JumpIfFalse(usize::MAX));
         index
     }
 
+    /// Start collecting `break` and `continue` jumps for a loop body.
     fn begin_loop(&mut self) {
         self.loop_stack.push(LoopContext::default());
     }
 
+    /// Patch loop `continue` and `break` jumps, then leave the current loop context.
     fn end_loop(&mut self, continue_target: usize, break_target: usize) {
         let context = self
             .loop_stack
@@ -353,6 +365,7 @@ impl Compiler {
         }
     }
 
+    /// Emit a placeholder jump that will later target the end of the current loop.
     fn emit_loop_break(&mut self) {
         let jump = self.emit_placeholder_jump();
         let context = self
@@ -362,6 +375,7 @@ impl Compiler {
         context.break_jumps.push(jump);
     }
 
+    /// Emit a placeholder jump that will later target the current loop increment.
     fn emit_loop_continue(&mut self) {
         let jump = self.emit_placeholder_jump();
         let context = self
@@ -371,18 +385,21 @@ impl Compiler {
         context.continue_jumps.push(jump);
     }
 
+    /// Return a unique numeric suffix for generated loop variables.
     fn next_loop_id(&mut self) -> usize {
         let id = self.loop_counter;
         self.loop_counter += 1;
         id
     }
 
+    /// Emit an unconditional jump with a placeholder target and return its index.
     fn emit_placeholder_jump(&mut self) -> usize {
         let index = self.instructions.len();
         self.instructions.push(Instruction::Jump(usize::MAX));
         index
     }
 
+    /// Replace a placeholder jump target with its final instruction index.
     fn patch_jump(&mut self, index: usize, target: usize) {
         match &mut self.instructions[index] {
             Instruction::Jump(destination) | Instruction::JumpIfFalse(destination) => {
