@@ -7,27 +7,44 @@ use crate::{
     diagnostic::Diagnostic,
 };
 
+/// Default maximum number of bytecode instructions a program may execute.
+///
+/// The limit prevents non-terminating loops from running forever in the runtime.
 pub const DEFAULT_STEP_LIMIT: usize = 100_000;
 
+/// Runtime representation of values stored on the VM stack and in variables.
 #[derive(Debug, Clone, PartialEq)]
 pub enum RuntimeValue {
+    /// Integer numeric value.
     Num(i64),
+    /// Text value.
     Str(String),
+    /// Boolean value.
     Bool(bool),
+    /// Emoji literal value.
     Emoji(String),
+    /// List value containing runtime values in source order.
     List(Vec<RuntimeValue>),
 }
 
+/// Runtime failure with any output produced before the error.
 #[derive(Debug, Clone, PartialEq)]
 pub struct RunError {
+    /// Lines printed before execution failed.
     pub output: Vec<String>,
+    /// Runtime diagnostics explaining the failure.
     pub diagnostics: Vec<Diagnostic>,
 }
 
+/// Execute bytecode with [`DEFAULT_STEP_LIMIT`].
 pub fn execute(instructions: &[Instruction]) -> Result<Vec<String>, RunError> {
     execute_with_step_limit(instructions, DEFAULT_STEP_LIMIT)
 }
 
+/// Execute bytecode with a caller-provided instruction step limit.
+///
+/// The returned vector contains each value printed by the program. If execution
+/// fails, [`RunError::output`] preserves any prints that happened first.
 pub fn execute_with_step_limit(
     instructions: &[Instruction],
     step_limit: usize,
@@ -45,16 +62,24 @@ pub fn execute_with_step_limit(
 }
 
 struct Vm<'a> {
+    /// Compiled bytecode being executed.
     instructions: &'a [Instruction],
+    /// Current instruction pointer.
     ip: usize,
+    /// Operand stack used by bytecode instructions.
     stack: Vec<RuntimeValue>,
+    /// Runtime variable storage keyed by Peps variable name.
     variables: HashMap<String, RuntimeValue>,
+    /// Formatted print output accumulated during execution.
     output: Vec<String>,
+    /// Number of instructions executed so far.
     steps: usize,
+    /// Maximum number of instructions allowed for this run.
     step_limit: usize,
 }
 
 impl Vm<'_> {
+    /// Run instructions until completion, an error, or the step limit.
     fn run(&mut self) -> Result<Vec<String>, RunError> {
         while self.ip < self.instructions.len() {
             if self.steps >= self.step_limit {
@@ -165,6 +190,7 @@ impl Vm<'_> {
         Ok(std::mem::take(&mut self.output))
     }
 
+    /// Apply a numeric binary operation to the top two stack values.
     fn binary_num(
         &mut self,
         operation: &'static str,
@@ -177,6 +203,7 @@ impl Vm<'_> {
         Ok(())
     }
 
+    /// Add numbers or concatenate text values.
     fn add_values(&mut self) -> Result<(), RunError> {
         let right = self.pop("add")?;
         let left = self.pop("add")?;
@@ -193,6 +220,7 @@ impl Vm<'_> {
         Ok(())
     }
 
+    /// Apply a numeric comparison and push the resulting boolean.
     fn compare_num(
         &mut self,
         operation: &'static str,
@@ -205,6 +233,7 @@ impl Vm<'_> {
         Ok(())
     }
 
+    /// Compare scalar runtime values for equality or inequality.
     fn equality(&mut self, invert: bool) -> Result<(), RunError> {
         let right = self.pop("compare equality")?;
         let left = self.pop("compare equality")?;
@@ -224,12 +253,14 @@ impl Vm<'_> {
         Ok(())
     }
 
+    /// Pop one value from the operand stack.
     fn pop(&mut self, operation: &'static str) -> Result<RuntimeValue, RunError> {
         self.stack
             .pop()
             .ok_or_else(|| self.error(format!("stack underflow during {}", operation)))
     }
 
+    /// Pop and type-check a numeric stack value.
     fn pop_num(&mut self, operation: &'static str) -> Result<i64, RunError> {
         match self.pop(operation)? {
             RuntimeValue::Num(value) => Ok(value),
@@ -237,6 +268,7 @@ impl Vm<'_> {
         }
     }
 
+    /// Pop and type-check a boolean stack value.
     fn pop_bool(&mut self, operation: &'static str) -> Result<bool, RunError> {
         match self.pop(operation)? {
             RuntimeValue::Bool(value) => Ok(value),
@@ -244,6 +276,7 @@ impl Vm<'_> {
         }
     }
 
+    /// Ensure a jump target points inside the instruction stream or just past it.
     fn validate_jump(&self, target: usize) -> Result<(), RunError> {
         if target <= self.instructions.len() {
             Ok(())
@@ -252,10 +285,12 @@ impl Vm<'_> {
         }
     }
 
+    /// Return a runtime error result from the current VM state.
     fn fail<T>(&mut self, message: impl Into<String>) -> Result<T, RunError> {
         Err(self.error(message))
     }
 
+    /// Build a runtime error while preserving output produced so far.
     fn error(&self, message: impl Into<String>) -> RunError {
         RunError {
             output: self.output.clone(),
@@ -265,6 +300,7 @@ impl Vm<'_> {
 }
 
 impl From<Value> for RuntimeValue {
+    /// Convert a bytecode constant into its runtime representation.
     fn from(value: Value) -> Self {
         match value {
             Value::Num(value) => RuntimeValue::Num(value),
@@ -275,6 +311,7 @@ impl From<Value> for RuntimeValue {
     }
 }
 
+/// Format a runtime value the way Peps `print` emits it.
 fn format_runtime_value(value: &RuntimeValue) -> String {
     match value {
         RuntimeValue::Num(value) => value.to_string(),
