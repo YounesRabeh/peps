@@ -9,13 +9,24 @@ use crate::{
     types::Type,
 };
 
+/// A successfully checked program and the semantic metadata needed downstream.
 #[derive(Debug, Clone)]
 pub struct CheckedProgram {
+    /// The original parsed program.
     pub program: Program,
+    /// Top-level declarations discovered during semantic analysis.
     pub symbols: SymbolTable,
+    /// Byte spans of unresolved identifiers that should be treated as emoji
+    /// literals instead of variables.
     pub emoji_literals: HashSet<(usize, usize)>,
 }
 
+/// Validate declarations and infer static types for a parsed Peps program.
+///
+/// On success this returns the original program with a populated symbol table
+/// and the unresolved identifier spans that the compiler should lower as emoji
+/// literals. On failure it returns every diagnostic collected while walking the
+/// tree.
 pub fn check(program: Program) -> Result<CheckedProgram, Vec<Diagnostic>> {
     let mut checker = Checker {
         symbols: SymbolTable::new(),
@@ -40,13 +51,18 @@ pub fn check(program: Program) -> Result<CheckedProgram, Vec<Diagnostic>> {
 }
 
 struct Checker {
+    /// Top-level variables declared with assignment statements.
     symbols: SymbolTable,
+    /// Block-local bindings, currently used for loop variables.
     local_scopes: Vec<HashMap<String, Type>>,
+    /// Semantic errors collected during the pass.
     diagnostics: Vec<Diagnostic>,
+    /// Unresolved identifier spans that are valid emoji literal expressions.
     emoji_literals: HashSet<(usize, usize)>,
 }
 
 impl Checker {
+    /// Check one statement and recursively walk any nested block it owns.
     fn check_statement(&mut self, statement: &Stmt, depth: usize, loop_depth: usize) {
         match statement {
             Stmt::Assign { name, expr, span } => {
@@ -137,6 +153,7 @@ impl Checker {
         }
     }
 
+    /// Reject loop variables that would shadow visible bindings.
     fn check_loop_variable_available(&mut self, variable: &str, span: crate::source::Span) -> bool {
         if self.lookup(variable).is_some() {
             self.diagnostics.push(Diagnostic::at(
@@ -149,6 +166,7 @@ impl Checker {
         }
     }
 
+    /// Infer the item type produced by a `for` source.
     fn infer_for_source(&mut self, source: &ForSource) -> Option<Type> {
         match source {
             ForSource::List { expr, span } => match self.infer_expr(expr) {
@@ -174,6 +192,7 @@ impl Checker {
         }
     }
 
+    /// Ensure a control-flow condition is boolean.
     fn check_condition(&mut self, condition: &Expr, kind: &str, span: crate::source::Span) {
         if let Some(ty) = self.infer_expr(condition) {
             if ty != Type::Bool {
@@ -183,6 +202,7 @@ impl Checker {
         }
     }
 
+    /// Validate append-assignment syntax against an existing list variable.
     fn check_append_statement(&mut self, name: &str, expr: &Expr, span: crate::source::Span) {
         let Some(target_ty) = self.lookup(name).cloned() else {
             self.diagnostics.push(Diagnostic::at(
@@ -203,6 +223,7 @@ impl Checker {
         self.check_append_rhs(expr, &element_type, span);
     }
 
+    /// Infer an assignment right-hand side using declaration-only literal rules.
     fn infer_assignment_rhs(&mut self, expr: &Expr) -> Option<Type> {
         match expr {
             Expr::String { .. } => Some(Type::Str),
@@ -218,6 +239,7 @@ impl Checker {
         }
     }
 
+    /// Infer an expression type under normal expression rules.
     fn infer_expr(&mut self, expr: &Expr) -> Option<Type> {
         match expr {
             Expr::Number { .. } => Some(Type::Num),
@@ -408,6 +430,7 @@ impl Checker {
         }
     }
 
+    /// Infer a homogeneous list type and reject unsupported list shapes.
     fn infer_list(
         &mut self,
         elements: &[Expr],
@@ -467,6 +490,7 @@ impl Checker {
         element_type.map(|ty| Type::List(Box::new(ty)))
     }
 
+    /// Infer an expression type in a context where raw string literals are legal.
     fn infer_expr_allow_raw_strings(&mut self, expr: &Expr) -> Option<Type> {
         match expr {
             Expr::String { .. } => Some(Type::Str),
@@ -548,6 +572,7 @@ impl Checker {
         }
     }
 
+    /// Infer append RHS type, applying string-list literal exceptions when needed.
     fn infer_append_rhs_type(&mut self, expr: &Expr, expected_type: &Type) -> Option<Type> {
         match (expected_type, expr) {
             (Type::Str, Expr::String { .. }) => Some(Type::Str),
@@ -562,6 +587,7 @@ impl Checker {
         }
     }
 
+    /// Look up a name in local scopes first, then top-level declarations.
     fn lookup(&self, name: &str) -> Option<&Type> {
         for scope in self.local_scopes.iter().rev() {
             if let Some(ty) = scope.get(name) {
@@ -571,14 +597,17 @@ impl Checker {
         self.symbols.get(name)
     }
 
+    /// Start a new block-local scope.
     fn push_scope(&mut self) {
         self.local_scopes.push(HashMap::new());
     }
 
+    /// End the innermost block-local scope.
     fn pop_scope(&mut self) {
         self.local_scopes.pop();
     }
 
+    /// Insert a binding into the innermost local scope.
     fn insert_local(&mut self, name: String, ty: Type) {
         if let Some(scope) = self.local_scopes.last_mut() {
             scope.insert(name, ty);
@@ -586,6 +615,7 @@ impl Checker {
     }
 }
 
+/// Return the display symbol used in diagnostics for a binary operator.
 fn op_symbol(op: BinaryOp) -> &'static str {
     match op {
         BinaryOp::Add => "➕",
