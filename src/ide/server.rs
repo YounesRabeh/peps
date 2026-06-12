@@ -13,27 +13,41 @@ use tower_http::{cors::CorsLayer, services::ServeDir};
 
 use crate::{diagnostic::Diagnostic, run_source};
 
+/// Address used by the local development IDE server.
 const DEFAULT_ADDR: &str = "127.0.0.1:5179";
+/// Fallback page shown when the built browser frontend is unavailable.
 const MISSING_FRONTEND_HTML: &str = include_str!("missing_frontend.html");
 
+/// JSON payload sent by the browser IDE when running Peps source.
 #[derive(Debug, Deserialize)]
 pub struct RunRequest {
+    /// Source code to compile and execute.
     pub source: String,
 }
 
+/// JSON response returned by the IDE run endpoint.
 #[derive(Debug, Serialize, PartialEq, Eq)]
 pub struct RunResponse {
+    /// Whether compilation and execution completed successfully.
     pub ok: bool,
+    /// Lines printed by the program before success or failure.
     pub output: Vec<String>,
+    /// Compiler or runtime diagnostics formatted for the IDE.
     pub diagnostics: Vec<IdeDiagnostic>,
 }
 
+/// Diagnostic shape consumed by the browser IDE.
 #[derive(Debug, Serialize, PartialEq, Eq)]
 pub struct IdeDiagnostic {
+    /// Human-readable diagnostic message.
     pub message: String,
+    /// One-based source line, when a source span is available.
     pub line: Option<usize>,
+    /// One-based source column, when a source span is available.
     pub column: Option<usize>,
+    /// Byte offset where the diagnostic span starts.
     pub start: Option<usize>,
+    /// Byte offset where the diagnostic span ends.
     pub end: Option<usize>,
 }
 
@@ -67,6 +81,7 @@ pub async fn run() -> anyhow::Result<()> {
     Ok(())
 }
 
+/// Locate frontend assets relative to the workspace or installed binary.
 fn frontend_dist_dir() -> PathBuf {
     let workspace_dist = PathBuf::from("ide/dist");
     if workspace_dist.exists() {
@@ -90,6 +105,11 @@ fn frontend_dist_dir() -> PathBuf {
     workspace_dist
 }
 
+/// Build the IDE HTTP router for the given frontend asset directory.
+///
+/// The router always exposes `/api/run`. If `dist_dir` exists, static files are
+/// served from it; otherwise every non-API route returns the bundled fallback
+/// page that explains how to build the frontend.
 pub fn router(dist_dir: PathBuf) -> Router {
     let router = Router::new()
         .route("/api/run", post(run_handler))
@@ -102,6 +122,7 @@ pub fn router(dist_dir: PathBuf) -> Router {
     }
 }
 
+/// Compile and execute Peps source submitted by the browser IDE.
 pub async fn run_handler(Json(request): Json<RunRequest>) -> Json<RunResponse> {
     // Keep the IDE thin: compiler and runtime behavior lives behind run_source.
     match run_source(&request.source) {
@@ -122,11 +143,13 @@ pub async fn run_handler(Json(request): Json<RunRequest>) -> Json<RunResponse> {
     }
 }
 
+/// Return the fallback HTML shown when frontend assets are missing.
 async fn missing_frontend_handler() -> impl IntoResponse {
     Html(MISSING_FRONTEND_HTML)
 }
 
 impl From<&Diagnostic> for IdeDiagnostic {
+    /// Convert an internal diagnostic into the JSON shape expected by the IDE.
     fn from(diagnostic: &Diagnostic) -> Self {
         Self {
             message: diagnostic.message.clone(),
