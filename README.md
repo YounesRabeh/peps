@@ -1,6 +1,4 @@
 ![Peps banner](.github/PEPS-logo.png)
-
-# Peps
 Peps is an emoji-first programming language with:
 - a Rust compiler/runtime for `.peps` files
 - a local browser IDE powered by the same runtime
