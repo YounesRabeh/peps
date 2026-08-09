@@ -299,7 +299,7 @@ jobs:
         uses: softprops/action-gh-release@v3
         with:
           tag_name: ${{ needs.prepare.outputs.tag }}
-          name: Peps ${{ needs.prepare.outputs.version }}
+          name: Peps v${{ needs.prepare.outputs.version }}
           draft: true
           generate_release_notes: true
           fail_on_unmatched_files: true
