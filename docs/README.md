@@ -11,7 +11,8 @@ distribution artifacts, and prepare a release.
 | `tests/` | Rust integration tests for every language layer |
 | `ide/` | React/Vite browser IDE and its tests |
 | `docs/` | Learning guides shown in the README and IDE |
-| `examples/` | Runnable Peps programs used by the learning guides |
+| [`examples/basic/`](../examples/basic/) | Runnable Peps programs used by the learning guides |
+| [`examples/algorithms/`](../examples/algorithms/) | Five complete, well-known algorithm implementations |
 | `scripts/` | Build and packaging entry points |
 | `dist/` | Generated release artifacts; rebuild instead of editing these files |
 
@@ -43,14 +44,14 @@ copy when available, otherwise download it to `.tools/` with `curl`.
 Run an example without producing a release package:
 
 ```sh
-cargo run -- examples/01-variables.peps
+cargo run -- examples/basic/01-variables.peps
 ```
 
 Build just the release CLI binary:
 
 ```sh
 cargo build --release --bin peps
-./target/release/peps examples/01-variables.peps
+./target/release/peps examples/basic/01-variables.peps
 ```
 
 To run the browser IDE during development:
@@ -80,7 +81,7 @@ Also run every numbered learning example. This catches documentation examples
 that no longer match the language:
 
 ```sh
-for example_file in examples/0*.peps; do
+for example_file in examples/basic/*.peps examples/algorithms/*.peps; do
   cargo run --quiet -- "$example_file" || exit 1
 done
 ```
@@ -129,7 +130,7 @@ This creates:
 Verify the CLI artifact before release:
 
 ```sh
-./dist/compiler/linux/linux.sh examples/01-variables.peps
+./dist/compiler/linux/linux.sh examples/basic/01-variables.peps
 ```
 
 Start the IDE AppImage and confirm that it opens at `http://127.0.0.1:5179`:

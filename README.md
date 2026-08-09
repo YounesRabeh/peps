@@ -6,7 +6,7 @@ Peps is an emoji-first programming language with a Rust compiler/runtime for
 ## Get Started
 
 Follow the guides in order. Every guide has a matching runnable program in
-[`examples/`](examples/).
+[`examples/basic/`](examples/basic/).
 
 1. [Variables](docs/01-variables.md) 
 2. [Expressions and output](docs/02-expressions-and-output.md)
@@ -17,10 +17,16 @@ Follow the guides in order. Every guide has a matching runnable program in
 7. [Functions](docs/07-functions.md) 
 8. [Execution model](docs/08-execution-model.md)
 
+## Examples
+
+- [Basic examples](examples/basic/) progress from variables to functions.
+- [Algorithms](examples/algorithms/) contains five well-known algorithms
+  recreated in Peps.
+
 Run any example from the project root:
 
 ```sh
-cargo run -- examples/01-variables.peps
+cargo run -- examples/basic/01-variables.peps
 ```
 
 ## Core Syntax
@@ -56,12 +62,6 @@ cargo run -- examples/01-variables.peps
 | `🤝` / `🔀` / `🚫` | logical operators (AND/OR/NOT) | `✅ 🤝 ❌` |
 
 ## Run, Test, and Build
-
-Run a Peps program directly from source:
-
-```sh
-cargo run -- examples/01-variables.peps
-```
 
 Run the Rust and browser IDE checks before opening a pull request or making a
 release:

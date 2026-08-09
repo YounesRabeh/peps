@@ -22,6 +22,6 @@ numeric range. The end of a range is exclusive.
 
 `🛑` stops the nearest loop and `⏭️` skips to its next iteration. Iterator
 names are local to the loop and cannot conflict with an outer binding. See the
-[loop example](../examples/04-loops.peps).
+[loop example](../examples/basic/04-loops.peps).
 ___
 [Lists](05-lists.md).

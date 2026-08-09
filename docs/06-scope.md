@@ -18,6 +18,6 @@ After the block, `🐶` is `2`, but `🐱` is no longer a variable. A later `�
 expression is interpreted as the literal emoji `🐱`. Sibling `if` and `else`
 branches have independent scopes.
 
-Explore [the scope example](../examples/06-scope.peps).
+Explore [the scope example](../examples/basic/06-scope.peps).
 ___
 [Functions](07-functions.md).

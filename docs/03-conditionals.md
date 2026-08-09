@@ -16,6 +16,6 @@ An `if` starts with `🤔`, followed by a boolean expression and a block between
 
 Conditions must evaluate to `✅` or `❌`. Blocks create a new lexical scope;
 the scope rules are covered in guide 6. Run the
-[conditional example](../examples/03-conditionals.peps) before moving to
+[conditional example](../examples/basic/03-conditionals.peps) before moving to
 ___
 Next: [Loops](04-loops.md).

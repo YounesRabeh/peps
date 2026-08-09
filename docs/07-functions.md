@@ -28,6 +28,6 @@ compile-time type checks. Parameters and function-local variables cannot shadow
 a visible global; function and variable names are separate namespaces, and
 functions cannot be stored, passed, or returned as values.
 
-Run [the function example](../examples/07-functions.peps).
+Run [the function example](../examples/basic/07-functions.peps).
 ___
 [Execution model](08-execution-model.md).

@@ -27,6 +27,6 @@ Text is delimited by `💬` and can be concatenated with `➕`.
 Raw text literals are used while assigning or concatenating text; print the
 variable that holds the resulting text rather than printing a raw literal.
 
-Try [the complete example](../examples/02-expressions-and-output.peps).
+Try [the complete example](../examples/basic/02-expressions-and-output.peps).
 ___
 Next: [Conditionals](03-conditionals.md).

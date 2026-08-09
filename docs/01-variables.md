@@ -18,6 +18,6 @@ Peps infers a value's type. Reassignment may intentionally change that type:
 ```
 
 An unbound emoji used as an expression is an emoji literal, so `📢 🦊` prints
-`🦊`. See the [matching example](../examples/01-variables.peps).
+`🦊`. See the [matching example](../examples/basic/01-variables.peps).
 ___
 Next: [Expressions and output](02-expressions-and-output.md).
