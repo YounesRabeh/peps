@@ -80,12 +80,17 @@ Develop the browser IDE from the `ide` directory:
 
 ```sh
 cd ide
+pnpm install --frozen-lockfile
 pnpm dev
 ```
 
-This starts both Vite and the Rust compiler API. Open the Vite address it
-prints (normally `http://127.0.0.1:5173`); Run requests are forwarded to the
-compiler server at `http://127.0.0.1:5179`. Press `Ctrl+C` to stop both.
+This builds the Rust compiler as WebAssembly and starts Vite. Open the address
+it prints (normally `http://127.0.0.1:5173`). Programs execute locally in the
+browser, so no compiler server is required.
+
+The hosted IDE is deployed to
+[`https://younesrabeh.github.io/peps/`](https://younesrabeh.github.io/peps/)
+by the GitHub Pages workflow.
 
 For platform requirements, all artifact paths, Linux-to-Windows cross-builds,
 verification, archives, and release uploads, see

@@ -54,16 +54,40 @@ cargo build --release --bin peps
 ./target/release/peps examples/basic/01-variables.peps
 ```
 
-To develop the browser IDE, run this from the `ide` directory:
+Install the Rust WebAssembly target once. With rustup:
+
+```sh
+rustup target add wasm32-unknown-unknown
+```
+
+On Fedora when Rust is installed from the system packages:
+
+```sh
+sudo dnf install rust-std-static-wasm32-unknown-unknown
+```
+
+Then develop the browser IDE from the `ide` directory:
 
 ```sh
 cd ide
+pnpm install --frozen-lockfile
 pnpm dev
 ```
 
-This starts both the Rust compiler API and Vite. Open the Vite URL it prints
-(normally `http://127.0.0.1:5173`); the frontend forwards `/api` requests to
-`http://127.0.0.1:5179`. Press `Ctrl+C` to stop both processes.
+`pnpm dev` builds the compiler as WebAssembly and starts Vite. Open the URL it
+prints (normally `http://127.0.0.1:5173`). Programs execute entirely in the
+browser and are not sent to a backend. Press `Ctrl+C` to stop Vite.
+
+## GitHub Pages IDE
+
+The Pages workflow in [`.github/workflows/pages.yml`](../.github/workflows/pages.yml)
+tests and builds the browser IDE on pushes to `main` or `dev`, then deploys it
+to [`https://younesrabeh.github.io/peps/`](https://younesrabeh.github.io/peps/).
+
+To enable the first deployment, open the repository's GitHub settings, choose
+**Pages**, and set **Source** to **GitHub Actions**. The deployment contains only
+static HTML, CSS, JavaScript, and WebAssembly. It has no server, database, or
+compiler API, and user programs remain on the user's device.
 
 ## Test before building artifacts
 
