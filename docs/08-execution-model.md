@@ -1,0 +1,20 @@
+# 8. Execution model
+
+Statements are separated by newlines. `🔚` is an optional explicit statement
+separator. `//` begins a line comment.
+
+```peps
+🐶 🟰 1️⃣ // this is a comment
+🐶 🟰 🐶 ➕ 1️⃣ 🔚
+📢 🐶
+```
+
+Numbers are arbitrary-precision integers, so they do not overflow at `i64`
+limits. Together with mutable variables, conditionals, and unrestricted while
+loops, Peps can simulate a two-counter Minsky machine and is Turing complete
+under the usual unbounded-memory assumption.
+
+The compiler and command-line runner have no instruction limit. The browser
+IDE applies a 100,000-instruction safety limit, so stop or correct an accidental
+infinite loop before it reaches that limit. Run the
+[execution example](../examples/08-execution-model.peps).

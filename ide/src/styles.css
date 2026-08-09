@@ -83,13 +83,20 @@ button {
   border-right: 1px solid #243246;
 }
 
-.output-panel {
+.runner-sidebar {
   min-width: 340px;
   max-width: 44%;
   flex: 1.1;
+  display: grid;
+  grid-template-rows: minmax(180px, 0.8fr) minmax(250px, 1.2fr);
+  background: #0e1826;
+}
+
+.output-panel {
   padding: 14px;
   overflow: auto;
   background: #0e1826;
+  border-bottom: 1px solid #243246;
 }
 
 .output-header {
@@ -179,6 +186,108 @@ button {
   background: #3a1a1f;
 }
 
+.docs-panel {
+  min-height: 0;
+  padding: 14px;
+  overflow: auto;
+  background: #101c2b;
+}
+
+.docs-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.docs-header h2,
+.docs-content h3 {
+  margin: 0;
+  font-size: 14px;
+}
+
+.docs-header p {
+  margin: 4px 0 0;
+  color: #8fa2b8;
+  font-size: 12px;
+}
+
+.docs-progress {
+  color: #c4b5fd;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.docs-nav {
+  display: flex;
+  gap: 5px;
+  margin: 12px 0;
+  overflow-x: auto;
+  padding-bottom: 2px;
+}
+
+.docs-nav-item {
+  flex: 0 0 auto;
+  border: 1px solid #31445d;
+  border-radius: 6px;
+  padding: 5px 7px;
+  background: #142232;
+  color: #b8c8da;
+  cursor: pointer;
+  font-size: 11px;
+}
+
+.docs-nav-item span {
+  margin-right: 4px;
+  color: #8fa2b8;
+}
+
+.docs-nav-item:hover,
+.docs-nav-item.active {
+  border-color: #6d5ea5;
+  background: #282146;
+  color: #f0edff;
+}
+
+.docs-nav-item.active span {
+  color: #c4b5fd;
+}
+
+.docs-content {
+  border: 1px solid #243b53;
+  border-radius: 8px;
+  padding: 12px;
+  background: #0b1623;
+}
+
+.docs-content p,
+.docs-content ul {
+  margin: 8px 0 0;
+  color: #c7d5e5;
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.docs-content ul {
+  padding-left: 18px;
+}
+
+.load-example-button {
+  margin-top: 12px;
+  border: 1px solid #406a91;
+  border-radius: 6px;
+  padding: 7px 9px;
+  background: #173b5a;
+  color: #e7f3ff;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.load-example-button:hover {
+  background: #20517a;
+}
+
 @media (max-width: 820px) {
   .workbench {
     flex-direction: column;
@@ -190,9 +299,10 @@ button {
     border-bottom: 1px solid #243246;
   }
 
-  .output-panel {
+  .runner-sidebar {
     min-width: 0;
     max-width: none;
+    grid-template-rows: minmax(190px, auto) minmax(280px, auto);
   }
 }
 

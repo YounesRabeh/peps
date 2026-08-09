@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { runPepsSource, type RunResponse } from "./api";
 import { EditorPane } from "./components/EditorPane";
+import { DocsPanel } from "./components/DocsPanel";
 import { OutputPanel } from "./components/OutputPanel";
 import { Toolbar } from "./components/Toolbar";
 import { BASIC_SAMPLE } from "./examples";
@@ -31,7 +32,10 @@ export function App() {
       <Toolbar running={running} onRun={handleRun} />
       <div className="workbench">
         <EditorPane source={source} onChange={setSource} />
-        <OutputPanel running={running} response={response} error={error} />
+        <section className="runner-sidebar" aria-label="Run results and documentation">
+          <OutputPanel running={running} response={response} error={error} />
+          <DocsPanel onLoadExample={setSource} />
+        </section>
       </div>
     </main>
   );

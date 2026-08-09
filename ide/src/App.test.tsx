@@ -44,4 +44,15 @@ describe("App", () => {
       expect(screen.getByText("5")).toBeInTheDocument();
     });
   });
+
+  it("keeps the numbered documentation panel in the IDE and loads examples", () => {
+    render(<App />);
+
+    expect(screen.getByRole("heading", { name: "1. Variables" })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "7 Functions" }));
+    expect(screen.getByRole("heading", { name: "7. Functions" })).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Load example into editor" }));
+    expect((screen.getByLabelText("mock editor") as HTMLTextAreaElement).value).toContain("🧩");
+  });
 });
