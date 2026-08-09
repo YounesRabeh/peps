@@ -73,14 +73,10 @@ fn treats_undeclared_emoji_reference_as_literal() {
 }
 
 #[test]
-fn allows_same_type_reassignment() {
-    let checked = check("🐶 🟰 1️⃣ 🔚 🐶 🟰 🐶 ➕ 1️⃣ 🔚").expect("source should check");
-    assert_eq!(checked.symbols.get("🐶"), Some(&Type::Num));
-}
-
-#[test]
-fn rejects_reassignment_with_a_different_type() {
-    assert!(first_error("🐶 🟰 1️⃣ 🔚 🐶 🟰 ✅ 🔚").contains("cannot be assigned a bool value"));
+fn allows_reassignment_with_a_different_type() {
+    let checked = check("🐶 🟰 1️⃣ 🔚 🐶 🟰 ✅ 🔚 🤔 🐶 🔓 📢 🐶 🔚 🔒")
+        .expect("source should check");
+    assert_eq!(checked.symbols.get("🐶"), Some(&Type::Bool));
 }
 
 #[test]
@@ -170,6 +166,13 @@ fn sibling_branches_have_independent_local_declarations() {
 fn allows_nested_block_to_reassign_outer_binding() {
     check("🐶 🟰 1️⃣ 🔚 🤔 ✅ 🔓 🐶 🟰 2️⃣ 🔚 🔒")
         .expect("nested block should update a visible binding");
+}
+
+#[test]
+fn allows_nested_block_to_change_an_outer_binding_type() {
+    let checked = check("🐶 🟰 1️⃣ 🔚 🤔 ✅ 🔓 🐶 🟰 ✅ 🔚 🔒")
+        .expect("nested block should change a visible binding type");
+    assert_eq!(checked.symbols.get("🐶"), Some(&Type::Bool));
 }
 
 #[test]

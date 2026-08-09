@@ -187,7 +187,7 @@ mod tests {
     #[tokio::test]
     async fn api_run_diagnostics() {
         let response = run_handler(Json(RunRequest {
-            source: "🐶 🟰 1️⃣ 🔚 🐶 🟰 ✅ 🔚".to_string(),
+            source: "🐶 🟰 1️⃣ 🔚 🐶 🟰 ✅ 🔚 🐶 🟰 🐶 ➕ 1️⃣ 🔚".to_string(),
         }))
         .await
         .0;

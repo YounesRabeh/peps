@@ -65,21 +65,10 @@ impl Checker {
     /// Check one statement and recursively walk any nested block it owns.
     fn check_statement(&mut self, statement: &Stmt, loop_depth: usize) {
         match statement {
-            Stmt::Assign { name, expr, span } => {
-                let existing_type = self.lookup(name).cloned();
+            Stmt::Assign { name, expr, .. } => {
                 if let Some(assigned_type) = self.infer_assignment_rhs(expr) {
-                    if let Some(existing_type) = existing_type {
-                        if assigned_type != existing_type {
-                            self.diagnostics.push(Diagnostic::at(
-                                format!(
-                                    "variable {} has type {} and cannot be assigned a {} value",
-                                    name,
-                                    type_name(&existing_type),
-                                    type_name(&assigned_type)
-                                ),
-                                *span,
-                            ));
-                        }
+                    if self.lookup(name).is_some() {
+                        self.replace_visible_binding(name, assigned_type);
                     } else if self.local_scopes.is_empty() {
                         self.symbols.insert(name.clone(), assigned_type);
                     } else {
@@ -620,6 +609,17 @@ impl Checker {
             scope.insert(name, ty);
         }
     }
+
+    /// Replace the type of the nearest visible binding after reassignment.
+    fn replace_visible_binding(&mut self, name: &str, ty: Type) {
+        for scope in self.local_scopes.iter_mut().rev() {
+            if scope.contains_key(name) {
+                scope.insert(name.to_string(), ty);
+                return;
+            }
+        }
+        self.symbols.insert(name.to_string(), ty);
+    }
 }
 
 /// Return the display symbol used in diagnostics for a binary operator.
@@ -639,16 +639,5 @@ fn op_symbol(op: BinaryOp) -> &'static str {
         BinaryOp::Gt => "▶️",
         BinaryOp::LtEq => "◀️🟰",
         BinaryOp::GtEq => "▶️🟰",
-    }
-}
-
-/// Return the user-facing name of a static type for diagnostics.
-fn type_name(ty: &Type) -> &'static str {
-    match ty {
-        Type::Num => "num",
-        Type::Str => "text",
-        Type::Bool => "bool",
-        Type::Emoji => "emoji",
-        Type::List(_) => "list",
     }
 }

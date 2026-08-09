@@ -19,7 +19,7 @@ Peps is an emoji-first programming language with:
     🛑
 🔒
 ```
-8. Assignments update the nearest visible variable when its type matches; otherwise they declare a variable in the current scope.
+8. Assignments update the nearest visible variable, including its type; otherwise they declare a variable in the current scope.
 9. Variables declared inside `if`, `else`, `while`, or `for` blocks are visible only in that block and its nested blocks.
 10. `for` iterator names are block-local and cannot reuse the name of an outer variable.
 11. Numbers are arbitrary-precision integers and do not overflow at `i64` limits.
@@ -57,12 +57,12 @@ Peps is an emoji-first programming language with:
 ## Variables and Scope
 
 `🟰` declares a variable when its emoji name is not already visible. Reusing a
-visible name updates that variable, but the new value must have the same type:
+visible name updates that variable and may change its type:
 
 ```peps
 🐶 🟰 1️⃣
 🤔 ✅ 🔓
-    🐶 🟰 🐶 ➕ 1️⃣ // updates the outer variable
+    🐶 🟰 ✅       // updates the outer variable and changes it to bool
     🐱 🟰 5️⃣       // local to this block
     📢 🐱
 🔒

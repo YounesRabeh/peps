@@ -23,6 +23,20 @@ fn runs_reassignment_and_updates_outer_bindings_from_blocks() {
 }
 
 #[test]
+fn runs_reassignment_with_a_different_type() {
+    let output = run_source("🐶 🟰 2️⃣ 🔚 🐶 🟰 ✅ 🔚 📢 🐶 🔚")
+        .expect("source should run");
+    assert_eq!(output, vec!["✅".to_string()]);
+}
+
+#[test]
+fn block_reassignment_can_change_an_outer_binding_type() {
+    let output = run_source("🐶 🟰 2️⃣ 🔚 🤔 ✅ 🔓 🐶 🟰 💬 yes 💬 🔚 🔒 📢 🐶 🔚")
+        .expect("source should run");
+    assert_eq!(output, vec![" yes ".to_string()]);
+}
+
+#[test]
 fn keeps_block_locals_visible_only_inside_their_scope() {
     let output = run_source("🤔 ✅ 🔓 🐶 🟰 5️⃣ 🔚 📢 🐶 🔚 🔒 📢 🐶 🔚")
         .expect("source should run");
