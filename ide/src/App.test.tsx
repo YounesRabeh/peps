@@ -1,6 +1,13 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { App } from "./App";
+import { runPepsSource } from "./api";
+
+vi.mock("./api", () => ({
+  runPepsSource: vi.fn()
+}));
+
+const runPepsSourceMock = vi.mocked(runPepsSource);
 
 vi.mock("@monaco-editor/react", () => ({
   default: ({ value, onChange }: { value: string; onChange: (value: string) => void }) => (
@@ -14,23 +21,15 @@ vi.mock("@monaco-editor/react", () => ({
 
 describe("App", () => {
   beforeEach(() => {
-    vi.restoreAllMocks();
+    runPepsSourceMock.mockReset();
   });
 
   it("runs source and renders output", async () => {
-    vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(
-      new Response(
-        JSON.stringify({
-          ok: true,
-          output: ["5"],
-          diagnostics: []
-        }),
-        {
-          status: 200,
-          headers: { "Content-Type": "application/json" }
-        }
-      )
-    );
+    runPepsSourceMock.mockResolvedValueOnce({
+      ok: true,
+      output: ["5"],
+      diagnostics: []
+    });
 
     render(<App />);
 
@@ -67,9 +66,7 @@ describe("App", () => {
   });
 
   it("shows the output panel when Run is pressed after panels are hidden", async () => {
-    vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(
-      new Response(JSON.stringify({ ok: true, output: [], diagnostics: [] }), { status: 200 })
-    );
+    runPepsSourceMock.mockResolvedValueOnce({ ok: true, output: [], diagnostics: [] });
 
     render(<App />);
     fireEvent.click(screen.getByRole("button", { name: "Hide panels" }));

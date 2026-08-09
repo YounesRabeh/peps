@@ -1,6 +1,4 @@
-export type RunRequest = {
-  source: string;
-};
+import initializePeps, { run_peps as runPeps } from "./wasm/peps.js";
 
 export type IdeDiagnostic = {
   message: string;
@@ -16,19 +14,14 @@ export type RunResponse = {
   diagnostics: IdeDiagnostic[];
 };
 
+let wasmInitialization: Promise<unknown> | null = null;
+
+function initializeWasm() {
+  wasmInitialization ??= initializePeps();
+  return wasmInitialization;
+}
+
 export async function runPepsSource(source: string): Promise<RunResponse> {
-  const request: RunRequest = { source };
-  const response = await fetch("/api/run", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json"
-    },
-    body: JSON.stringify(request)
-  });
-
-  if (!response.ok) {
-    throw new Error(`HTTP ${response.status}`);
-  }
-
-  return await response.json();
+  await initializeWasm();
+  return JSON.parse(runPeps(source)) as RunResponse;
 }
