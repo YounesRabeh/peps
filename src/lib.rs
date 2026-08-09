@@ -7,9 +7,14 @@
 pub mod backend;
 pub mod common;
 pub mod frontend;
+#[cfg(not(target_arch = "wasm32"))]
 pub mod ide;
 pub mod middle_end;
 pub mod runtime;
+
+mod browser;
+#[cfg(target_arch = "wasm32")]
+mod wasm;
 
 pub use backend::{bytecode, compiler};
 pub use common::{diagnostic, source};

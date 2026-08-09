@@ -8,10 +8,11 @@ use axum::{
     routing::post,
     Router,
 };
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
 use tower_http::{cors::CorsLayer, services::ServeDir};
 
-use crate::{diagnostic::Diagnostic, run_source_with_step_limit, vm::IDE_STEP_LIMIT};
+use crate::browser::run_source_for_browser;
+pub use crate::browser::{IdeDiagnostic, RunResponse};
 
 /// Address used by the local development IDE server.
 const DEFAULT_ADDR: &str = "127.0.0.1:5179";
@@ -23,32 +24,6 @@ const MISSING_FRONTEND_HTML: &str = include_str!("missing_frontend.html");
 pub struct RunRequest {
     /// Source code to compile and execute.
     pub source: String,
-}
-
-/// JSON response returned by the IDE run endpoint.
-#[derive(Debug, Serialize, PartialEq, Eq)]
-pub struct RunResponse {
-    /// Whether compilation and execution completed successfully.
-    pub ok: bool,
-    /// Lines printed by the program before success or failure.
-    pub output: Vec<String>,
-    /// Compiler or runtime diagnostics formatted for the IDE.
-    pub diagnostics: Vec<IdeDiagnostic>,
-}
-
-/// Diagnostic shape consumed by the browser IDE.
-#[derive(Debug, Serialize, PartialEq, Eq)]
-pub struct IdeDiagnostic {
-    /// Human-readable diagnostic message.
-    pub message: String,
-    /// One-based source line, when a source span is available.
-    pub line: Option<usize>,
-    /// One-based source column, when a source span is available.
-    pub column: Option<usize>,
-    /// Byte offset where the diagnostic span starts.
-    pub start: Option<usize>,
-    /// Byte offset where the diagnostic span ends.
-    pub end: Option<usize>,
 }
 
 /// Start the local IDE server and serve the built frontend from `ide/dist`.
@@ -126,38 +101,12 @@ pub fn router(dist_dir: PathBuf) -> Router {
 
 /// Compile and execute Peps source submitted by the browser IDE.
 pub async fn run_handler(Json(request): Json<RunRequest>) -> Json<RunResponse> {
-    // Browser executions retain a safety limit even though the core runtime and
-    // command-line interface are unlimited by default.
-    match run_source_with_step_limit(&request.source, IDE_STEP_LIMIT) {
-        Ok(output) => Json(RunResponse {
-            ok: true,
-            output,
-            diagnostics: Vec::new(),
-        }),
-        Err(error) => Json(RunResponse {
-            ok: false,
-            output: error.output,
-            diagnostics: error.diagnostics.iter().map(IdeDiagnostic::from).collect(),
-        }),
-    }
+    Json(run_source_for_browser(&request.source))
 }
 
 /// Return the fallback HTML shown when frontend assets are missing.
 async fn missing_frontend_handler() -> impl IntoResponse {
     Html(MISSING_FRONTEND_HTML)
-}
-
-impl From<&Diagnostic> for IdeDiagnostic {
-    /// Convert an internal diagnostic into the JSON shape expected by the IDE.
-    fn from(diagnostic: &Diagnostic) -> Self {
-        Self {
-            message: diagnostic.message.clone(),
-            line: diagnostic.span.map(|span| span.line),
-            column: diagnostic.span.map(|span| span.column),
-            start: diagnostic.span.map(|span| span.start),
-            end: diagnostic.span.map(|span| span.end),
-        }
-    }
 }
 
 #[cfg(test)]
