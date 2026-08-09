@@ -24,4 +24,4 @@ numeric range. The end of a range is exclusive.
 names are local to the loop and cannot conflict with an outer binding. See the
 [loop example](../examples/basic/04-loops.peps).
 ___
-[Lists](05-lists.md).
+Next: [Lists](05-lists.md).

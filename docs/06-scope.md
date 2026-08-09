@@ -20,4 +20,4 @@ branches have independent scopes.
 
 Explore [the scope example](../examples/basic/06-scope.peps).
 ___
-[Functions](07-functions.md).
+Next: [Functions](07-functions.md).

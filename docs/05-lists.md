@@ -24,4 +24,4 @@ Append one item or extend with several items using `📥`.
 
 Lists retain one element type. Run [the list example](../examples/basic/05-lists.peps).
 ___
-[Scope](06-scope.md).
+Next: [Scope](06-scope.md).
