@@ -1,5 +1,7 @@
 //! Token types emitted by the emoji-aware lexer.
 
+use num_bigint::BigInt;
+
 use crate::source::Span;
 
 /// A lexical token with its original source location.
@@ -24,7 +26,7 @@ pub enum TokenKind {
     /// One user-visible identifier grapheme.
     Identifier(String),
     /// Numeric literal.
-    Number(i64),
+    Number(BigInt),
     /// Text literal.
     StringLiteral(String),
     /// Boolean literal.

@@ -1,3 +1,5 @@
+use num_bigint::BigInt;
+
 use peps::{compile_source, Instruction, Value};
 
 #[test]
@@ -5,7 +7,7 @@ fn compiles_assignment() {
     assert_eq!(
         compile_source("🐶 🟰 5️⃣ 🔚").expect("source should compile"),
         vec![
-            Instruction::LoadConst(Value::Num(5)),
+            Instruction::LoadConst(Value::Num(BigInt::from(5))),
             Instruction::StoreVar("🐶".to_string()),
         ]
     );
@@ -16,10 +18,10 @@ fn compiles_reassignment_to_the_existing_storage_name() {
     assert_eq!(
         compile_source("🐶 🟰 1️⃣ 🔚 🐶 🟰 🐶 ➕ 1️⃣ 🔚").expect("source should compile"),
         vec![
-            Instruction::LoadConst(Value::Num(1)),
+            Instruction::LoadConst(Value::Num(BigInt::from(1))),
             Instruction::StoreVar("🐶".to_string()),
             Instruction::LoadVar("🐶".to_string()),
-            Instruction::LoadConst(Value::Num(1)),
+            Instruction::LoadConst(Value::Num(BigInt::from(1))),
             Instruction::Add,
             Instruction::StoreVar("🐶".to_string()),
         ]
@@ -42,7 +44,7 @@ fn compiles_print() {
     assert_eq!(
         compile_source("🐶 🟰 5️⃣ 🔚 📢 🐶 🔚").expect("source should compile"),
         vec![
-            Instruction::LoadConst(Value::Num(5)),
+            Instruction::LoadConst(Value::Num(BigInt::from(5))),
             Instruction::StoreVar("🐶".to_string()),
             Instruction::LoadVar("🐶".to_string()),
             Instruction::Print,
@@ -55,7 +57,7 @@ fn compiles_newline_separated_statements_without_statement_end_token() {
     assert_eq!(
         compile_source("🐶 🟰 5️⃣\n📢 🐶").expect("source should compile"),
         vec![
-            Instruction::LoadConst(Value::Num(5)),
+            Instruction::LoadConst(Value::Num(BigInt::from(5))),
             Instruction::StoreVar("🐶".to_string()),
             Instruction::LoadVar("🐶".to_string()),
             Instruction::Print,
@@ -79,9 +81,9 @@ fn compiles_arithmetic_precedence() {
     assert_eq!(
         compile_source("🐶 🟰 1️⃣ ➕ 2️⃣ ✖️ 3️⃣ 🔚").expect("source should compile"),
         vec![
-            Instruction::LoadConst(Value::Num(1)),
-            Instruction::LoadConst(Value::Num(2)),
-            Instruction::LoadConst(Value::Num(3)),
+            Instruction::LoadConst(Value::Num(BigInt::from(1))),
+            Instruction::LoadConst(Value::Num(BigInt::from(2))),
+            Instruction::LoadConst(Value::Num(BigInt::from(3))),
             Instruction::Mul,
             Instruction::Add,
             Instruction::StoreVar("🐶".to_string()),
@@ -107,8 +109,8 @@ fn compiles_comparison() {
     assert_eq!(
         compile_source("🐶 🟰 5️⃣ ▶️ 3️⃣ 🔚").expect("source should compile"),
         vec![
-            Instruction::LoadConst(Value::Num(5)),
-            Instruction::LoadConst(Value::Num(3)),
+            Instruction::LoadConst(Value::Num(BigInt::from(5))),
+            Instruction::LoadConst(Value::Num(BigInt::from(3))),
             Instruction::Gt,
             Instruction::StoreVar("🐶".to_string()),
         ]
@@ -135,8 +137,8 @@ fn compiles_list_length() {
     assert_eq!(
         compile_source("🐶 🟰 📏 📚 1️⃣ 2️⃣ 📚 🔚").expect("source should compile"),
         vec![
-            Instruction::LoadConst(Value::Num(1)),
-            Instruction::LoadConst(Value::Num(2)),
+            Instruction::LoadConst(Value::Num(BigInt::from(1))),
+            Instruction::LoadConst(Value::Num(BigInt::from(2))),
             Instruction::MakeList(2),
             Instruction::ListLen,
             Instruction::StoreVar("🐶".to_string()),
@@ -150,17 +152,17 @@ fn compiles_list_index_and_append() {
         compile_source("🐶 🟰 📚 1️⃣ 2️⃣ 3️⃣ 📚 🔎 1️⃣ 🔚 🐱 🟰 📚 1️⃣ 2️⃣ 📚 📥 3️⃣ 🔚")
             .expect("source should compile"),
         vec![
-            Instruction::LoadConst(Value::Num(1)),
-            Instruction::LoadConst(Value::Num(2)),
-            Instruction::LoadConst(Value::Num(3)),
+            Instruction::LoadConst(Value::Num(BigInt::from(1))),
+            Instruction::LoadConst(Value::Num(BigInt::from(2))),
+            Instruction::LoadConst(Value::Num(BigInt::from(3))),
             Instruction::MakeList(3),
-            Instruction::LoadConst(Value::Num(1)),
+            Instruction::LoadConst(Value::Num(BigInt::from(1))),
             Instruction::ListGet,
             Instruction::StoreVar("🐶".to_string()),
-            Instruction::LoadConst(Value::Num(1)),
-            Instruction::LoadConst(Value::Num(2)),
+            Instruction::LoadConst(Value::Num(BigInt::from(1))),
+            Instruction::LoadConst(Value::Num(BigInt::from(2))),
             Instruction::MakeList(2),
-            Instruction::LoadConst(Value::Num(3)),
+            Instruction::LoadConst(Value::Num(BigInt::from(3))),
             Instruction::ListAppend,
             Instruction::StoreVar("🐱".to_string()),
         ]
@@ -173,14 +175,14 @@ fn compiles_append_statement() {
         compile_source("🍎 🟰 📚 1️⃣ 2️⃣ 📚 🔚 🍎 📥 6️⃣3️⃣ 1️⃣ 2️⃣ 🔚")
             .expect("source should compile"),
         vec![
-            Instruction::LoadConst(Value::Num(1)),
-            Instruction::LoadConst(Value::Num(2)),
+            Instruction::LoadConst(Value::Num(BigInt::from(1))),
+            Instruction::LoadConst(Value::Num(BigInt::from(2))),
             Instruction::MakeList(2),
             Instruction::StoreVar("🍎".to_string()),
             Instruction::LoadVar("🍎".to_string()),
-            Instruction::LoadConst(Value::Num(63)),
-            Instruction::LoadConst(Value::Num(1)),
-            Instruction::LoadConst(Value::Num(2)),
+            Instruction::LoadConst(Value::Num(BigInt::from(63))),
+            Instruction::LoadConst(Value::Num(BigInt::from(1))),
+            Instruction::LoadConst(Value::Num(BigInt::from(2))),
             Instruction::MakeList(3),
             Instruction::ListAppend,
             Instruction::StoreVar("🍎".to_string()),
@@ -194,14 +196,14 @@ fn compiles_append_expression_with_implicit_list_payload() {
         compile_source("🍎 🟰 📚 1️⃣ 2️⃣ 📚 🔚 🥝 🟰 🍎 📥 6️⃣3️⃣ 1️⃣ 2️⃣ 🔚")
             .expect("source should compile"),
         vec![
-            Instruction::LoadConst(Value::Num(1)),
-            Instruction::LoadConst(Value::Num(2)),
+            Instruction::LoadConst(Value::Num(BigInt::from(1))),
+            Instruction::LoadConst(Value::Num(BigInt::from(2))),
             Instruction::MakeList(2),
             Instruction::StoreVar("🍎".to_string()),
             Instruction::LoadVar("🍎".to_string()),
-            Instruction::LoadConst(Value::Num(63)),
-            Instruction::LoadConst(Value::Num(1)),
-            Instruction::LoadConst(Value::Num(2)),
+            Instruction::LoadConst(Value::Num(BigInt::from(63))),
+            Instruction::LoadConst(Value::Num(BigInt::from(1))),
+            Instruction::LoadConst(Value::Num(BigInt::from(2))),
             Instruction::MakeList(3),
             Instruction::ListAppend,
             Instruction::StoreVar("🥝".to_string()),
@@ -214,9 +216,9 @@ fn compiles_list_construction() {
     assert_eq!(
         compile_source("🐶 🟰 📚 1️⃣ 2️⃣ 3️⃣ 📚 🔚").expect("source should compile"),
         vec![
-            Instruction::LoadConst(Value::Num(1)),
-            Instruction::LoadConst(Value::Num(2)),
-            Instruction::LoadConst(Value::Num(3)),
+            Instruction::LoadConst(Value::Num(BigInt::from(1))),
+            Instruction::LoadConst(Value::Num(BigInt::from(2))),
+            Instruction::LoadConst(Value::Num(BigInt::from(3))),
             Instruction::MakeList(3),
             Instruction::StoreVar("🐶".to_string()),
         ]
@@ -232,7 +234,7 @@ fn compiles_if() {
             Instruction::StoreVar("🐶".to_string()),
             Instruction::LoadVar("🐶".to_string()),
             Instruction::JumpIfFalse(6),
-            Instruction::LoadConst(Value::Num(1)),
+            Instruction::LoadConst(Value::Num(BigInt::from(1))),
             Instruction::Print,
         ]
     );
@@ -245,7 +247,7 @@ fn compiles_block_local_to_a_unique_storage_name() {
         vec![
             Instruction::LoadConst(Value::Bool(true)),
             Instruction::JumpIfFalse(6),
-            Instruction::LoadConst(Value::Num(5)),
+            Instruction::LoadConst(Value::Num(BigInt::from(5))),
             Instruction::StoreVar("__peps_local_0".to_string()),
             Instruction::LoadVar("__peps_local_0".to_string()),
             Instruction::Print,
@@ -261,10 +263,10 @@ fn compiles_sibling_branch_locals_to_distinct_storage_names() {
         vec![
             Instruction::LoadConst(Value::Bool(true)),
             Instruction::JumpIfFalse(5),
-            Instruction::LoadConst(Value::Num(1)),
+            Instruction::LoadConst(Value::Num(BigInt::from(1))),
             Instruction::StoreVar("__peps_local_0".to_string()),
             Instruction::Jump(7),
-            Instruction::LoadConst(Value::Num(2)),
+            Instruction::LoadConst(Value::Num(BigInt::from(2))),
             Instruction::StoreVar("__peps_local_1".to_string()),
         ]
     );
@@ -280,10 +282,10 @@ fn compiles_if_else() {
             Instruction::StoreVar("🐶".to_string()),
             Instruction::LoadVar("🐶".to_string()),
             Instruction::JumpIfFalse(7),
-            Instruction::LoadConst(Value::Num(1)),
+            Instruction::LoadConst(Value::Num(BigInt::from(1))),
             Instruction::Print,
             Instruction::Jump(9),
-            Instruction::LoadConst(Value::Num(2)),
+            Instruction::LoadConst(Value::Num(BigInt::from(2))),
             Instruction::Print,
         ]
     );
@@ -326,7 +328,7 @@ fn compiles_while_with_continue() {
             Instruction::LoadConst(Value::Bool(true)),
             Instruction::JumpIfFalse(6),
             Instruction::Jump(0),
-            Instruction::LoadConst(Value::Num(1)),
+            Instruction::LoadConst(Value::Num(BigInt::from(1))),
             Instruction::Print,
             Instruction::Jump(0),
         ]
@@ -339,13 +341,13 @@ fn compiles_for_each_list() {
         compile_source("🍎 🟰 📚 1️⃣ 2️⃣ 📚 🔚 🔁 🐾 🧭 🍎 🔓 📢 🐾 🔚 🔒")
             .expect("source should compile"),
         vec![
-            Instruction::LoadConst(Value::Num(1)),
-            Instruction::LoadConst(Value::Num(2)),
+            Instruction::LoadConst(Value::Num(BigInt::from(1))),
+            Instruction::LoadConst(Value::Num(BigInt::from(2))),
             Instruction::MakeList(2),
             Instruction::StoreVar("🍎".to_string()),
             Instruction::LoadVar("🍎".to_string()),
             Instruction::StoreVar("__peps_for_0_list".to_string()),
-            Instruction::LoadConst(Value::Num(0)),
+            Instruction::LoadConst(Value::Num(BigInt::from(0))),
             Instruction::StoreVar("__peps_for_0_index".to_string()),
             Instruction::LoadVar("__peps_for_0_list".to_string()),
             Instruction::ListLen,
@@ -361,7 +363,7 @@ fn compiles_for_each_list() {
             Instruction::LoadVar("__peps_local_0".to_string()),
             Instruction::Print,
             Instruction::LoadVar("__peps_for_0_index".to_string()),
-            Instruction::LoadConst(Value::Num(1)),
+            Instruction::LoadConst(Value::Num(BigInt::from(1))),
             Instruction::Add,
             Instruction::StoreVar("__peps_for_0_index".to_string()),
             Instruction::Jump(11),
@@ -375,9 +377,9 @@ fn compiles_for_range() {
         compile_source("🔁 🐾 🧭 🔢 0️⃣ ➡️ 3️⃣ 🔓 📢 🐾 🔚 🔒")
             .expect("source should compile"),
         vec![
-            Instruction::LoadConst(Value::Num(0)),
+            Instruction::LoadConst(Value::Num(BigInt::from(0))),
             Instruction::StoreVar("__peps_for_0_index".to_string()),
-            Instruction::LoadConst(Value::Num(3)),
+            Instruction::LoadConst(Value::Num(BigInt::from(3))),
             Instruction::StoreVar("__peps_for_0_end".to_string()),
             Instruction::LoadVar("__peps_for_0_index".to_string()),
             Instruction::LoadVar("__peps_for_0_end".to_string()),
@@ -388,7 +390,7 @@ fn compiles_for_range() {
             Instruction::LoadVar("__peps_local_0".to_string()),
             Instruction::Print,
             Instruction::LoadVar("__peps_for_0_index".to_string()),
-            Instruction::LoadConst(Value::Num(1)),
+            Instruction::LoadConst(Value::Num(BigInt::from(1))),
             Instruction::Add,
             Instruction::StoreVar("__peps_for_0_index".to_string()),
             Instruction::Jump(4),

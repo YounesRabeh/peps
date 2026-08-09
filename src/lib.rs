@@ -23,7 +23,7 @@ pub use diagnostic::Diagnostic;
 pub use source::Span;
 pub use token::{Token, TokenKind};
 pub use types::Type;
-pub use vm::{RunError, RuntimeValue};
+pub use vm::{ExecutionLimit, RunError, RuntimeValue, IDE_STEP_LIMIT};
 
 /// Compile Peps source text into bytecode instructions.
 pub fn compile_source(source: &str) -> Result<Vec<Instruction>, Vec<Diagnostic>> {
@@ -40,4 +40,16 @@ pub fn run_source(source: &str) -> Result<Vec<String>, RunError> {
         diagnostics,
     })?;
     vm::execute(&bytecode)
+}
+
+/// Compile and run Peps source with a caller-provided instruction step limit.
+pub fn run_source_with_step_limit(
+    source: &str,
+    step_limit: usize,
+) -> Result<Vec<String>, RunError> {
+    let bytecode = compile_source(source).map_err(|diagnostics| RunError {
+        output: Vec::new(),
+        diagnostics,
+    })?;
+    vm::execute_with_step_limit(&bytecode, step_limit)
 }

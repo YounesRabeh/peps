@@ -2,21 +2,31 @@
 
 use std::collections::HashMap;
 
+use num_bigint::BigInt;
+use num_traits::{ToPrimitive, Zero};
+
 use crate::{
     bytecode::{Instruction, Value},
     diagnostic::Diagnostic,
 };
 
-/// Default maximum number of bytecode instructions a program may execute.
-///
-/// The limit prevents non-terminating loops from running forever in the runtime.
-pub const DEFAULT_STEP_LIMIT: usize = 100_000;
+/// Maximum instructions used for browser IDE executions.
+pub const IDE_STEP_LIMIT: usize = 100_000;
+
+/// Optional instruction limit for a VM execution.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ExecutionLimit {
+    /// Run until the program completes or encounters a runtime error.
+    Unlimited,
+    /// Stop after the given number of instructions.
+    Steps(usize),
+}
 
 /// Runtime representation of values stored on the VM stack and in variables.
 #[derive(Debug, Clone, PartialEq)]
 pub enum RuntimeValue {
     /// Integer numeric value.
-    Num(i64),
+    Num(BigInt),
     /// Text value.
     Str(String),
     /// Boolean value.
@@ -36,9 +46,9 @@ pub struct RunError {
     pub diagnostics: Vec<Diagnostic>,
 }
 
-/// Execute bytecode with [`DEFAULT_STEP_LIMIT`].
+/// Execute bytecode without an instruction limit.
 pub fn execute(instructions: &[Instruction]) -> Result<Vec<String>, RunError> {
-    execute_with_step_limit(instructions, DEFAULT_STEP_LIMIT)
+    execute_with_limit(instructions, ExecutionLimit::Unlimited)
 }
 
 /// Execute bytecode with a caller-provided instruction step limit.
@@ -49,6 +59,14 @@ pub fn execute_with_step_limit(
     instructions: &[Instruction],
     step_limit: usize,
 ) -> Result<Vec<String>, RunError> {
+    execute_with_limit(instructions, ExecutionLimit::Steps(step_limit))
+}
+
+/// Execute bytecode with an explicit instruction-limit policy.
+pub fn execute_with_limit(
+    instructions: &[Instruction],
+    execution_limit: ExecutionLimit,
+) -> Result<Vec<String>, RunError> {
     let mut vm = Vm {
         instructions,
         ip: 0,
@@ -56,7 +74,7 @@ pub fn execute_with_step_limit(
         variables: HashMap::new(),
         output: Vec::new(),
         steps: 0,
-        step_limit,
+        execution_limit,
     };
     vm.run()
 }
@@ -74,20 +92,22 @@ struct Vm<'a> {
     output: Vec<String>,
     /// Number of instructions executed so far.
     steps: usize,
-    /// Maximum number of instructions allowed for this run.
-    step_limit: usize,
+    /// Whether this run has an instruction limit.
+    execution_limit: ExecutionLimit,
 }
 
 impl Vm<'_> {
     /// Run instructions until completion, an error, or the step limit.
     fn run(&mut self) -> Result<Vec<String>, RunError> {
         while self.ip < self.instructions.len() {
-            if self.steps >= self.step_limit {
-                return self.fail(
-                    "execution step limit reached; the program may contain a non-terminating loop",
-                );
+            if let ExecutionLimit::Steps(step_limit) = self.execution_limit {
+                if self.steps >= step_limit {
+                    return self.fail(
+                        "execution step limit reached; the program may contain a non-terminating loop",
+                    );
+                }
+                self.steps += 1;
             }
-            self.steps += 1;
 
             match self.instructions[self.ip].clone() {
                 Instruction::LoadConst(value) => {
@@ -112,7 +132,7 @@ impl Vm<'_> {
                 Instruction::Div => {
                     let right = self.pop_num("divide")?;
                     let left = self.pop_num("divide")?;
-                    if right == 0 {
+                    if right.is_zero() {
                         return self.fail("division by zero");
                     }
                     self.stack.push(RuntimeValue::Num(left / right));
@@ -138,7 +158,8 @@ impl Vm<'_> {
                     let RuntimeValue::List(elements) = value else {
                         return self.fail("list length requires a list value");
                     };
-                    self.stack.push(RuntimeValue::Num(elements.len() as i64));
+                    self.stack
+                        .push(RuntimeValue::Num(BigInt::from(elements.len())));
                     self.ip += 1;
                 }
                 Instruction::ListGet => {
@@ -147,10 +168,13 @@ impl Vm<'_> {
                     let RuntimeValue::List(elements) = list else {
                         return self.fail("list index requires a list value");
                     };
-                    if index < 0 || index as usize >= elements.len() {
+                    let Some(index_value) = index.to_usize() else {
+                        return self.fail(format!("list index {} is out of bounds", index));
+                    };
+                    if index_value >= elements.len() {
                         return self.fail(format!("list index {} is out of bounds", index));
                     }
-                    self.stack.push(elements[index as usize].clone());
+                    self.stack.push(elements[index_value].clone());
                     self.ip += 1;
                 }
                 Instruction::ListAppend => {
@@ -194,7 +218,7 @@ impl Vm<'_> {
     fn binary_num(
         &mut self,
         operation: &'static str,
-        apply: impl FnOnce(i64, i64) -> i64,
+        apply: impl FnOnce(BigInt, BigInt) -> BigInt,
     ) -> Result<(), RunError> {
         let right = self.pop_num(operation)?;
         let left = self.pop_num(operation)?;
@@ -224,7 +248,7 @@ impl Vm<'_> {
     fn compare_num(
         &mut self,
         operation: &'static str,
-        apply: impl FnOnce(i64, i64) -> bool,
+        apply: impl FnOnce(BigInt, BigInt) -> bool,
     ) -> Result<(), RunError> {
         let right = self.pop_num(operation)?;
         let left = self.pop_num(operation)?;
@@ -261,7 +285,7 @@ impl Vm<'_> {
     }
 
     /// Pop and type-check a numeric stack value.
-    fn pop_num(&mut self, operation: &'static str) -> Result<i64, RunError> {
+    fn pop_num(&mut self, operation: &'static str) -> Result<BigInt, RunError> {
         match self.pop(operation)? {
             RuntimeValue::Num(value) => Ok(value),
             _ => Err(self.error(format!("{} requires a num value", operation))),

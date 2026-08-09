@@ -11,6 +11,7 @@
 //! Consecutive separators are collapsed by newline handling so the parser can
 //! accept blank lines without seeing empty statements.
 
+use num_bigint::BigInt;
 use unicode_segmentation::UnicodeSegmentation;
 
 use crate::{
@@ -211,14 +212,14 @@ impl Lexer {
 
     fn lex_number(&mut self) -> Token {
         let start = self.peek().span;
-        let mut value: i64 = 0;
+        let mut value = BigInt::from(0_u8);
         let mut end = start;
 
         while !self.is_at_end() && is_emoji_digit(&self.peek().text) {
             let grapheme = self.advance().clone();
             end = grapheme.span;
             let digit = emoji_digit_value(&grapheme.text).expect("checked by is_emoji_digit");
-            value = value.saturating_mul(10).saturating_add(digit);
+            value = value * 10_u8 + digit;
         }
 
         Token::new(TokenKind::Number(value), start.merge(end))
@@ -385,7 +386,7 @@ fn is_emoji_digit(text: &str) -> bool {
     emoji_digit_value(text).is_some()
 }
 
-fn emoji_digit_value(text: &str) -> Option<i64> {
+fn emoji_digit_value(text: &str) -> Option<u8> {
     match text {
         "0️⃣" => Some(0),
         "1️⃣" => Some(1),

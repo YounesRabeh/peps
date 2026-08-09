@@ -11,7 +11,11 @@ use axum::{
 use serde::{Deserialize, Serialize};
 use tower_http::{cors::CorsLayer, services::ServeDir};
 
-use crate::{diagnostic::Diagnostic, run_source};
+use crate::{
+    diagnostic::Diagnostic,
+    run_source_with_step_limit,
+    vm::IDE_STEP_LIMIT,
+};
 
 /// Address used by the local development IDE server.
 const DEFAULT_ADDR: &str = "127.0.0.1:5179";
@@ -124,8 +128,9 @@ pub fn router(dist_dir: PathBuf) -> Router {
 
 /// Compile and execute Peps source submitted by the browser IDE.
 pub async fn run_handler(Json(request): Json<RunRequest>) -> Json<RunResponse> {
-    // Keep the IDE thin: compiler and runtime behavior lives behind run_source.
-    match run_source(&request.source) {
+    // Browser executions retain a safety limit even though the core runtime and
+    // command-line interface are unlimited by default.
+    match run_source_with_step_limit(&request.source, IDE_STEP_LIMIT) {
         Ok(output) => Json(RunResponse {
             ok: true,
             output,
@@ -189,6 +194,18 @@ mod tests {
 
         assert!(!response.ok);
         assert!(!response.diagnostics.is_empty());
+    }
+
+    #[tokio::test]
+    async fn api_run_enforces_the_ide_step_limit() {
+        let response = run_handler(Json(RunRequest {
+            source: "🔁 ✅ 🔓 🔒".to_string(),
+        }))
+        .await
+        .0;
+
+        assert!(!response.ok);
+        assert!(response.diagnostics[0].message.contains("step limit"));
     }
 
     #[tokio::test]

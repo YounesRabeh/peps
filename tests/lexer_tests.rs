@@ -1,3 +1,5 @@
+use num_bigint::BigInt;
+
 use peps::{lexer, TokenKind};
 
 fn kinds(source: &str) -> Vec<TokenKind> {
@@ -15,7 +17,7 @@ fn lexes_emoji_number() {
         vec![
             TokenKind::Identifier("🐶".to_string()),
             TokenKind::Assign,
-            TokenKind::Number(5),
+            TokenKind::Number(BigInt::from(5)),
             TokenKind::StatementEnd,
             TokenKind::Eof,
         ]
@@ -24,10 +26,20 @@ fn lexes_emoji_number() {
 
 #[test]
 fn lexes_multi_digit_emoji_number() {
-    assert!(matches!(
+    assert_eq!(
         kinds("🐶 🟰 1️⃣2️⃣3️⃣ 🔚")[2],
-        TokenKind::Number(123)
-    ));
+        TokenKind::Number(BigInt::from(123))
+    );
+}
+
+#[test]
+fn lexes_integer_larger_than_i64() {
+    assert_eq!(
+        kinds("9️⃣2️⃣2️⃣3️⃣3️⃣7️⃣2️⃣0️⃣3️⃣6️⃣8️⃣5️⃣4️⃣7️⃣7️⃣5️⃣8️⃣0️⃣8️⃣")[0],
+        TokenKind::Number(
+            BigInt::parse_bytes(b"9223372036854775808", 10).expect("valid integer")
+        )
+    );
 }
 
 #[test]
@@ -68,13 +80,13 @@ fn lexes_longest_match_operators() {
         vec![
             TokenKind::Identifier("🐶".to_string()),
             TokenKind::Eq,
-            TokenKind::Number(5),
+            TokenKind::Number(BigInt::from(5)),
             TokenKind::NotEq,
-            TokenKind::Number(4),
+            TokenKind::Number(BigInt::from(4)),
             TokenKind::LtEq,
-            TokenKind::Number(6),
+            TokenKind::Number(BigInt::from(6)),
             TokenKind::GtEq,
-            TokenKind::Number(3),
+            TokenKind::Number(BigInt::from(3)),
             TokenKind::StatementEnd,
             TokenKind::Eof,
         ]
@@ -89,9 +101,9 @@ fn lexes_list_operators() {
             TokenKind::ListLen,
             TokenKind::Identifier("🍎".to_string()),
             TokenKind::ListIndex,
-            TokenKind::Number(1),
+            TokenKind::Number(BigInt::from(1)),
             TokenKind::ListAppend,
-            TokenKind::Number(2),
+            TokenKind::Number(BigInt::from(2)),
             TokenKind::Eof,
         ]
     );
@@ -106,9 +118,9 @@ fn lexes_for_loop_tokens() {
             TokenKind::Identifier("🐾".to_string()),
             TokenKind::In,
             TokenKind::Range,
-            TokenKind::Number(0),
+            TokenKind::Number(BigInt::from(0)),
             TokenKind::Arrow,
-            TokenKind::Number(3),
+            TokenKind::Number(BigInt::from(3)),
             TokenKind::BlockStart,
             TokenKind::BlockEnd,
             TokenKind::Eof,
@@ -178,7 +190,7 @@ fn lexes_newline_as_statement_separator() {
         vec![
             TokenKind::Identifier("🐶".to_string()),
             TokenKind::Assign,
-            TokenKind::Number(1),
+            TokenKind::Number(BigInt::from(1)),
             TokenKind::StatementEnd,
             TokenKind::Print,
             TokenKind::Identifier("🐶".to_string()),
@@ -194,7 +206,7 @@ fn skips_line_comments() {
         vec![
             TokenKind::Identifier("🐶".to_string()),
             TokenKind::Assign,
-            TokenKind::Number(1),
+            TokenKind::Number(BigInt::from(1)),
             TokenKind::StatementEnd,
             TokenKind::Print,
             TokenKind::Identifier("🐶".to_string()),

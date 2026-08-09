@@ -22,6 +22,8 @@ Peps is an emoji-first programming language with:
 8. Assignments update the nearest visible variable when its type matches; otherwise they declare a variable in the current scope.
 9. Variables declared inside `if`, `else`, `while`, or `for` blocks are visible only in that block and its nested blocks.
 10. `for` iterator names are block-local and cannot reuse the name of an outer variable.
+11. Numbers are arbitrary-precision integers and do not overflow at `i64` limits.
+12. Compiler and CLI runs have no instruction limit; browser IDE runs stop after 100,000 instructions for safety.
 
 ## Core Syntax
 
@@ -71,6 +73,18 @@ visible name updates that variable, but the new value must have the same type:
 Each `if` branch and each loop body has its own lexical scope. Local variables
 are available to nested blocks. A `for` iterator is local to its loop, and its
 name must not conflict with another visible variable.
+
+## Execution Model
+
+Peps numbers have arbitrary precision. Together with mutable variables,
+conditionals, and unrestricted `while` loops, this allows Peps to simulate a
+two-counter Minsky machine and makes the language Turing complete under the
+usual idealized assumption of unbounded memory.
+
+The compiler and command-line runner execute without an instruction limit, so
+a non-terminating program will continue running until it is interrupted. The
+browser IDE applies a 100,000-instruction limit so an accidental infinite loop
+cannot hang its local server indefinitely.
 
 ## Example
 

@@ -1,5 +1,7 @@
 //! Abstract syntax tree definitions produced by the parser.
 
+use num_bigint::BigInt;
+
 use crate::source::Span;
 
 #[derive(Debug, Clone, PartialEq)]
@@ -88,7 +90,7 @@ impl ForSource {
 #[derive(Debug, Clone, PartialEq)]
 pub enum Expr {
     Number {
-        value: i64,
+        value: BigInt,
         span: Span,
     },
     String {

@@ -1,5 +1,7 @@
 //! Peps bytecode instructions and constant values.
 
+use num_bigint::BigInt;
+
 #[derive(Debug, Clone, PartialEq)]
 pub enum Instruction {
     LoadConst(Value),
@@ -30,7 +32,7 @@ pub enum Instruction {
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum Value {
-    Num(i64),
+    Num(BigInt),
     Str(String),
     Bool(bool),
     Emoji(String),

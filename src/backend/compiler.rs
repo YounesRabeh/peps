@@ -2,6 +2,8 @@
 
 use std::collections::{HashMap, HashSet};
 
+use num_bigint::BigInt;
+
 use crate::{
     ast::{BinaryOp, Expr, ForSource, Stmt, UnaryOp},
     bytecode::{Instruction, Value},
@@ -150,7 +152,8 @@ impl Compiler {
         self.push_scope();
         let variable_name = self.declare_name(variable);
         self.instructions.push(Instruction::StoreVar(list_name.clone()));
-        self.instructions.push(Instruction::LoadConst(Value::Num(0)));
+        self.instructions
+            .push(Instruction::LoadConst(Value::Num(BigInt::from(0_u8))));
         self.instructions
             .push(Instruction::StoreVar(index_name.clone()));
         self.instructions.push(Instruction::LoadVar(list_name.clone()));
@@ -176,7 +179,8 @@ impl Compiler {
 
         let continue_target = self.instructions.len();
         self.instructions.push(Instruction::LoadVar(index_name.clone()));
-        self.instructions.push(Instruction::LoadConst(Value::Num(1)));
+        self.instructions
+            .push(Instruction::LoadConst(Value::Num(BigInt::from(1_u8))));
         self.instructions.push(Instruction::Add);
         self.instructions.push(Instruction::StoreVar(index_name));
         self.instructions.push(Instruction::Jump(loop_start));
@@ -218,7 +222,8 @@ impl Compiler {
 
         let continue_target = self.instructions.len();
         self.instructions.push(Instruction::LoadVar(index_name.clone()));
-        self.instructions.push(Instruction::LoadConst(Value::Num(1)));
+        self.instructions
+            .push(Instruction::LoadConst(Value::Num(BigInt::from(1_u8))));
         self.instructions.push(Instruction::Add);
         self.instructions.push(Instruction::StoreVar(index_name));
         self.instructions.push(Instruction::Jump(loop_start));
@@ -234,7 +239,7 @@ impl Compiler {
         match expr {
             Expr::Number { value, .. } => self
                 .instructions
-                .push(Instruction::LoadConst(Value::Num(*value))),
+                .push(Instruction::LoadConst(Value::Num(value.clone()))),
             Expr::String { value, .. } => self
                 .instructions
                 .push(Instruction::LoadConst(Value::Str(value.clone()))),
@@ -268,9 +273,10 @@ impl Compiler {
             } => {
                 if let Expr::Number { value, .. } = expr.as_ref() {
                     self.instructions
-                        .push(Instruction::LoadConst(Value::Num(-value)));
+                        .push(Instruction::LoadConst(Value::Num(-value.clone())));
                 } else {
-                    self.instructions.push(Instruction::LoadConst(Value::Num(0)));
+                    self.instructions
+                        .push(Instruction::LoadConst(Value::Num(BigInt::from(0_u8))));
                     self.compile_expr(expr);
                     self.instructions.push(Instruction::Sub);
                 }

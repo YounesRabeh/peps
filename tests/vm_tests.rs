@@ -1,3 +1,5 @@
+use num_bigint::BigInt;
+
 use peps::{
     bytecode::{Instruction, Value},
     vm, run_source, RunError,
@@ -75,6 +77,24 @@ fn runs_arithmetic_and_comparison() {
         .expect("source should run");
 
     assert_eq!(output, vec!["7".to_string(), "✅".to_string()]);
+}
+
+#[test]
+fn runs_arithmetic_beyond_i64_limits() {
+    let output = run_source(
+        "📢 9️⃣2️⃣2️⃣3️⃣3️⃣7️⃣2️⃣0️⃣3️⃣6️⃣8️⃣5️⃣4️⃣7️⃣7️⃣5️⃣8️⃣0️⃣8️⃣ ➕ 1️⃣ 🔚",
+    )
+    .expect("source should run");
+    assert_eq!(output, vec!["9223372036854775809".to_string()]);
+}
+
+#[test]
+fn run_source_is_not_stopped_by_the_ide_step_limit() {
+    let output = run_source(
+        "🐶 🟰 0️⃣ 🔚 🔁 🐶 ◀️ 2️⃣0️⃣0️⃣0️⃣0️⃣ 🔓 🐶 🟰 🐶 ➕ 1️⃣ 🔚 🔒 📢 🐶 🔚",
+    )
+    .expect("core execution should be unlimited");
+    assert_eq!(output, vec!["20000".to_string()]);
 }
 
 #[test]
@@ -241,7 +261,7 @@ fn stops_non_terminating_while_loop() {
 
 #[test]
 fn enforces_step_limit_as_a_backup() {
-    let bytecode = vec![Instruction::LoadConst(Value::Num(1)); 2];
+    let bytecode = vec![Instruction::LoadConst(Value::Num(BigInt::from(1))); 2];
     let error: RunError =
         vm::execute_with_step_limit(&bytecode, 1).expect_err("step limit should stop execution");
 
