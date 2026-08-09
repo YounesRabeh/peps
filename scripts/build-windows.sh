@@ -66,14 +66,14 @@ cargo build --release --bin peps-ide --target "$TARGET"
 rm -rf "$COMPILER_OUT" "$IDE_OUT"
 mkdir -p "$COMPILER_OUT" "$IDE_OUT/frontend"
 
-cp "$TARGET_RELEASE_DIR/peps.exe" "$COMPILER_OUT/peps!.exe"
+cp "$TARGET_RELEASE_DIR/peps.exe" "$COMPILER_OUT/peps.exe"
 cp "$TARGET_RELEASE_DIR/peps-ide.exe" "$IDE_OUT/peps-ide.exe"
 cp -R ide/dist "$IDE_OUT/frontend/dist"
 
 cat > "$COMPILER_OUT/peps.cmd" <<'CMD'
 @echo off
 set DIR=%~dp0
-"%DIR%peps!.exe" %*
+"%DIR%peps.exe" %*
 CMD
 
 cat > "$IDE_OUT/peps-ide.cmd" <<'CMD'
@@ -84,6 +84,6 @@ cd /d "%DIR%"
 CMD
 
 echo "Built Peps Windows dists from Linux:"
-echo "  dist/compiler/windows/peps!.exe"
+echo "  dist/compiler/windows/peps.exe"
 echo "  dist/ide/windows/peps-ide.exe"
 echo "Windows Cargo target cache: $WINDOWS_TARGET_ROOT"

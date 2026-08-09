@@ -11,14 +11,14 @@ cargo build --release --bin peps --target $Target
 Remove-Item $OutDir -Recurse -Force -ErrorAction SilentlyContinue
 New-Item -ItemType Directory -Force -Path $OutDir | Out-Null
 
-Copy-Item (Join-Path $TargetReleaseDir "peps.exe") (Join-Path $OutDir "peps!.exe") -Force
+Copy-Item (Join-Path $TargetReleaseDir "peps.exe") (Join-Path $OutDir "peps.exe") -Force
 
 @"
 @echo off
 set DIR=%~dp0
-"%DIR%peps!.exe" %*
+"%DIR%peps.exe" %*
 "@ | Set-Content -Encoding ASCII (Join-Path $OutDir "peps.cmd")
 
 Write-Host "Built Peps compiler Windows dist: dist\compiler\windows"
 Write-Host "Windows target: $Target"
-Write-Host "Manual run: .\dist\compiler\windows\peps!.exe path\to\file.peps"
+Write-Host "Manual run: .\dist\compiler\windows\peps.exe path\to\file.peps"

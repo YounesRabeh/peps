@@ -162,8 +162,8 @@ sh scripts/build-run.sh all
 
 Linux build artifacts are written to:
 - `dist/compiler/linux/linux.sh`
-- `dist/compiler/linux/peps!`
-- `dist/compiler/linux/peps!-bytecode`
+- `dist/compiler/linux/peps`
+- `dist/compiler/linux/peps-bytecode`
 - `dist/compiler/linux/peps-compiler-x86_64.AppImage`
 - `dist/ide/linux/peps-ide-x86_64.AppImage`
 
@@ -176,7 +176,7 @@ Windows PowerShell:
 ```
 
 Windows build artifacts are written to:
-- `dist\compiler\windows\peps!.exe`
+- `dist\compiler\windows\peps.exe`
 - `dist\ide\windows\peps-ide.exe`
 
 Cross-build Windows `.exe` files from Linux:
