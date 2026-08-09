@@ -1,0 +1,306 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  prepare:
+    name: Resolve release tag
+    runs-on: ubuntu-24.04
+    outputs:
+      tag: ${{ steps.release.outputs.tag }}
+      version: ${{ steps.release.outputs.version }}
+    steps:
+      - name: Check out repository and tags
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Resolve and validate release version
+        id: release
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          if [[ "${GITHUB_EVENT_NAME}" == "push" ]]; then
+            release_tag="${GITHUB_REF_NAME}"
+          else
+            release_tag="$(git tag --list 'v[0-9]*' --sort=-version:refname | sed -n '1p')"
+          fi
+
+          if [[ -z "${release_tag}" ]]; then
+            echo "error: no version tag was found" >&2
+            exit 1
+          fi
+
+          version="$(git show "${release_tag}:Cargo.toml" | sed -n 's/^version = "\([^"]*\)"/\1/p' | sed -n '1p')"
+          if [[ "${release_tag}" != "v${version}" ]]; then
+            echo "error: release tag ${release_tag} does not match Cargo.toml version ${version}" >&2
+            exit 1
+          fi
+
+          printf 'tag=%s\n' "${release_tag}" >> "${GITHUB_OUTPUT}"
+          printf 'version=%s\n' "${version}" >> "${GITHUB_OUTPUT}"
+
+  checks:
+    name: Test and lint
+    needs: prepare
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Check out release tag
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ needs.prepare.outputs.tag }}
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy, rustfmt
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v6
+        with:
+          version: 11.18.0
+
+      - name: Install Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: pnpm
+          cache-dependency-path: ide/pnpm-lock.yaml
+
+      - name: Check Rust formatting
+        run: cargo fmt --all --check
+
+      - name: Test Rust project
+        run: cargo test --all-targets --all-features
+
+      - name: Lint Rust project
+        run: cargo clippy --all-targets --all-features -- -D warnings
+
+      - name: Install IDE dependencies
+        working-directory: ide
+        run: pnpm install --frozen-lockfile
+
+      - name: Test IDE
+        working-directory: ide
+        run: pnpm exec vitest run
+
+      - name: Build IDE
+        working-directory: ide
+        run: pnpm run build
+
+  linux:
+    name: Build Linux packages
+    needs: [prepare, checks]
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Check out release tag
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ needs.prepare.outputs.tag }}
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v6
+        with:
+          version: 11.18.0
+
+      - name: Install Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: pnpm
+          cache-dependency-path: ide/pnpm-lock.yaml
+
+      - name: Install AppImage system libraries
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes curl file libfuse2t64
+
+      - name: Build Linux compiler and IDE
+        run: |
+          sh scripts/compiler/build.sh
+          sh scripts/ide/build.sh
+
+      - name: Package Linux artifacts
+        env:
+          VERSION: ${{ needs.prepare.outputs.version }}
+        run: |
+          set -euo pipefail
+          mkdir -p release-assets
+          tar \
+            -C dist/compiler/linux \
+            -czf "release-assets/peps-compiler-${VERSION}-linux-x86_64.tar.gz" \
+            "peps-${VERSION}" \
+            "peps-bytecode-${VERSION}" \
+            "linux-${VERSION}.sh"
+          cp \
+            "dist/compiler/linux/peps-compiler-${VERSION}-x86_64.AppImage" \
+            release-assets/
+          cp \
+            "dist/ide/linux/peps-ide-${VERSION}-x86_64.AppImage" \
+            release-assets/
+
+      - name: Upload Linux artifacts
+        uses: actions/upload-artifact@v7
+        with:
+          name: peps-release-linux-x86_64
+          path: release-assets/*
+          if-no-files-found: error
+
+  windows:
+    name: Build Windows packages
+    needs: [prepare, checks]
+    runs-on: windows-2025
+    steps:
+      - name: Check out release tag
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ needs.prepare.outputs.tag }}
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v6
+        with:
+          version: 11.18.0
+
+      - name: Install Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: pnpm
+          cache-dependency-path: ide/pnpm-lock.yaml
+
+      - name: Build Windows compiler and IDE
+        shell: pwsh
+        run: |
+          ./scripts/compiler/build.ps1
+          ./scripts/ide/build.ps1
+
+      - name: Package Windows artifacts
+        shell: pwsh
+        env:
+          VERSION: ${{ needs.prepare.outputs.version }}
+        run: |
+          New-Item -ItemType Directory -Force -Path release-assets | Out-Null
+          Compress-Archive `
+            -Path dist/compiler/windows/* `
+            -DestinationPath "release-assets/peps-compiler-$env:VERSION-windows-x86_64.zip" `
+            -Force
+          Compress-Archive `
+            -Path dist/ide/windows/* `
+            -DestinationPath "release-assets/peps-ide-$env:VERSION-windows-x86_64.zip" `
+            -Force
+
+      - name: Upload Windows artifacts
+        uses: actions/upload-artifact@v7
+        with:
+          name: peps-release-windows-x86_64
+          path: release-assets/*
+          if-no-files-found: error
+
+  macos:
+    name: Build macOS packages
+    needs: [prepare, checks]
+    runs-on: macos-15-intel
+    steps:
+      - name: Check out release tag
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ needs.prepare.outputs.tag }}
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v6
+        with:
+          version: 11.18.0
+
+      - name: Install Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: pnpm
+          cache-dependency-path: ide/pnpm-lock.yaml
+
+      - name: Install and build IDE frontend
+        working-directory: ide
+        run: |
+          pnpm install --frozen-lockfile
+          pnpm run build
+
+      - name: Build macOS compiler and IDE
+        run: cargo build --release --bin peps --bin peps-ide
+
+      - name: Package macOS artifacts
+        env:
+          VERSION: ${{ needs.prepare.outputs.version }}
+        run: |
+          set -euo pipefail
+          compiler_dir="package/peps-compiler-${VERSION}-macos-x86_64"
+          ide_dir="package/peps-ide-${VERSION}-macos-x86_64"
+
+          mkdir -p "${compiler_dir}" "${ide_dir}/frontend" release-assets
+          cp target/release/peps "${compiler_dir}/peps"
+          cp target/release/peps-ide "${ide_dir}/peps-ide"
+          cp -R ide/dist "${ide_dir}/frontend/dist"
+
+          tar \
+            -C package \
+            -czf "release-assets/peps-compiler-${VERSION}-macos-x86_64.tar.gz" \
+            "peps-compiler-${VERSION}-macos-x86_64"
+          tar \
+            -C package \
+            -czf "release-assets/peps-ide-${VERSION}-macos-x86_64.tar.gz" \
+            "peps-ide-${VERSION}-macos-x86_64"
+
+      - name: Upload macOS artifacts
+        uses: actions/upload-artifact@v7
+        with:
+          name: peps-release-macos-x86_64
+          path: release-assets/*
+          if-no-files-found: error
+
+  release:
+    name: Create draft release
+    needs: [prepare, linux, windows, macos]
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - name: Download release artifacts
+        uses: actions/download-artifact@v8
+        with:
+          pattern: peps-release-*
+          path: release-assets
+          merge-multiple: true
+
+      - name: Generate SHA-256 checksums
+        working-directory: release-assets
+        run: sha256sum -- * > SHA256SUMS
+
+      - name: Create GitHub draft release
+        uses: softprops/action-gh-release@v3
+        with:
+          tag_name: ${{ needs.prepare.outputs.tag }}
+          name: Peps ${{ needs.prepare.outputs.version }}
+          draft: true
+          generate_release_notes: true
+          fail_on_unmatched_files: true
+          files: release-assets/*

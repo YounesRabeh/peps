@@ -191,10 +191,31 @@ then copies the required `frontend/dist` directory beside the versioned
 
 ### macOS status
 
-There is currently no macOS packaging script or `.app`/DMG artifact. On a Mac,
-you can build local binaries with `cargo build --release --bin peps --bin
-peps-ide` and build the frontend with `cd ide && pnpm run build`. Add a macOS
-packaging workflow before advertising a macOS release artifact.
+There is currently no local `.app`/DMG packaging script. On a Mac, you can
+build local binaries with `cargo build --release --bin peps --bin peps-ide`
+and build the frontend with `cd ide && pnpm run build`. The automated release
+workflow packages the compiler and IDE as Intel macOS `.tar.gz` archives.
+
+## Automated draft releases
+
+[`.github/workflows/release.yml`](../.github/workflows/release.yml) runs when a
+tag beginning with `v` is pushed. It can also be started manually from GitHub
+Actions, in which case it selects the newest version tag.
+
+The tag must match the package version in `Cargo.toml`. Read that version, then
+create and push the matching tag:
+
+```sh
+VERSION=$(sed -n 's/^version = "\([^"]*\)"/\1/p' Cargo.toml | head -n 1)
+git tag "v$VERSION"
+git push origin "v$VERSION"
+```
+
+The workflow runs all Rust and IDE checks, builds compiler and IDE packages for
+Linux x86_64, Windows x86_64, and Intel macOS, generates `SHA256SUMS`, then
+creates a draft GitHub release. Review the generated notes and artifacts before
+publishing the draft. The workflow uses the repository-provided `GITHUB_TOKEN`;
+no release secret is required.
 
 ## Release checklist
 
@@ -202,15 +223,14 @@ packaging workflow before advertising a macOS release artifact.
    so `Cargo.lock` is updated consistently.
 2. Confirm `git status` contains only intentional changes.
 3. Run every command in [Test before building artifacts](#test-before-building-artifacts).
-4. Build Linux artifacts on Linux and native Windows artifacts on Windows, or
-   use the Linux cross-build for Windows.
+4. Push the matching `v<version>` tag and let the release workflow build each
+   platform artifact, or build them locally using the commands above.
 5. Verify the CLI launcher and IDE launcher for every platform being released.
 6. Create archives for multi-file Windows packages. The versioned
    `peps-ide-<version>.exe` must be distributed with its matching `.cmd` file
    and `frontend/dist/`; do not upload the EXE by itself.
-7. Create the Git tag and GitHub release according to your project's release
-   policy, then upload the verified artifacts.
-8. Include checksums and platform/architecture names in the release notes.
+7. Review the draft GitHub release and its generated release notes.
+8. Verify the included `SHA256SUMS`, then publish the draft release.
 
 On Windows, archive the complete package directories with PowerShell:
 
