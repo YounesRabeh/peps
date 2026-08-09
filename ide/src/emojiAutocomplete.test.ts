@@ -90,6 +90,12 @@ describe("emoji autocomplete helpers", () => {
     expect(suggestions.some((item) => item.emoji === "📥")).toBe(true);
   });
 
+  it("suggests function syntax", () => {
+    expect(getEmojiSuggestions("function").some((item) => item.emoji === "🧩")).toBe(true);
+    expect(getEmojiSuggestions("call").some((item) => item.emoji === "📞")).toBe(true);
+    expect(getEmojiSuggestions("return").some((item) => item.emoji === "↩️")).toBe(true);
+  });
+
   it("replaces the entire colon token", () => {
     const line = "📢 :happy";
     const range = findColonPrefixBeforeCursor(line, line.length + 1);

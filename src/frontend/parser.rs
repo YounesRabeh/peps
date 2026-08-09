@@ -33,6 +33,8 @@ struct Parser {
     current: usize,
     /// Nesting count used to validate `break` and `continue` placement.
     loop_depth: usize,
+    /// Nesting count used to validate `return` placement.
+    function_depth: usize,
 }
 
 impl Parser {
@@ -41,6 +43,7 @@ impl Parser {
             tokens,
             current: 0,
             loop_depth: 0,
+            function_depth: 0,
         }
     }
 
@@ -56,7 +59,11 @@ impl Parser {
             if matches!(self.peek().kind, TokenKind::BlockEnd) {
                 return Err(Diagnostic::at("unexpected block end 🔒", self.peek().span));
             }
-            statements.push(self.parse_statement()?);
+            if matches!(self.peek().kind, TokenKind::Function) {
+                statements.push(self.parse_function()?);
+            } else {
+                statements.push(self.parse_statement()?);
+            }
         }
 
         let end = self.peek().span;
@@ -72,12 +79,93 @@ impl Parser {
             TokenKind::Print => self.parse_print(),
             TokenKind::Break => self.parse_break(),
             TokenKind::Continue => self.parse_continue(),
+            TokenKind::Return => self.parse_return(),
+            TokenKind::Call => self.parse_call_statement(),
+            TokenKind::Function => Err(Diagnostic::at(
+                "function definitions are only allowed at the top level",
+                self.peek().span,
+            )),
             TokenKind::If => self.parse_if(),
             TokenKind::While => self.parse_loop(),
-            TokenKind::Else => Err(Diagnostic::at("else 😐 without matching if", self.peek().span)),
+            TokenKind::Else => Err(Diagnostic::at(
+                "else 😐 without matching if",
+                self.peek().span,
+            )),
             TokenKind::Eof => Err(Diagnostic::at("unexpected end of file", self.peek().span)),
             _ => Err(Diagnostic::at("expected statement", self.peek().span)),
         }
+    }
+
+    fn parse_function(&mut self) -> Result<Stmt, Diagnostic> {
+        let start = self.advance().span;
+        let name_token = self.advance().clone();
+        let TokenKind::Identifier(name) = name_token.kind else {
+            return Err(Diagnostic::at(
+                "expected function name after 🧩",
+                name_token.span,
+            ));
+        };
+        if !is_single_emoji_identifier(&name) {
+            return Err(Diagnostic::at(
+                "function names must be exactly one emoji long",
+                name_token.span,
+            ));
+        }
+
+        self.expect_list_delimiter("expected parameter list delimiter 📚")?;
+        let mut parameters = Vec::new();
+        while !matches!(self.peek().kind, TokenKind::ListDelimiter | TokenKind::Eof) {
+            let parameter_token = self.advance().clone();
+            let TokenKind::Identifier(parameter) = parameter_token.kind else {
+                return Err(Diagnostic::at(
+                    "function parameters must be exactly one emoji long",
+                    parameter_token.span,
+                ));
+            };
+            if !is_single_emoji_identifier(&parameter) {
+                return Err(Diagnostic::at(
+                    "function parameters must be exactly one emoji long",
+                    parameter_token.span,
+                ));
+            }
+            parameters.push(parameter);
+        }
+        self.expect_list_delimiter("missing closing parameter delimiter 📚")?;
+
+        self.function_depth += 1;
+        let body = self.parse_block();
+        self.function_depth -= 1;
+        let body = body?;
+        let span = start.merge(self.previous().span);
+        Ok(Stmt::Function {
+            name,
+            parameters,
+            body,
+            span,
+        })
+    }
+
+    fn parse_return(&mut self) -> Result<Stmt, Diagnostic> {
+        let start = self.advance().span;
+        if self.function_depth == 0 {
+            return Err(Diagnostic::at(
+                "return can only be used inside a function",
+                start,
+            ));
+        }
+        let expr = self.parse_expression(0)?;
+        let end = self.expect_statement_end()?;
+        Ok(Stmt::Return {
+            expr,
+            span: start.merge(end),
+        })
+    }
+
+    fn parse_call_statement(&mut self) -> Result<Stmt, Diagnostic> {
+        let expr = self.parse_call_expression()?;
+        let end = self.expect_statement_end()?;
+        let span = expr.span().merge(end);
+        Ok(Stmt::Call { expr, span })
     }
 
     fn parse_identifier_statement(&mut self) -> Result<Stmt, Diagnostic> {
@@ -94,7 +182,9 @@ impl Parser {
             unreachable!("parse_assignment called only for identifiers");
         };
 
-        if !is_single_emoji_identifier(&name) || matches!(self.peek().kind, TokenKind::Identifier(_)) {
+        if !is_single_emoji_identifier(&name)
+            || matches!(self.peek().kind, TokenKind::Identifier(_))
+        {
             return Err(Diagnostic::at(
                 "variable identifiers must be exactly one emoji long",
                 name_token.span.merge(self.peek().span),
@@ -118,7 +208,9 @@ impl Parser {
             unreachable!("parse_append_statement called only for identifiers");
         };
 
-        if !is_single_emoji_identifier(&name) || matches!(self.peek().kind, TokenKind::Identifier(_)) {
+        if !is_single_emoji_identifier(&name)
+            || matches!(self.peek().kind, TokenKind::Identifier(_))
+        {
             return Err(Diagnostic::at(
                 "variable identifiers must be exactly one emoji long",
                 name_token.span.merge(self.peek().span),
@@ -145,10 +237,18 @@ impl Parser {
         }
 
         if elements.len() == 1 {
-            Ok(elements.pop().expect("append payload should contain one expression"))
+            Ok(elements
+                .pop()
+                .expect("append payload should contain one expression"))
         } else {
-            let start = elements.first().expect("append payload should be non-empty").span();
-            let end = elements.last().expect("append payload should be non-empty").span();
+            let start = elements
+                .first()
+                .expect("append payload should be non-empty")
+                .span();
+            let end = elements
+                .last()
+                .expect("append payload should be non-empty")
+                .span();
             Ok(Expr::List {
                 elements,
                 span: start.merge(end),
@@ -181,7 +281,10 @@ impl Parser {
     fn parse_continue(&mut self) -> Result<Stmt, Diagnostic> {
         let start = self.advance().span;
         if self.loop_depth == 0 {
-            return Err(Diagnostic::at("continue can only be used inside loops", start));
+            return Err(Diagnostic::at(
+                "continue can only be used inside loops",
+                start,
+            ));
         }
         let end = self.expect_statement_end()?;
         Ok(Stmt::Continue {
@@ -375,6 +478,9 @@ impl Parser {
     }
 
     fn parse_primary(&mut self) -> Result<Expr, Diagnostic> {
+        if matches!(self.peek().kind, TokenKind::Call) {
+            return self.parse_call_expression();
+        }
         let token = self.advance().clone();
         match token.kind {
             TokenKind::Number(value) => Ok(Expr::Number {
@@ -407,6 +513,39 @@ impl Parser {
         }
     }
 
+    fn parse_call_expression(&mut self) -> Result<Expr, Diagnostic> {
+        let start = self.advance().span;
+        let name_token = self.advance().clone();
+        let TokenKind::Identifier(name) = name_token.kind else {
+            return Err(Diagnostic::at(
+                "expected function name after 📞",
+                name_token.span,
+            ));
+        };
+        if !is_single_emoji_identifier(&name) {
+            return Err(Diagnostic::at(
+                "function names must be exactly one emoji long",
+                name_token.span,
+            ));
+        }
+        self.expect_list_delimiter("expected argument list delimiter 📚")?;
+        let mut arguments = Vec::new();
+        while !matches!(self.peek().kind, TokenKind::Eof) {
+            if matches!(self.peek().kind, TokenKind::ListDelimiter)
+                && !(arguments.is_empty() && self.next_token_starts_expression())
+            {
+                break;
+            }
+            arguments.push(self.parse_expression(0)?);
+        }
+        let end = self.expect_list_delimiter("missing closing argument delimiter 📚")?;
+        Ok(Expr::Call {
+            name,
+            arguments,
+            span: start.merge(end),
+        })
+    }
+
     fn parse_list(&mut self, start: Span) -> Result<Expr, Diagnostic> {
         let mut elements = Vec::new();
 
@@ -423,7 +562,10 @@ impl Parser {
         }
 
         if matches!(self.peek().kind, TokenKind::Eof) {
-            return Err(Diagnostic::at("missing closing list delimiter 📚", self.peek().span));
+            return Err(Diagnostic::at(
+                "missing closing list delimiter 📚",
+                self.peek().span,
+            ));
         }
 
         let end = self.advance().span;
@@ -477,14 +619,26 @@ impl Parser {
                 | TokenKind::Not
                 | TokenKind::ListLen
                 | TokenKind::ListDelimiter
+                | TokenKind::Call
         )
+    }
+
+    fn expect_list_delimiter(&mut self, message: &str) -> Result<Span, Diagnostic> {
+        if matches!(self.peek().kind, TokenKind::ListDelimiter) {
+            Ok(self.advance().span)
+        } else {
+            Err(Diagnostic::at(message, self.peek().span))
+        }
     }
 
     fn expect_assign(&mut self) -> Result<Span, Diagnostic> {
         if matches!(self.peek().kind, TokenKind::Assign) {
             Ok(self.advance().span)
         } else {
-            Err(Diagnostic::at("expected assignment operator 🟰", self.peek().span))
+            Err(Diagnostic::at(
+                "expected assignment operator 🟰",
+                self.peek().span,
+            ))
         }
     }
 
@@ -492,7 +646,10 @@ impl Parser {
         if matches!(self.peek().kind, TokenKind::In) {
             Ok(self.advance().span)
         } else {
-            Err(Diagnostic::at("expected loop in marker 🧭", self.peek().span))
+            Err(Diagnostic::at(
+                "expected loop in marker 🧭",
+                self.peek().span,
+            ))
         }
     }
 
@@ -500,7 +657,10 @@ impl Parser {
         if matches!(self.peek().kind, TokenKind::ListAppend) {
             Ok(self.advance().span)
         } else {
-            Err(Diagnostic::at("expected list append operator 📥", self.peek().span))
+            Err(Diagnostic::at(
+                "expected list append operator 📥",
+                self.peek().span,
+            ))
         }
     }
 
@@ -508,7 +668,10 @@ impl Parser {
         if matches!(self.peek().kind, TokenKind::Arrow) {
             Ok(self.advance().span)
         } else {
-            Err(Diagnostic::at("expected range end arrow ➡️", self.peek().span))
+            Err(Diagnostic::at(
+                "expected range end arrow ➡️",
+                self.peek().span,
+            ))
         }
     }
 
@@ -524,7 +687,10 @@ impl Parser {
             let end = self.advance().span;
             self.skip_statement_separators();
             Ok(end)
-        } else if matches!(self.peek().kind, TokenKind::BlockEnd | TokenKind::Eof | TokenKind::Else) {
+        } else if matches!(
+            self.peek().kind,
+            TokenKind::BlockEnd | TokenKind::Eof | TokenKind::Else
+        ) {
             Ok(self.previous().span)
         } else {
             Err(Diagnostic::at(

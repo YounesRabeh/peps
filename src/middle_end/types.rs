@@ -3,6 +3,8 @@
 /// Static types supported by the Peps v0 semantic checker.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Type {
+    /// A value whose concrete type is only known when a function runs.
+    Unknown,
     /// Numeric values.
     Num,
     /// Text values.

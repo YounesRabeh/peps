@@ -32,6 +32,20 @@ pub enum Stmt {
     Continue {
         span: Span,
     },
+    Function {
+        name: String,
+        parameters: Vec<String>,
+        body: Vec<Stmt>,
+        span: Span,
+    },
+    Return {
+        expr: Expr,
+        span: Span,
+    },
+    Call {
+        expr: Expr,
+        span: Span,
+    },
     If {
         condition: Expr,
         then_branch: Vec<Stmt>,
@@ -59,6 +73,9 @@ impl Stmt {
             | Stmt::Print { span, .. }
             | Stmt::Break { span, .. }
             | Stmt::Continue { span, .. }
+            | Stmt::Function { span, .. }
+            | Stmt::Return { span, .. }
+            | Stmt::Call { span, .. }
             | Stmt::If { span, .. }
             | Stmt::While { span, .. }
             | Stmt::For { span, .. } => *span,
@@ -68,15 +85,8 @@ impl Stmt {
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum ForSource {
-    List {
-        expr: Expr,
-        span: Span,
-    },
-    Range {
-        start: Expr,
-        end: Expr,
-        span: Span,
-    },
+    List { expr: Expr, span: Span },
+    Range { start: Expr, end: Expr, span: Span },
 }
 
 impl ForSource {
@@ -124,6 +134,11 @@ pub enum Expr {
         right: Box<Expr>,
         span: Span,
     },
+    Call {
+        name: String,
+        arguments: Vec<Expr>,
+        span: Span,
+    },
 }
 
 impl Expr {
@@ -137,6 +152,7 @@ impl Expr {
             | Expr::List { span, .. }
             | Expr::Unary { span, .. }
             | Expr::Binary { span, .. } => *span,
+            Expr::Call { span, .. } => *span,
         }
     }
 }

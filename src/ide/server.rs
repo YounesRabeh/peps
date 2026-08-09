@@ -11,11 +11,7 @@ use axum::{
 use serde::{Deserialize, Serialize};
 use tower_http::{cors::CorsLayer, services::ServeDir};
 
-use crate::{
-    diagnostic::Diagnostic,
-    run_source_with_step_limit,
-    vm::IDE_STEP_LIMIT,
-};
+use crate::{diagnostic::Diagnostic, run_source_with_step_limit, vm::IDE_STEP_LIMIT};
 
 /// Address used by the local development IDE server.
 const DEFAULT_ADDR: &str = "127.0.0.1:5179";
@@ -139,11 +135,7 @@ pub async fn run_handler(Json(request): Json<RunRequest>) -> Json<RunResponse> {
         Err(error) => Json(RunResponse {
             ok: false,
             output: error.output,
-            diagnostics: error
-                .diagnostics
-                .iter()
-                .map(IdeDiagnostic::from)
-                .collect(),
+            diagnostics: error.diagnostics.iter().map(IdeDiagnostic::from).collect(),
         }),
     }
 }

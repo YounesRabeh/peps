@@ -13,17 +13,48 @@ use crate::{
 
 /// Compile a semantically checked Peps program into bytecode instructions.
 pub fn compile(checked: CheckedProgram) -> Result<Vec<Instruction>, Vec<Diagnostic>> {
+    let global_scope = checked
+        .symbols
+        .iter()
+        .map(|(name, _)| (name.clone(), Binding::Global(name.clone())))
+        .collect();
     let mut compiler = Compiler {
         instructions: Vec::new(),
         emoji_literals: checked.emoji_literals,
         loop_counter: 0,
         local_counter: 0,
         loop_stack: Vec::new(),
-        scopes: vec![HashMap::new()],
+        scopes: vec![global_scope],
+        functions: HashMap::new(),
+        pending_calls: Vec::new(),
     };
 
     for statement in &checked.program.statements {
-        compiler.compile_statement(statement);
+        if !matches!(statement, Stmt::Function { .. }) {
+            compiler.compile_statement(statement);
+        }
+    }
+
+    let function_statements = checked
+        .program
+        .statements
+        .iter()
+        .filter(|statement| matches!(statement, Stmt::Function { .. }))
+        .collect::<Vec<_>>();
+    if !function_statements.is_empty() {
+        let skip_functions = compiler.emit_placeholder_jump();
+        for statement in function_statements {
+            compiler.compile_function(statement);
+        }
+        let end = compiler.instructions.len();
+        compiler.patch_jump(skip_functions, end);
+    }
+    for (index, name) in compiler.pending_calls {
+        let target = compiler.functions[&name];
+        match &mut compiler.instructions[index] {
+            Instruction::Call { target: slot, .. } => *slot = target,
+            _ => unreachable!("pending call did not point at call bytecode"),
+        }
     }
 
     Ok(compiler.instructions)
@@ -36,7 +67,15 @@ struct Compiler {
     local_counter: usize,
     loop_stack: Vec<LoopContext>,
     /// Source names mapped to their bytecode storage names in each lexical scope.
-    scopes: Vec<HashMap<String, String>>,
+    scopes: Vec<HashMap<String, Binding>>,
+    functions: HashMap<String, usize>,
+    pending_calls: Vec<(usize, String)>,
+}
+
+#[derive(Debug, Clone)]
+enum Binding {
+    Global(String),
+    Local(String),
 }
 
 #[derive(Default)]
@@ -51,20 +90,19 @@ impl Compiler {
         match statement {
             Stmt::Assign { name, expr, .. } => {
                 self.compile_expr(expr);
-                let storage_name = self
+                let binding = self
                     .resolve_name(name)
                     .unwrap_or_else(|| self.declare_name(name));
-                self.instructions.push(Instruction::StoreVar(storage_name));
+                self.emit_store(&binding);
             }
             Stmt::Append { name, expr, .. } => {
-                let storage_name = self
+                let binding = self
                     .resolve_name(name)
                     .expect("semantic checker accepted an unresolved append target");
-                self.instructions
-                    .push(Instruction::LoadVar(storage_name.clone()));
+                self.emit_load(&binding);
                 self.compile_expr(expr);
                 self.instructions.push(Instruction::ListAppend);
-                self.instructions.push(Instruction::StoreVar(storage_name));
+                self.emit_store(&binding);
             }
             Stmt::Print { expr, .. } => {
                 self.compile_expr(expr);
@@ -72,6 +110,15 @@ impl Compiler {
             }
             Stmt::Break { .. } => self.emit_loop_break(),
             Stmt::Continue { .. } => self.emit_loop_continue(),
+            Stmt::Function { .. } => {}
+            Stmt::Return { expr, .. } => {
+                self.compile_expr(expr);
+                self.instructions.push(Instruction::Return);
+            }
+            Stmt::Call { expr, .. } => {
+                self.compile_expr(expr);
+                self.instructions.push(Instruction::Pop);
+            }
             Stmt::If {
                 condition,
                 then_branch,
@@ -133,11 +180,43 @@ impl Compiler {
         }
     }
 
+    fn compile_function(&mut self, statement: &Stmt) {
+        let Stmt::Function {
+            name,
+            parameters,
+            body,
+            ..
+        } = statement
+        else {
+            unreachable!()
+        };
+
+        let entry = self.instructions.len();
+        self.functions.insert(name.clone(), entry);
+        self.scopes.truncate(1);
+        self.push_scope();
+        self.loop_stack.clear();
+
+        let parameter_bindings = parameters
+            .iter()
+            .map(|parameter| self.declare_local_name(parameter))
+            .collect::<Vec<_>>();
+        for binding in parameter_bindings.iter().rev() {
+            self.emit_store(binding);
+        }
+        for statement in body {
+            self.compile_statement(statement);
+        }
+        self.pop_scope();
+    }
+
     /// Compile a `for` statement according to the kind of source it iterates.
     fn compile_for(&mut self, variable: &str, source: &ForSource, body: &[Stmt]) {
         match source {
             ForSource::List { expr, .. } => self.compile_for_list(variable, expr, body),
-            ForSource::Range { start, end, .. } => self.compile_for_range(variable, start, end, body),
+            ForSource::Range { start, end, .. } => {
+                self.compile_for_range(variable, start, end, body)
+            }
         }
     }
 
@@ -151,26 +230,30 @@ impl Compiler {
         self.compile_expr(source);
         self.push_scope();
         let variable_name = self.declare_name(variable);
-        self.instructions.push(Instruction::StoreVar(list_name.clone()));
+        self.instructions
+            .push(Instruction::StoreLocal(list_name.clone()));
         self.instructions
             .push(Instruction::LoadConst(Value::Num(BigInt::from(0_u8))));
         self.instructions
-            .push(Instruction::StoreVar(index_name.clone()));
-        self.instructions.push(Instruction::LoadVar(list_name.clone()));
+            .push(Instruction::StoreLocal(index_name.clone()));
+        self.instructions
+            .push(Instruction::LoadLocal(list_name.clone()));
         self.instructions.push(Instruction::ListLen);
-        self.instructions.push(Instruction::StoreVar(len_name.clone()));
+        self.instructions
+            .push(Instruction::StoreLocal(len_name.clone()));
 
         let loop_start = self.instructions.len();
-        self.instructions.push(Instruction::LoadVar(index_name.clone()));
-        self.instructions.push(Instruction::LoadVar(len_name));
+        self.instructions
+            .push(Instruction::LoadLocal(index_name.clone()));
+        self.instructions.push(Instruction::LoadLocal(len_name));
         self.instructions.push(Instruction::Lt);
         let jump_if_false = self.emit_placeholder_jump_if_false();
 
-        self.instructions.push(Instruction::LoadVar(list_name));
-        self.instructions.push(Instruction::LoadVar(index_name.clone()));
-        self.instructions.push(Instruction::ListGet);
+        self.instructions.push(Instruction::LoadLocal(list_name));
         self.instructions
-            .push(Instruction::StoreVar(variable_name));
+            .push(Instruction::LoadLocal(index_name.clone()));
+        self.instructions.push(Instruction::ListGet);
+        self.emit_store(&variable_name);
         self.begin_loop();
 
         for statement in body {
@@ -178,11 +261,12 @@ impl Compiler {
         }
 
         let continue_target = self.instructions.len();
-        self.instructions.push(Instruction::LoadVar(index_name.clone()));
+        self.instructions
+            .push(Instruction::LoadLocal(index_name.clone()));
         self.instructions
             .push(Instruction::LoadConst(Value::Num(BigInt::from(1_u8))));
         self.instructions.push(Instruction::Add);
-        self.instructions.push(Instruction::StoreVar(index_name));
+        self.instructions.push(Instruction::StoreLocal(index_name));
         self.instructions.push(Instruction::Jump(loop_start));
 
         let after_loop = self.instructions.len();
@@ -199,21 +283,23 @@ impl Compiler {
 
         self.compile_expr(start);
         self.instructions
-            .push(Instruction::StoreVar(index_name.clone()));
+            .push(Instruction::StoreLocal(index_name.clone()));
         self.compile_expr(end);
-        self.instructions.push(Instruction::StoreVar(end_name.clone()));
+        self.instructions
+            .push(Instruction::StoreLocal(end_name.clone()));
         self.push_scope();
         let variable_name = self.declare_name(variable);
 
         let loop_start = self.instructions.len();
-        self.instructions.push(Instruction::LoadVar(index_name.clone()));
-        self.instructions.push(Instruction::LoadVar(end_name));
+        self.instructions
+            .push(Instruction::LoadLocal(index_name.clone()));
+        self.instructions.push(Instruction::LoadLocal(end_name));
         self.instructions.push(Instruction::Lt);
         let jump_if_false = self.emit_placeholder_jump_if_false();
 
-        self.instructions.push(Instruction::LoadVar(index_name.clone()));
         self.instructions
-            .push(Instruction::StoreVar(variable_name));
+            .push(Instruction::LoadLocal(index_name.clone()));
+        self.emit_store(&variable_name);
         self.begin_loop();
 
         for statement in body {
@@ -221,11 +307,12 @@ impl Compiler {
         }
 
         let continue_target = self.instructions.len();
-        self.instructions.push(Instruction::LoadVar(index_name.clone()));
+        self.instructions
+            .push(Instruction::LoadLocal(index_name.clone()));
         self.instructions
             .push(Instruction::LoadConst(Value::Num(BigInt::from(1_u8))));
         self.instructions.push(Instruction::Add);
-        self.instructions.push(Instruction::StoreVar(index_name));
+        self.instructions.push(Instruction::StoreLocal(index_name));
         self.instructions.push(Instruction::Jump(loop_start));
 
         let after_loop = self.instructions.len();
@@ -254,17 +341,18 @@ impl Compiler {
                     self.instructions
                         .push(Instruction::LoadConst(Value::Emoji(name.clone())));
                 } else {
-                    let storage_name = self
+                    let binding = self
                         .resolve_name(name)
                         .expect("semantic checker accepted an unresolved variable");
-                    self.instructions.push(Instruction::LoadVar(storage_name));
+                    self.emit_load(&binding);
                 }
             }
             Expr::List { elements, .. } => {
                 for element in elements {
                     self.compile_expr(element);
                 }
-                self.instructions.push(Instruction::MakeList(elements.len()));
+                self.instructions
+                    .push(Instruction::MakeList(elements.len()));
             }
             Expr::Unary {
                 op: UnaryOp::Negate,
@@ -295,11 +383,17 @@ impl Compiler {
                 ..
             } => self.compile_unary_not(expr),
             Expr::Binary {
-                left, op, right, ..
-            } if matches!(op, BinaryOp::And) => self.compile_logical_and(left, right),
+                left,
+                op: BinaryOp::And,
+                right,
+                ..
+            } => self.compile_logical_and(left, right),
             Expr::Binary {
-                left, op, right, ..
-            } if matches!(op, BinaryOp::Or) => self.compile_logical_or(left, right),
+                left,
+                op: BinaryOp::Or,
+                right,
+                ..
+            } => self.compile_logical_or(left, right),
             Expr::Binary {
                 left, op, right, ..
             } => {
@@ -321,6 +415,19 @@ impl Compiler {
                     BinaryOp::GtEq => Instruction::GtEq,
                 });
             }
+            Expr::Call {
+                name, arguments, ..
+            } => {
+                for argument in arguments {
+                    self.compile_expr(argument);
+                }
+                let index = self.instructions.len();
+                self.instructions.push(Instruction::Call {
+                    target: usize::MAX,
+                    arity: arguments.len(),
+                });
+                self.pending_calls.push((index, name.clone()));
+            }
         }
     }
 
@@ -328,11 +435,13 @@ impl Compiler {
     fn compile_unary_not(&mut self, expr: &Expr) {
         self.compile_expr(expr);
         let jump_if_false = self.emit_placeholder_jump_if_false();
-        self.instructions.push(Instruction::LoadConst(Value::Bool(false)));
+        self.instructions
+            .push(Instruction::LoadConst(Value::Bool(false)));
         let jump_end = self.emit_placeholder_jump();
         let true_branch = self.instructions.len();
         self.patch_jump(jump_if_false, true_branch);
-        self.instructions.push(Instruction::LoadConst(Value::Bool(true)));
+        self.instructions
+            .push(Instruction::LoadConst(Value::Bool(true)));
         let after = self.instructions.len();
         self.patch_jump(jump_end, after);
     }
@@ -343,12 +452,14 @@ impl Compiler {
         let left_false = self.emit_placeholder_jump_if_false();
         self.compile_expr(right);
         let right_false = self.emit_placeholder_jump_if_false();
-        self.instructions.push(Instruction::LoadConst(Value::Bool(true)));
+        self.instructions
+            .push(Instruction::LoadConst(Value::Bool(true)));
         let jump_end = self.emit_placeholder_jump();
         let false_branch = self.instructions.len();
         self.patch_jump(left_false, false_branch);
         self.patch_jump(right_false, false_branch);
-        self.instructions.push(Instruction::LoadConst(Value::Bool(false)));
+        self.instructions
+            .push(Instruction::LoadConst(Value::Bool(false)));
         let after = self.instructions.len();
         self.patch_jump(jump_end, after);
     }
@@ -357,18 +468,21 @@ impl Compiler {
     fn compile_logical_or(&mut self, left: &Expr, right: &Expr) {
         self.compile_expr(left);
         let left_false = self.emit_placeholder_jump_if_false();
-        self.instructions.push(Instruction::LoadConst(Value::Bool(true)));
+        self.instructions
+            .push(Instruction::LoadConst(Value::Bool(true)));
         let jump_end_left = self.emit_placeholder_jump();
         let eval_right = self.instructions.len();
         self.patch_jump(left_false, eval_right);
 
         self.compile_expr(right);
         let right_false = self.emit_placeholder_jump_if_false();
-        self.instructions.push(Instruction::LoadConst(Value::Bool(true)));
+        self.instructions
+            .push(Instruction::LoadConst(Value::Bool(true)));
         let jump_end_right = self.emit_placeholder_jump();
         let false_branch = self.instructions.len();
         self.patch_jump(right_false, false_branch);
-        self.instructions.push(Instruction::LoadConst(Value::Bool(false)));
+        self.instructions
+            .push(Instruction::LoadConst(Value::Bool(false)));
         let after = self.instructions.len();
         self.patch_jump(jump_end_left, after);
         self.patch_jump(jump_end_right, after);
@@ -428,7 +542,7 @@ impl Compiler {
     }
 
     /// Look up the bytecode storage name for the nearest visible binding.
-    fn resolve_name(&self, name: &str) -> Option<String> {
+    fn resolve_name(&self, name: &str) -> Option<Binding> {
         self.scopes
             .iter()
             .rev()
@@ -436,19 +550,46 @@ impl Compiler {
     }
 
     /// Declare a source name in the current scope and return its storage name.
-    fn declare_name(&mut self, name: &str) -> String {
-        let storage_name = if self.scopes.len() == 1 {
-            name.to_string()
+    fn declare_name(&mut self, name: &str) -> Binding {
+        let binding = if self.scopes.len() == 1 {
+            Binding::Global(name.to_string())
         } else {
-            let id = self.local_counter;
-            self.local_counter += 1;
-            format!("__peps_local_{}", id)
+            self.new_local_binding()
         };
         self.scopes
             .last_mut()
             .expect("compiler scope stack underflow")
-            .insert(name.to_string(), storage_name.clone());
-        storage_name
+            .insert(name.to_string(), binding.clone());
+        binding
+    }
+
+    fn declare_local_name(&mut self, name: &str) -> Binding {
+        let binding = self.new_local_binding();
+        self.scopes
+            .last_mut()
+            .expect("compiler scope stack underflow")
+            .insert(name.to_string(), binding.clone());
+        binding
+    }
+
+    fn new_local_binding(&mut self) -> Binding {
+        let id = self.local_counter;
+        self.local_counter += 1;
+        Binding::Local(format!("__peps_local_{}", id))
+    }
+
+    fn emit_load(&mut self, binding: &Binding) {
+        self.instructions.push(match binding {
+            Binding::Global(name) => Instruction::LoadVar(name.clone()),
+            Binding::Local(name) => Instruction::LoadLocal(name.clone()),
+        });
+    }
+
+    fn emit_store(&mut self, binding: &Binding) {
+        self.instructions.push(match binding {
+            Binding::Global(name) => Instruction::StoreVar(name.clone()),
+            Binding::Local(name) => Instruction::StoreLocal(name.clone()),
+        });
     }
 
     /// Start a lexical block scope.
@@ -458,7 +599,10 @@ impl Compiler {
 
     /// End the innermost lexical block scope.
     fn pop_scope(&mut self) {
-        assert!(self.scopes.len() > 1, "cannot pop the compiler's top-level scope");
+        assert!(
+            self.scopes.len() > 1,
+            "cannot pop the compiler's top-level scope"
+        );
         self.scopes.pop();
     }
 

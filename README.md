@@ -24,6 +24,8 @@ Peps is an emoji-first programming language with:
 10. `for` iterator names are block-local and cannot reuse the name of an outer variable.
 11. Numbers are arbitrary-precision integers and do not overflow at `i64` limits.
 12. Compiler and CLI runs have no instruction limit; browser IDE runs stop after 100,000 instructions for safety.
+13. Functions are named at top level with `🧩`, called with `📞`, and return a value with `↩️`.
+14. Every function path must return. Functions can access globals, but cannot access caller-local variables.
 
 ## Core Syntax
 
@@ -35,6 +37,9 @@ Peps is an emoji-first programming language with:
 | 🔁 | while / for . in . | `🔁 ✅ 🔓`, `🔁 🐾 🧭 🍎 🔓` |
 | 🛑 | break | `🛑` |
 | ⏭️ | continue | `⏭️` |
+| 🧩 | define function | `🧩 🧮 📚 🐶 🐱 📚 🔓 ... 🔒` |
+| 📞 | call function | `📞 🧮 📚 1️⃣ 2️⃣ 📚` |
+| ↩️ | return from function | `↩️ 🐶 ➕ 🐱` |
 | 🧭 | in (for loops) | `🔁 🐾 🧭 🍎 🔓` |
 | 🔢 | range | `🔁 🐾 🧭 🔢 0️⃣ ➡️ 3️⃣ 🔓` |
 | 🟰 | assign | `🐶 🟰 5️⃣` |
@@ -73,6 +78,34 @@ visible name updates that variable and may change its type:
 Each `if` branch and each loop body has its own lexical scope. Local variables
 are available to nested blocks. A `for` iterator is local to its loop, and its
 name must not conflict with another visible variable.
+
+## Functions
+
+Functions are defined at the top level. Their names and parameter names must
+each be exactly one emoji, and parameter names must be unique. Definitions are
+collected before the rest of the program is checked, so calls may appear before
+a definition and functions may call themselves recursively.
+
+```peps
+🧩 🧮 📚 🐶 🐱 📚 🔓
+    ↩️ 🐶 ➕ 🐱
+🔒
+
+🐸 🟰 📞 🧮 📚 1️⃣ 2️⃣ 📚
+📞 🧮 📚 3️⃣ 4️⃣ 📚 // result is discarded
+```
+
+Arguments are positional. Parameters and function results are dynamically
+typed, so operations involving them are checked when the function runs. Known
+type errors elsewhere remain compile-time errors. Every possible path through
+a function must explicitly reach `↩️`; an `if` satisfies this rule only when
+both branches return, and a loop alone does not.
+
+Each call has isolated parameter and local-variable storage, including during
+recursion. Functions may read and reassign top-level variables, but they cannot
+see a caller's block locals. Parameters and function locals cannot shadow a
+visible global. Function and variable names occupy separate namespaces, and
+functions are not values.
 
 ## Execution Model
 

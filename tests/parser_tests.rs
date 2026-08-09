@@ -4,7 +4,8 @@ use peps::{
 };
 
 fn parse(source: &str) -> peps::Program {
-    parser::parse(lexer::lex(source).expect("lexing should succeed")).expect("parsing should succeed")
+    parser::parse(lexer::lex(source).expect("lexing should succeed"))
+        .expect("parsing should succeed")
 }
 
 #[test]
@@ -48,14 +49,14 @@ fn parses_logical_precedence() {
     let Stmt::Assign { expr, .. } = &program.statements[0] else {
         panic!("expected assignment");
     };
-    let Expr::Binary { op, left, right, .. } = expr else {
+    let Expr::Binary {
+        op, left, right, ..
+    } = expr
+    else {
         panic!("expected binary expression");
     };
     assert_eq!(*op, BinaryOp::Or);
-    assert!(matches!(
-        right.as_ref(),
-        Expr::Bool { value: true, .. }
-    ));
+    assert!(matches!(right.as_ref(), Expr::Bool { value: true, .. }));
     let Expr::Binary {
         op: and_op,
         left: and_left,
@@ -73,7 +74,10 @@ fn parses_logical_precedence() {
             ..
         }
     ));
-    assert!(matches!(and_right.as_ref(), Expr::Bool { value: false, .. }));
+    assert!(matches!(
+        and_right.as_ref(),
+        Expr::Bool { value: false, .. }
+    ));
 }
 
 #[test]
@@ -91,7 +95,10 @@ fn parses_list_ops() {
         }
     ));
 
-    let Stmt::Assign { expr: index_expr, .. } = &program.statements[1] else {
+    let Stmt::Assign {
+        expr: index_expr, ..
+    } = &program.statements[1]
+    else {
         panic!("expected index assignment");
     };
     let Expr::Binary {
@@ -111,7 +118,10 @@ fn parses_list_ops() {
         }
     ));
 
-    let Stmt::Assign { expr: append_expr, .. } = &program.statements[2] else {
+    let Stmt::Assign {
+        expr: append_expr, ..
+    } = &program.statements[2]
+    else {
         panic!("expected append assignment");
     };
     assert!(matches!(
@@ -181,13 +191,25 @@ fn parses_arithmetic_precedence() {
         panic!("expected binary expression");
     };
     assert_eq!(*op, BinaryOp::Add);
-    assert!(matches!(right.as_ref(), Expr::Binary { op: BinaryOp::Mul, .. }));
+    assert!(matches!(
+        right.as_ref(),
+        Expr::Binary {
+            op: BinaryOp::Mul,
+            ..
+        }
+    ));
 }
 
 #[test]
 fn parses_if_block() {
     let program = parse("🤔 ✅ 🔓 📢 1️⃣ 🔚 🔒");
-    assert!(matches!(program.statements[0], Stmt::If { else_branch: None, .. }));
+    assert!(matches!(
+        program.statements[0],
+        Stmt::If {
+            else_branch: None,
+            ..
+        }
+    ));
 }
 
 #[test]
@@ -258,7 +280,8 @@ fn parses_for_range_block() {
 
 #[test]
 fn errors_on_ascii_for_loop_variable() {
-    let tokens = lexer::lex("🔁 idx 🧭 🔢 0️⃣ ➡️ 3️⃣ 🔓 📢 idx 🔚 🔒").expect("lexing should succeed");
+    let tokens =
+        lexer::lex("🔁 idx 🧭 🔢 0️⃣ ➡️ 3️⃣ 🔓 📢 idx 🔚 🔒").expect("lexing should succeed");
     let diagnostics = parser::parse(tokens).expect_err("ascii loop variable should fail");
     assert!(diagnostics[0].message.contains("exactly one emoji"));
 }
@@ -326,4 +349,40 @@ fn errors_on_multi_emoji_variable_reference() {
     let tokens = lexer::lex("📢 🐶🐱 🔚").expect("lexing should succeed");
     let diagnostics = parser::parse(tokens).expect_err("multi emoji variable should fail");
     assert!(diagnostics[0].message.contains("exactly one emoji"));
+}
+
+#[test]
+fn parses_functions_returns_and_calls() {
+    let program = parse(
+        "🧩 🧮 📚 🐶 🐱 📚 🔓 ↩️ 🐶 ➕ 🐱 🔚 🔒 🐸 🟰 📞 🧮 📚 1️⃣ 2️⃣ 📚 🔚 📞 🧮 📚 3️⃣ 4️⃣ 📚 🔚",
+    );
+    assert!(matches!(
+        &program.statements[0],
+        Stmt::Function { name, parameters, body, .. }
+            if name == "🧮" && parameters == &["🐶", "🐱"] && matches!(body[0], Stmt::Return { .. })
+    ));
+    assert!(matches!(
+        &program.statements[1],
+        Stmt::Assign { expr: Expr::Call { arguments, .. }, .. } if arguments.len() == 2
+    ));
+    assert!(matches!(program.statements[2], Stmt::Call { .. }));
+}
+
+#[test]
+fn parses_zero_parameter_and_zero_argument_function() {
+    let program = parse("🧩 🧮 📚 📚 🔓 ↩️ 1️⃣ 🔚 🔒 📞 🧮 📚 📚 🔚");
+    assert!(matches!(
+        &program.statements[0],
+        Stmt::Function { parameters, .. } if parameters.is_empty()
+    ));
+}
+
+#[test]
+fn rejects_nested_function_and_top_level_return() {
+    let nested = parser::parse(lexer::lex("🤔 ✅ 🔓 🧩 🧮 📚 📚 🔓 ↩️ 1️⃣ 🔚 🔒 🔒").unwrap())
+        .expect_err("nested functions must fail");
+    assert!(nested[0].message.contains("top level"));
+    let returned =
+        parser::parse(lexer::lex("↩️ 1️⃣ 🔚").unwrap()).expect_err("top-level return must fail");
+    assert!(returned[0].message.contains("inside a function"));
 }

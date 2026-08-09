@@ -161,7 +161,12 @@ impl Lexer {
             self.advance();
         }
 
-        let eof_span = Span::new(self.source_len, self.source_len, self.eof_line, self.eof_column);
+        let eof_span = Span::new(
+            self.source_len,
+            self.source_len,
+            self.eof_line,
+            self.eof_column,
+        );
         tokens.push(Token::new(TokenKind::Eof, eof_span));
 
         if self.diagnostics.is_empty() {
@@ -225,7 +230,7 @@ impl Lexer {
         Token::new(TokenKind::Number(value), start.merge(end))
     }
 
-fn lex_ascii_identifier(&mut self) -> Token {
+    fn lex_ascii_identifier(&mut self) -> Token {
         let start = self.peek().span;
         let mut end = start;
         let mut name = String::new();
@@ -246,7 +251,10 @@ fn lex_ascii_identifier(&mut self) -> Token {
 
     fn is_line_comment_start(&self) -> bool {
         matches!(
-            (self.peek().text.as_str(), self.peek_next().map(|grapheme| grapheme.text.as_str())),
+            (
+                self.peek().text.as_str(),
+                self.peek_next().map(|grapheme| grapheme.text.as_str())
+            ),
             ("/", Some("/"))
         )
     }
@@ -269,7 +277,8 @@ fn lex_ascii_identifier(&mut self) -> Token {
                 printable_grapheme(&grapheme.text)
             )
         };
-        self.diagnostics.push(Diagnostic::at(message, grapheme.span));
+        self.diagnostics
+            .push(Diagnostic::at(message, grapheme.span));
     }
 
     fn is_at_end(&self) -> bool {
@@ -292,7 +301,7 @@ fn lex_ascii_identifier(&mut self) -> Token {
 }
 
 fn is_whitespace(text: &str) -> bool {
-    return matches!(text, " " | "\t");
+    matches!(text, " " | "\t")
 }
 
 fn is_newline(text: &str) -> bool {
@@ -322,6 +331,9 @@ fn single_token_kind(text: &str) -> Option<TokenKind> {
         "🔁" => Some(TokenKind::While),
         "🛑" => Some(TokenKind::Break),
         "⏭️" | "⏭" => Some(TokenKind::Continue),
+        "🧩" => Some(TokenKind::Function),
+        "📞" => Some(TokenKind::Call),
+        "↩️" | "↩" => Some(TokenKind::Return),
         "🧭" => Some(TokenKind::In),
         "🔢" => Some(TokenKind::Range),
         "✅" => Some(TokenKind::Bool(true)),
@@ -358,10 +370,10 @@ fn keyword_kind(text: &str) -> Option<TokenKind> {
 }
 
 fn is_reserved(text: &str) -> bool {
-    return single_token_kind(text).is_some()
+    single_token_kind(text).is_some()
         || keyword_kind(text).is_some()
         || matches!(text, "💬")
-        || is_emoji_digit(text);
+        || is_emoji_digit(text)
 }
 
 fn is_identifier_emoji(text: &str) -> bool {
@@ -369,17 +381,17 @@ fn is_identifier_emoji(text: &str) -> bool {
         return false;
     }
 
-    return text.chars().any(is_emoji_like_scalar);
+    text.chars().any(is_emoji_like_scalar)
 }
 
 fn is_emoji_like_scalar(ch: char) -> bool {
-    return matches!(
+    matches!(
         ch as u32,
         0x1F000..=0x1FAFF
             | 0x2600..=0x27BF
             | 0x2300..=0x23FF
             | 0x2B00..=0x2BFF
-    );
+    )
 }
 
 fn is_emoji_digit(text: &str) -> bool {

@@ -33,4 +33,9 @@ impl SymbolTable {
     pub fn insert(&mut self, name: String, ty: Type) {
         self.symbols.insert(name, ty);
     }
+
+    /// Iterate over top-level declarations.
+    pub fn iter(&self) -> impl Iterator<Item = (&String, &Type)> {
+        self.symbols.iter()
+    }
 }

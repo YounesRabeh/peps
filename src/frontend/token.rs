@@ -44,6 +44,12 @@ pub enum TokenKind {
     Break,
     /// Continue statement keyword.
     Continue,
+    /// Function definition keyword.
+    Function,
+    /// Function call keyword.
+    Call,
+    /// Function return keyword.
+    Return,
     /// For-each membership keyword.
     In,
     /// Numeric range keyword.

@@ -71,7 +71,12 @@ pub fn execute_with_limit(
         instructions,
         ip: 0,
         stack: Vec::new(),
-        variables: HashMap::new(),
+        globals: HashMap::new(),
+        frames: vec![CallFrame {
+            return_address: None,
+            stack_base: 0,
+            locals: HashMap::new(),
+        }],
         output: Vec::new(),
         steps: 0,
         execution_limit,
@@ -87,13 +92,22 @@ struct Vm<'a> {
     /// Operand stack used by bytecode instructions.
     stack: Vec<RuntimeValue>,
     /// Runtime variable storage keyed by Peps variable name.
-    variables: HashMap<String, RuntimeValue>,
+    /// Top-level variables shared by main and every function invocation.
+    globals: HashMap<String, RuntimeValue>,
+    /// The main frame followed by one independent frame per active call.
+    frames: Vec<CallFrame>,
     /// Formatted print output accumulated during execution.
     output: Vec<String>,
     /// Number of instructions executed so far.
     steps: usize,
     /// Whether this run has an instruction limit.
     execution_limit: ExecutionLimit,
+}
+
+struct CallFrame {
+    return_address: Option<usize>,
+    stack_base: usize,
+    locals: HashMap<String, RuntimeValue>,
 }
 
 impl Vm<'_> {
@@ -115,7 +129,7 @@ impl Vm<'_> {
                     self.ip += 1;
                 }
                 Instruction::LoadVar(name) => {
-                    let Some(value) = self.variables.get(&name).cloned() else {
+                    let Some(value) = self.globals.get(&name).cloned() else {
                         return self.fail(format!("runtime variable {} is not declared", name));
                     };
                     self.stack.push(value);
@@ -123,7 +137,28 @@ impl Vm<'_> {
                 }
                 Instruction::StoreVar(name) => {
                     let value = self.pop("store variable")?;
-                    self.variables.insert(name, value);
+                    self.globals.insert(name, value);
+                    self.ip += 1;
+                }
+                Instruction::LoadLocal(name) => {
+                    let Some(value) = self
+                        .frames
+                        .last()
+                        .and_then(|frame| frame.locals.get(&name))
+                        .cloned()
+                    else {
+                        return self.fail(format!("runtime local {} is not declared", name));
+                    };
+                    self.stack.push(value);
+                    self.ip += 1;
+                }
+                Instruction::StoreLocal(name) => {
+                    let value = self.pop("store local")?;
+                    self.frames
+                        .last_mut()
+                        .expect("VM always has a root frame")
+                        .locals
+                        .insert(name, value);
                     self.ip += 1;
                 }
                 Instruction::Add => self.add_values()?,
@@ -183,10 +218,21 @@ impl Vm<'_> {
                     let RuntimeValue::List(mut elements) = list else {
                         return self.fail("list append requires a list value");
                     };
-                    match value {
-                        RuntimeValue::List(values) => elements.extend(values),
-                        value => elements.push(value),
+                    let appended = match value {
+                        RuntimeValue::List(values) => values,
+                        value => vec![value],
+                    };
+                    if let Some(expected) = elements.first().or_else(|| appended.first()) {
+                        if appended
+                            .iter()
+                            .any(|value| !same_runtime_type(expected, value))
+                        {
+                            return self.fail(
+                                "list append requires values matching the list element type",
+                            );
+                        }
                     }
+                    elements.extend(appended);
                     self.stack.push(RuntimeValue::List(elements));
                     self.ip += 1;
                 }
@@ -194,6 +240,34 @@ impl Vm<'_> {
                     let value = self.pop("print")?;
                     self.output.push(format_runtime_value(&value));
                     self.ip += 1;
+                }
+                Instruction::Pop => {
+                    self.pop("discard call result")?;
+                    self.ip += 1;
+                }
+                Instruction::Call { target, arity } => {
+                    self.validate_jump(target)?;
+                    if self.stack.len() < arity {
+                        return self.fail("not enough arguments on the stack for function call");
+                    }
+                    self.frames.push(CallFrame {
+                        return_address: Some(self.ip + 1),
+                        stack_base: self.stack.len() - arity,
+                        locals: HashMap::new(),
+                    });
+                    self.ip = target;
+                }
+                Instruction::Return => {
+                    let value = self.pop("return")?;
+                    if self.frames.len() == 1 {
+                        return self.fail("return executed outside a function");
+                    }
+                    let frame = self.frames.pop().expect("call frame exists");
+                    self.stack.truncate(frame.stack_base);
+                    self.stack.push(value);
+                    self.ip = frame
+                        .return_address
+                        .expect("function frame has return address");
                 }
                 Instruction::Jump(target) => {
                     self.validate_jump(target)?;
@@ -236,7 +310,8 @@ impl Vm<'_> {
                 self.stack.push(RuntimeValue::Num(left + right));
             }
             (RuntimeValue::Str(left), RuntimeValue::Str(right)) => {
-                self.stack.push(RuntimeValue::Str(format!("{}{}", left, right)));
+                self.stack
+                    .push(RuntimeValue::Str(format!("{}{}", left, right)));
             }
             _ => return self.fail("add requires matching num or text values"),
         }
@@ -268,11 +343,8 @@ impl Vm<'_> {
             (RuntimeValue::Emoji(left), RuntimeValue::Emoji(right)) => left == right,
             _ => return self.fail("runtime equality requires matching scalar values"),
         };
-        self.stack.push(RuntimeValue::Bool(if invert {
-            !equal
-        } else {
-            equal
-        }));
+        self.stack
+            .push(RuntimeValue::Bool(if invert { !equal } else { equal }));
         self.ip += 1;
         Ok(())
     }
@@ -321,6 +393,17 @@ impl Vm<'_> {
             diagnostics: vec![Diagnostic::new(message)],
         }
     }
+}
+
+fn same_runtime_type(left: &RuntimeValue, right: &RuntimeValue) -> bool {
+    matches!(
+        (left, right),
+        (RuntimeValue::Num(_), RuntimeValue::Num(_))
+            | (RuntimeValue::Str(_), RuntimeValue::Str(_))
+            | (RuntimeValue::Bool(_), RuntimeValue::Bool(_))
+            | (RuntimeValue::Emoji(_), RuntimeValue::Emoji(_))
+            | (RuntimeValue::List(_), RuntimeValue::List(_))
+    )
 }
 
 impl From<Value> for RuntimeValue {

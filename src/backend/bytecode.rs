@@ -7,6 +7,8 @@ pub enum Instruction {
     LoadConst(Value),
     LoadVar(String),
     StoreVar(String),
+    LoadLocal(String),
+    StoreLocal(String),
 
     Add,
     Sub,
@@ -25,6 +27,10 @@ pub enum Instruction {
     ListGet,
     ListAppend,
     Print,
+    Pop,
+
+    Call { target: usize, arity: usize },
+    Return,
 
     Jump(usize),
     JumpIfFalse(usize),

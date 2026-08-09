@@ -7,7 +7,9 @@ fn check(source: &str) -> Result<peps::semantic::CheckedProgram, Vec<peps::Diagn
 }
 
 fn first_error(source: &str) -> String {
-    check(source).expect_err("source should fail")[0].message.clone()
+    check(source).expect_err("source should fail")[0]
+        .message
+        .clone()
 }
 
 #[test]
@@ -74,8 +76,8 @@ fn treats_undeclared_emoji_reference_as_literal() {
 
 #[test]
 fn allows_reassignment_with_a_different_type() {
-    let checked = check("🐶 🟰 1️⃣ 🔚 🐶 🟰 ✅ 🔚 🤔 🐶 🔓 📢 🐶 🔚 🔒")
-        .expect("source should check");
+    let checked =
+        check("🐶 🟰 1️⃣ 🔚 🐶 🟰 ✅ 🔚 🤔 🐶 🔓 📢 🐶 🔚 🔒").expect("source should check");
     assert_eq!(checked.symbols.get("🐶"), Some(&Type::Bool));
 }
 
@@ -102,9 +104,7 @@ fn rejects_list_op_type_errors() {
     assert!(first_error("🐶 🟰 5️⃣ 🔎 0️⃣ 🔚").contains("list value on the left"));
     assert!(first_error("🍎 🟰 📚 1️⃣ 2️⃣ 📚 🔚 🐶 🟰 🍎 🔎 ✅ 🔚").contains("num index"));
     assert!(first_error("🍎 🟰 📚 1️⃣ 2️⃣ 📚 🔚 🐶 🟰 🍎 📥 ✅ 🔚").contains("element type"));
-    assert!(
-        first_error("🍎 🟰 📚 1️⃣ 2️⃣ 📚 🔚 🍎 📥 📚 ✅ 📚 🔚").contains("element type")
-    );
+    assert!(first_error("🍎 🟰 📚 1️⃣ 2️⃣ 📚 🔚 🍎 📥 📚 ✅ 📚 🔚").contains("element type"));
     assert!(first_error("🍎 📥 1️⃣ 🔚").contains("not declared"));
 }
 
@@ -140,12 +140,10 @@ fn rejects_nested_lists() {
 
 #[test]
 fn allows_declarations_inside_control_flow_blocks() {
-    check("🤔 ✅ 🔓 🐶 🟰 5️⃣ 🔚 📢 🐶 🔚 🔒")
-        .expect("if-local declaration should check");
+    check("🤔 ✅ 🔓 🐶 🟰 5️⃣ 🔚 📢 🐶 🔚 🔒").expect("if-local declaration should check");
     check("🤔 ❌ 🔓 📢 0️⃣ 🔚 🔒 😐 🔓 🐶 🟰 5️⃣ 🔚 📢 🐶 🔚 🔒")
         .expect("else-local declaration should check");
-    check("🔁 ✅ 🔓 🐶 🟰 5️⃣ 🔚 📢 🐶 🔚 🛑 🔚 🔒")
-        .expect("while-local declaration should check");
+    check("🔁 ✅ 🔓 🐶 🟰 5️⃣ 🔚 📢 🐶 🔚 🛑 🔚 🔒").expect("while-local declaration should check");
     check("🔁 🐾 🧭 🔢 0️⃣ ➡️ 1️⃣ 🔓 🐶 🟰 🐾 🔚 📢 🐶 🔚 🔒")
         .expect("for-local declaration should check");
 }
@@ -183,8 +181,7 @@ fn treats_block_local_reference_after_block_as_literal() {
 
 #[test]
 fn allows_for_each_over_list() {
-    check("🍎 🟰 📚 1️⃣ 2️⃣ 📚 🔚 🔁 🐾 🧭 🍎 🔓 📢 🐾 🔚 🔒")
-        .expect("source should check");
+    check("🍎 🟰 📚 1️⃣ 2️⃣ 📚 🔚 🔁 🐾 🧭 🍎 🔓 📢 🐾 🔚 🔒").expect("source should check");
 }
 
 #[test]
@@ -225,8 +222,9 @@ fn treats_loop_variable_reference_after_loop_as_literal() {
 
 #[test]
 fn rejects_loop_variable_name_conflict() {
-    assert!(first_error("🐾 🟰 1️⃣ 🔚 🔁 🐾 🧭 🔢 0️⃣ ➡️ 1️⃣ 🔓 📢 🐾 🔚 🔒")
-        .contains("already declared"));
+    assert!(
+        first_error("🐾 🟰 1️⃣ 🔚 🔁 🐾 🧭 🔢 0️⃣ ➡️ 1️⃣ 🔓 📢 🐾 🔚 🔒").contains("already declared")
+    );
 }
 
 #[test]
@@ -236,4 +234,39 @@ fn allows_string_list_assignment() {
         checked.symbols.get("🐶"),
         Some(&Type::List(Box::new(Type::Str)))
     );
+}
+
+#[test]
+fn allows_forward_calls_recursion_and_dynamic_parameters() {
+    check(
+        "📢 📞 🌀 📚 5️⃣ 📚 🔚 🧩 🌀 📚 🐶 📚 🔓 🤔 🐶 ◀️🟰 1️⃣ 🔓 ↩️ 1️⃣ 🔚 🔒 😐 🔓 ↩️ 🐶 ✖️ 📞 🌀 📚 🐶 ➖ 1️⃣ 📚 🔚 🔒 🔒",
+    )
+    .expect("forward recursive function should check");
+}
+
+#[test]
+fn rejects_bad_function_signatures_and_calls() {
+    assert!(first_error("🧩 🧮 📚 🐶 🐶 📚 🔓 ↩️ 🐶 🔚 🔒").contains("duplicate parameter"));
+    assert!(
+        first_error("🧩 🧮 📚 📚 🔓 ↩️ 1️⃣ 🔚 🔒 🧩 🧮 📚 📚 🔓 ↩️ 2️⃣ 🔚 🔒")
+            .contains("already defined")
+    );
+    assert!(first_error("📞 🧮 📚 📚 🔚").contains("not defined"));
+    assert!(
+        first_error("🧩 🧮 📚 🐶 📚 🔓 ↩️ 🐶 🔚 🔒 📞 🧮 📚 📚 🔚").contains("expects 1 arguments")
+    );
+}
+
+#[test]
+fn rejects_functions_without_a_return_on_every_path() {
+    assert!(first_error("🧩 🧮 📚 🐶 📚 🔓 🤔 🐶 🔓 ↩️ 1️⃣ 🔚 🔒 🔒").contains("every path"));
+    check("🧩 🧮 📚 🐶 📚 🔓 🤔 🐶 🔓 ↩️ 1️⃣ 🔚 🔒 😐 🔓 ↩️ 2️⃣ 🔚 🔒 🔒")
+        .expect("both branches return");
+}
+
+#[test]
+fn functions_can_access_globals_but_parameters_cannot_shadow_them() {
+    check("🐶 🟰 1️⃣ 🔚 🧩 🧮 📚 📚 🔓 🐶 🟰 🐶 ➕ 1️⃣ 🔚 ↩️ 🐶 🔚 🔒")
+        .expect("functions may update globals");
+    assert!(first_error("🐶 🟰 1️⃣ 🔚 🧩 🧮 📚 🐶 📚 🔓 ↩️ 🐶 🔚 🔒").contains("top-level variable"));
 }

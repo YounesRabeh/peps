@@ -36,9 +36,7 @@ fn lexes_multi_digit_emoji_number() {
 fn lexes_integer_larger_than_i64() {
     assert_eq!(
         kinds("9️⃣2️⃣2️⃣3️⃣3️⃣7️⃣2️⃣0️⃣3️⃣6️⃣8️⃣5️⃣4️⃣7️⃣7️⃣5️⃣8️⃣0️⃣8️⃣")[0],
-        TokenKind::Number(
-            BigInt::parse_bytes(b"9223372036854775808", 10).expect("valid integer")
-        )
+        TokenKind::Number(BigInt::parse_bytes(b"9223372036854775808", 10).expect("valid integer"))
     );
 }
 
@@ -126,6 +124,14 @@ fn lexes_for_loop_tokens() {
             TokenKind::Eof,
         ]
     );
+}
+
+#[test]
+fn lexes_function_tokens() {
+    let tokens = kinds("🧩 🧮 📚 📚 🔓 ↩️ 📞 🧮 📚 📚 🔚 🔒");
+    assert!(tokens.contains(&TokenKind::Function));
+    assert!(tokens.contains(&TokenKind::Call));
+    assert!(tokens.contains(&TokenKind::Return));
 }
 
 #[test]

@@ -33,10 +33,47 @@ pub fn check(program: Program) -> Result<CheckedProgram, Vec<Diagnostic>> {
         local_scopes: Vec::new(),
         diagnostics: Vec::new(),
         emoji_literals: HashSet::new(),
+        functions: HashMap::new(),
     };
 
+    // Function signatures are available before any body or top-level call is
+    // checked, which enables both forward calls and recursion.
     for statement in &program.statements {
-        checker.check_statement(statement, 0);
+        if let Stmt::Function {
+            name,
+            parameters,
+            span,
+            ..
+        } = statement
+        {
+            if checker
+                .functions
+                .insert(name.clone(), parameters.len())
+                .is_some()
+            {
+                checker.diagnostics.push(Diagnostic::at(
+                    format!("function {} is already defined", name),
+                    *span,
+                ));
+            }
+        }
+    }
+
+    for statement in &program.statements {
+        if !matches!(statement, Stmt::Function { .. }) {
+            checker.check_statement(statement, 0);
+        }
+    }
+    for statement in &program.statements {
+        if let Stmt::Function {
+            name,
+            parameters,
+            body,
+            span,
+        } = statement
+        {
+            checker.check_function(name, parameters, body, *span);
+        }
     }
 
     if checker.diagnostics.is_empty() {
@@ -59,6 +96,8 @@ struct Checker {
     diagnostics: Vec<Diagnostic>,
     /// Unresolved identifier spans that are valid emoji literal expressions.
     emoji_literals: HashSet<(usize, usize)>,
+    /// Function arities collected before checking executable statements.
+    functions: HashMap<String, usize>,
 }
 
 impl Checker {
@@ -90,9 +129,21 @@ impl Checker {
             }
             Stmt::Continue { span } => {
                 if loop_depth == 0 {
-                    self.diagnostics
-                        .push(Diagnostic::at("continue can only be used inside loops", *span));
+                    self.diagnostics.push(Diagnostic::at(
+                        "continue can only be used inside loops",
+                        *span,
+                    ));
                 }
+            }
+            Stmt::Function { span, .. } => self.diagnostics.push(Diagnostic::at(
+                "function definitions are only allowed at the top level",
+                *span,
+            )),
+            Stmt::Return { expr, .. } => {
+                self.infer_expr(expr);
+            }
+            Stmt::Call { expr, .. } => {
+                self.infer_expr(expr);
             }
             Stmt::If {
                 condition,
@@ -149,6 +200,51 @@ impl Checker {
         }
     }
 
+    fn check_function(
+        &mut self,
+        name: &str,
+        parameters: &[String],
+        body: &[Stmt],
+        span: crate::source::Span,
+    ) {
+        // Reassignments are visible throughout this body, but checking one
+        // function must not make another function's inferred global types
+        // depend on source order. Runtime calls determine those mutations.
+        let globals_before_body = self.symbols.clone();
+        let mut seen = HashSet::new();
+        self.push_scope();
+        for parameter in parameters {
+            if !seen.insert(parameter.clone()) {
+                self.diagnostics.push(Diagnostic::at(
+                    format!("function {} has duplicate parameter {}", name, parameter),
+                    span,
+                ));
+            } else if self.symbols.get(parameter).is_some() {
+                self.diagnostics.push(Diagnostic::at(
+                    format!(
+                        "parameter {} conflicts with a top-level variable",
+                        parameter
+                    ),
+                    span,
+                ));
+            } else {
+                self.insert_local(parameter.clone(), Type::Unknown);
+            }
+        }
+        for statement in body {
+            self.check_statement(statement, 0);
+        }
+        self.pop_scope();
+        self.symbols = globals_before_body;
+
+        if !statements_definitely_return(body) {
+            self.diagnostics.push(Diagnostic::at(
+                format!("function {} does not return a value on every path", name),
+                span,
+            ));
+        }
+    }
+
     /// Reject loop variables that would shadow visible bindings.
     fn check_loop_variable_available(&mut self, variable: &str, span: crate::source::Span) -> bool {
         if self.lookup(variable).is_some() {
@@ -167,6 +263,7 @@ impl Checker {
         match source {
             ForSource::List { expr, span } => match self.infer_expr(expr) {
                 Some(Type::List(element_type)) => Some(*element_type),
+                Some(Type::Unknown) => Some(Type::Unknown),
                 Some(_) => {
                     self.diagnostics
                         .push(Diagnostic::at("for-each source must be a list", *span));
@@ -177,7 +274,9 @@ impl Checker {
             ForSource::Range { start, end, span } => {
                 let start_type = self.infer_expr(start);
                 let end_type = self.infer_expr(end);
-                if start_type == Some(Type::Num) && end_type == Some(Type::Num) {
+                if matches!(start_type, Some(Type::Num | Type::Unknown))
+                    && matches!(end_type, Some(Type::Num | Type::Unknown))
+                {
                     Some(Type::Num)
                 } else {
                     self.diagnostics
@@ -191,9 +290,11 @@ impl Checker {
     /// Ensure a control-flow condition is boolean.
     fn check_condition(&mut self, condition: &Expr, kind: &str, span: crate::source::Span) {
         if let Some(ty) = self.infer_expr(condition) {
-            if ty != Type::Bool {
-                self.diagnostics
-                    .push(Diagnostic::at(format!("{} condition must be bool", kind), span));
+            if !matches!(ty, Type::Bool | Type::Unknown) {
+                self.diagnostics.push(Diagnostic::at(
+                    format!("{} condition must be bool", kind),
+                    span,
+                ));
             }
         }
     }
@@ -208,6 +309,10 @@ impl Checker {
             return;
         };
 
+        if target_ty == Type::Unknown {
+            self.infer_expr(expr);
+            return;
+        }
         let Type::List(element_type) = target_ty else {
             self.diagnostics.push(Diagnostic::at(
                 "list append requires a list variable on the left",
@@ -256,46 +361,71 @@ impl Checker {
                 }
             },
             Expr::List { elements, span } => self.infer_list(elements, *span, false, false),
-            Expr::Unary { op, expr, span } => {
-                match op {
-                    UnaryOp::Negate => {
-                        let ty = self.infer_expr(expr)?;
-                        if ty == Type::Num {
-                            Some(Type::Num)
-                        } else {
-                            self.diagnostics.push(Diagnostic::at(
-                                "numeric negation requires a num operand",
-                                *span,
-                            ));
-                            None
-                        }
+            Expr::Call {
+                name,
+                arguments,
+                span,
+            } => {
+                for argument in arguments {
+                    self.infer_expr(argument);
+                }
+                match self.functions.get(name) {
+                    None => {
+                        self.diagnostics.push(Diagnostic::at(
+                            format!("function {} is not defined", name),
+                            *span,
+                        ));
+                        None
                     }
-                    UnaryOp::Not => {
-                        let ty = self.infer_expr(expr)?;
-                        if ty == Type::Bool {
-                            Some(Type::Bool)
-                        } else {
-                            self.diagnostics.push(Diagnostic::at(
-                                "logical not requires a bool operand",
-                                *span,
-                            ));
-                            None
-                        }
+                    Some(arity) if *arity != arguments.len() => {
+                        self.diagnostics.push(Diagnostic::at(
+                            format!(
+                                "function {} expects {} arguments but received {}",
+                                name,
+                                arity,
+                                arguments.len()
+                            ),
+                            *span,
+                        ));
+                        None
                     }
-                    UnaryOp::Len => {
-                        let ty = self.infer_expr(expr)?;
-                        if matches!(ty, Type::List(_)) {
-                            Some(Type::Num)
-                        } else {
-                            self.diagnostics.push(Diagnostic::at(
-                                "list length requires a list operand",
-                                *span,
-                            ));
-                            None
-                        }
-                    }
+                    Some(_) => Some(Type::Unknown),
                 }
             }
+            Expr::Unary { op, expr, span } => match op {
+                UnaryOp::Negate => {
+                    let ty = self.infer_expr(expr)?;
+                    if matches!(ty, Type::Num | Type::Unknown) {
+                        Some(Type::Num)
+                    } else {
+                        self.diagnostics.push(Diagnostic::at(
+                            "numeric negation requires a num operand",
+                            *span,
+                        ));
+                        None
+                    }
+                }
+                UnaryOp::Not => {
+                    let ty = self.infer_expr(expr)?;
+                    if matches!(ty, Type::Bool | Type::Unknown) {
+                        Some(Type::Bool)
+                    } else {
+                        self.diagnostics
+                            .push(Diagnostic::at("logical not requires a bool operand", *span));
+                        None
+                    }
+                }
+                UnaryOp::Len => {
+                    let ty = self.infer_expr(expr)?;
+                    if matches!(ty, Type::List(_) | Type::Unknown) {
+                        Some(Type::Num)
+                    } else {
+                        self.diagnostics
+                            .push(Diagnostic::at("list length requires a list operand", *span));
+                        None
+                    }
+                }
+            },
             Expr::Binary {
                 left,
                 op,
@@ -318,11 +448,11 @@ impl Checker {
                 let right_ty = self.infer_expr(right)?;
                 match (left_ty, right_ty) {
                     (Type::List(element_type), Type::Num) => Some(*element_type),
+                    (Type::List(element_type), Type::Unknown) => Some(*element_type),
+                    (Type::Unknown, Type::Num | Type::Unknown) => Some(Type::Unknown),
                     (Type::List(_), _) => {
-                        self.diagnostics.push(Diagnostic::at(
-                            "list index requires a num index",
-                            span,
-                        ));
+                        self.diagnostics
+                            .push(Diagnostic::at("list index requires a num index", span));
                         None
                     }
                     _ => {
@@ -336,6 +466,10 @@ impl Checker {
             }
             BinaryOp::Append => {
                 let left_ty = self.infer_expr(left)?;
+                if left_ty == Type::Unknown {
+                    self.infer_expr(right)?;
+                    return Some(Type::Unknown);
+                }
                 let Type::List(element_type) = left_ty else {
                     self.diagnostics.push(Diagnostic::at(
                         "list append requires a list value on the left",
@@ -350,7 +484,9 @@ impl Checker {
             BinaryOp::And | BinaryOp::Or => {
                 let left_ty = self.infer_expr(left)?;
                 let right_ty = self.infer_expr(right)?;
-                if left_ty == Type::Bool && right_ty == Type::Bool {
+                if matches!(left_ty, Type::Bool | Type::Unknown)
+                    && matches!(right_ty, Type::Bool | Type::Unknown)
+                {
                     Some(Type::Bool)
                 } else {
                     self.diagnostics.push(Diagnostic::at(
@@ -371,13 +507,13 @@ impl Checker {
                 } else {
                     self.infer_expr(right)?
                 };
-                if left_ty == Type::Num && right_ty == Type::Num {
+                if left_ty == Type::Unknown || right_ty == Type::Unknown {
+                    Some(Type::Unknown)
+                } else if left_ty == Type::Num && right_ty == Type::Num {
                     Some(Type::Num)
                 } else if op == BinaryOp::Add && left_ty == Type::Str && right_ty == Type::Str {
                     Some(Type::Str)
-                } else if op == BinaryOp::Add
-                    && (left_ty == Type::Str || right_ty == Type::Str)
-                {
+                } else if op == BinaryOp::Add && (left_ty == Type::Str || right_ty == Type::Str) {
                     self.diagnostics.push(Diagnostic::at(
                         "string concatenation requires both operands to be text",
                         span,
@@ -385,7 +521,10 @@ impl Checker {
                     None
                 } else {
                     self.diagnostics.push(Diagnostic::at(
-                        format!("arithmetic operator {} requires num operands", op_symbol(op)),
+                        format!(
+                            "arithmetic operator {} requires num operands",
+                            op_symbol(op)
+                        ),
                         span,
                     ));
                     None
@@ -394,7 +533,9 @@ impl Checker {
             BinaryOp::Lt | BinaryOp::Gt | BinaryOp::LtEq | BinaryOp::GtEq => {
                 let left_ty = self.infer_expr(left)?;
                 let right_ty = self.infer_expr(right)?;
-                if left_ty == Type::Num && right_ty == Type::Num {
+                if matches!(left_ty, Type::Num | Type::Unknown)
+                    && matches!(right_ty, Type::Num | Type::Unknown)
+                {
                     Some(Type::Bool)
                 } else {
                     self.diagnostics.push(Diagnostic::at(
@@ -407,7 +548,9 @@ impl Checker {
             BinaryOp::Eq | BinaryOp::NotEq => {
                 let left_ty = self.infer_expr(left)?;
                 let right_ty = self.infer_expr(right)?;
-                if matches!(left_ty, Type::List(_)) || matches!(right_ty, Type::List(_)) {
+                if left_ty == Type::Unknown || right_ty == Type::Unknown {
+                    Some(Type::Bool)
+                } else if matches!(left_ty, Type::List(_)) || matches!(right_ty, Type::List(_)) {
                     self.diagnostics.push(Diagnostic::at(
                         "list equality is not supported in Peps v0",
                         span,
@@ -471,7 +614,9 @@ impl Checker {
             };
 
             if let Some(expected) = &element_type {
-                if expected != &ty {
+                if expected == &Type::Unknown && ty != Type::Unknown {
+                    element_type = Some(ty);
+                } else if ty != Type::Unknown && expected != &ty {
                     self.diagnostics.push(Diagnostic::at(
                         "list elements must all have the same type",
                         element.span(),
@@ -501,10 +646,11 @@ impl Checker {
                 }
             },
             Expr::List { elements, span } => self.infer_list(elements, *span, true, false),
+            Expr::Call { .. } => self.infer_expr(expr),
             Expr::Unary { op, expr, span } => match op {
                 UnaryOp::Negate => {
                     let ty = self.infer_expr_allow_raw_strings(expr)?;
-                    if ty == Type::Num {
+                    if matches!(ty, Type::Num | Type::Unknown) {
                         Some(Type::Num)
                     } else {
                         self.diagnostics.push(Diagnostic::at(
@@ -516,25 +662,21 @@ impl Checker {
                 }
                 UnaryOp::Not => {
                     let ty = self.infer_expr_allow_raw_strings(expr)?;
-                    if ty == Type::Bool {
+                    if matches!(ty, Type::Bool | Type::Unknown) {
                         Some(Type::Bool)
                     } else {
-                        self.diagnostics.push(Diagnostic::at(
-                            "logical not requires a bool operand",
-                            *span,
-                        ));
+                        self.diagnostics
+                            .push(Diagnostic::at("logical not requires a bool operand", *span));
                         None
                     }
                 }
                 UnaryOp::Len => {
                     let ty = self.infer_expr_allow_raw_strings(expr)?;
-                    if matches!(ty, Type::List(_)) {
+                    if matches!(ty, Type::List(_) | Type::Unknown) {
                         Some(Type::Num)
                     } else {
-                        self.diagnostics.push(Diagnostic::at(
-                            "list length requires a list operand",
-                            *span,
-                        ));
+                        self.diagnostics
+                            .push(Diagnostic::at("list length requires a list operand", *span));
                         None
                     }
                 }
@@ -557,7 +699,11 @@ impl Checker {
         let right_ty = self.infer_append_rhs_type(expr, expected_type)?;
         let expected_list_type = Type::List(Box::new(expected_type.clone()));
 
-        if right_ty == *expected_type || right_ty == expected_list_type {
+        if *expected_type == Type::Unknown
+            || right_ty == Type::Unknown
+            || right_ty == *expected_type
+            || right_ty == expected_list_type
+        {
             Some(())
         } else {
             self.diagnostics.push(Diagnostic::at(
@@ -572,13 +718,9 @@ impl Checker {
     fn infer_append_rhs_type(&mut self, expr: &Expr, expected_type: &Type) -> Option<Type> {
         match (expected_type, expr) {
             (Type::Str, Expr::String { .. }) => Some(Type::Str),
-            (
-                Type::Str,
-                Expr::List {
-                    elements,
-                    span,
-                },
-            ) => self.infer_list(elements, *span, true, true),
+            (Type::Str, Expr::List { elements, span }) => {
+                self.infer_list(elements, *span, true, true)
+            }
             _ => self.infer_expr(expr),
         }
     }
@@ -619,6 +761,25 @@ impl Checker {
             }
         }
         self.symbols.insert(name.to_string(), ty);
+    }
+}
+
+/// Whether control flow through a sequence is guaranteed to encounter return.
+fn statements_definitely_return(statements: &[Stmt]) -> bool {
+    statements.iter().any(statement_definitely_returns)
+}
+
+fn statement_definitely_returns(statement: &Stmt) -> bool {
+    match statement {
+        Stmt::Return { .. } => true,
+        Stmt::If {
+            then_branch,
+            else_branch: Some(else_branch),
+            ..
+        } => statements_definitely_return(then_branch) && statements_definitely_return(else_branch),
+        // A loop may execute zero times (or never terminate), so it cannot by
+        // itself prove that a function returns a value.
+        _ => false,
     }
 }
 
