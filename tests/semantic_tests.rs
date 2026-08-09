@@ -73,8 +73,14 @@ fn treats_undeclared_emoji_reference_as_literal() {
 }
 
 #[test]
-fn rejects_reassignment() {
-    assert!(first_error("🐶 🟰 1️⃣ 🔚 🐶 🟰 2️⃣ 🔚").contains("already assigned"));
+fn allows_same_type_reassignment() {
+    let checked = check("🐶 🟰 1️⃣ 🔚 🐶 🟰 🐶 ➕ 1️⃣ 🔚").expect("source should check");
+    assert_eq!(checked.symbols.get("🐶"), Some(&Type::Num));
+}
+
+#[test]
+fn rejects_reassignment_with_a_different_type() {
+    assert!(first_error("🐶 🟰 1️⃣ 🔚 🐶 🟰 ✅ 🔚").contains("cannot be assigned a bool value"));
 }
 
 #[test]
@@ -137,10 +143,39 @@ fn rejects_nested_lists() {
 }
 
 #[test]
-fn rejects_declaration_inside_block() {
-    assert!(
-        first_error("🤔 ✅ 🔓 🐶 🟰 5️⃣ 🔚 🔒").contains("inside blocks")
-    );
+fn allows_declarations_inside_control_flow_blocks() {
+    check("🤔 ✅ 🔓 🐶 🟰 5️⃣ 🔚 📢 🐶 🔚 🔒")
+        .expect("if-local declaration should check");
+    check("🤔 ❌ 🔓 📢 0️⃣ 🔚 🔒 😐 🔓 🐶 🟰 5️⃣ 🔚 📢 🐶 🔚 🔒")
+        .expect("else-local declaration should check");
+    check("🔁 ✅ 🔓 🐶 🟰 5️⃣ 🔚 📢 🐶 🔚 🛑 🔚 🔒")
+        .expect("while-local declaration should check");
+    check("🔁 🐾 🧭 🔢 0️⃣ ➡️ 1️⃣ 🔓 🐶 🟰 🐾 🔚 📢 🐶 🔚 🔒")
+        .expect("for-local declaration should check");
+}
+
+#[test]
+fn nested_blocks_can_read_outer_block_locals() {
+    check("🤔 ✅ 🔓 🐶 🟰 5️⃣ 🔚 🤔 ✅ 🔓 📢 🐶 🔚 🔒 🔒")
+        .expect("nested block should see enclosing local");
+}
+
+#[test]
+fn sibling_branches_have_independent_local_declarations() {
+    check("🤔 ✅ 🔓 🐶 🟰 5️⃣ 🔚 🔒 😐 🔓 🐶 🟰 ✅ 🔚 🔒")
+        .expect("separate branches may declare the same name with different types");
+}
+
+#[test]
+fn allows_nested_block_to_reassign_outer_binding() {
+    check("🐶 🟰 1️⃣ 🔚 🤔 ✅ 🔓 🐶 🟰 2️⃣ 🔚 🔒")
+        .expect("nested block should update a visible binding");
+}
+
+#[test]
+fn treats_block_local_reference_after_block_as_literal() {
+    check("🤔 ✅ 🔓 🐶 🟰 5️⃣ 🔚 🔒 📢 🐶 🔚")
+        .expect("expired local should follow unresolved emoji literal rules");
 }
 
 #[test]

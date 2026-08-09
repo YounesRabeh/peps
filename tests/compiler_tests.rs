@@ -12,6 +12,21 @@ fn compiles_assignment() {
 }
 
 #[test]
+fn compiles_reassignment_to_the_existing_storage_name() {
+    assert_eq!(
+        compile_source("🐶 🟰 1️⃣ 🔚 🐶 🟰 🐶 ➕ 1️⃣ 🔚").expect("source should compile"),
+        vec![
+            Instruction::LoadConst(Value::Num(1)),
+            Instruction::StoreVar("🐶".to_string()),
+            Instruction::LoadVar("🐶".to_string()),
+            Instruction::LoadConst(Value::Num(1)),
+            Instruction::Add,
+            Instruction::StoreVar("🐶".to_string()),
+        ]
+    );
+}
+
+#[test]
 fn compiles_emoji_literal_assignment() {
     assert_eq!(
         compile_source("📦 🟰 🥊 🔚").expect("source should compile"),
@@ -224,6 +239,38 @@ fn compiles_if() {
 }
 
 #[test]
+fn compiles_block_local_to_a_unique_storage_name() {
+    assert_eq!(
+        compile_source("🤔 ✅ 🔓 🐶 🟰 5️⃣ 🔚 📢 🐶 🔚 🔒").expect("source should compile"),
+        vec![
+            Instruction::LoadConst(Value::Bool(true)),
+            Instruction::JumpIfFalse(6),
+            Instruction::LoadConst(Value::Num(5)),
+            Instruction::StoreVar("__peps_local_0".to_string()),
+            Instruction::LoadVar("__peps_local_0".to_string()),
+            Instruction::Print,
+        ]
+    );
+}
+
+#[test]
+fn compiles_sibling_branch_locals_to_distinct_storage_names() {
+    assert_eq!(
+        compile_source("🤔 ✅ 🔓 🐶 🟰 1️⃣ 🔚 🔒 😐 🔓 🐶 🟰 2️⃣ 🔚 🔒")
+            .expect("source should compile"),
+        vec![
+            Instruction::LoadConst(Value::Bool(true)),
+            Instruction::JumpIfFalse(5),
+            Instruction::LoadConst(Value::Num(1)),
+            Instruction::StoreVar("__peps_local_0".to_string()),
+            Instruction::Jump(7),
+            Instruction::LoadConst(Value::Num(2)),
+            Instruction::StoreVar("__peps_local_1".to_string()),
+        ]
+    );
+}
+
+#[test]
 fn compiles_if_else() {
     assert_eq!(
         compile_source("🐶 🟰 ✅ 🔚 🤔 🐶 🔓 📢 1️⃣ 🔚 🔒 😐 🔓 📢 2️⃣ 🔚 🔒")
@@ -310,8 +357,8 @@ fn compiles_for_each_list() {
             Instruction::LoadVar("__peps_for_0_list".to_string()),
             Instruction::LoadVar("__peps_for_0_index".to_string()),
             Instruction::ListGet,
-            Instruction::StoreVar("🐾".to_string()),
-            Instruction::LoadVar("🐾".to_string()),
+            Instruction::StoreVar("__peps_local_0".to_string()),
+            Instruction::LoadVar("__peps_local_0".to_string()),
             Instruction::Print,
             Instruction::LoadVar("__peps_for_0_index".to_string()),
             Instruction::LoadConst(Value::Num(1)),
@@ -337,8 +384,8 @@ fn compiles_for_range() {
             Instruction::Lt,
             Instruction::JumpIfFalse(17),
             Instruction::LoadVar("__peps_for_0_index".to_string()),
-            Instruction::StoreVar("🐾".to_string()),
-            Instruction::LoadVar("🐾".to_string()),
+            Instruction::StoreVar("__peps_local_0".to_string()),
+            Instruction::LoadVar("__peps_local_0".to_string()),
             Instruction::Print,
             Instruction::LoadVar("__peps_for_0_index".to_string()),
             Instruction::LoadConst(Value::Num(1)),

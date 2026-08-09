@@ -1,4 +1,4 @@
-//! Semantic checker for declaration rules, type inference, and v1 loop scopes.
+//! Semantic checker for declaration rules, type inference, and lexical scopes.
 
 use std::collections::{HashMap, HashSet};
 
@@ -36,7 +36,7 @@ pub fn check(program: Program) -> Result<CheckedProgram, Vec<Diagnostic>> {
     };
 
     for statement in &program.statements {
-        checker.check_statement(statement, 0, 0);
+        checker.check_statement(statement, 0);
     }
 
     if checker.diagnostics.is_empty() {
@@ -53,7 +53,7 @@ pub fn check(program: Program) -> Result<CheckedProgram, Vec<Diagnostic>> {
 struct Checker {
     /// Top-level variables declared with assignment statements.
     symbols: SymbolTable,
-    /// Block-local bindings, currently used for loop variables.
+    /// Bindings declared in nested lexical scopes.
     local_scopes: Vec<HashMap<String, Type>>,
     /// Semantic errors collected during the pass.
     diagnostics: Vec<Diagnostic>,
@@ -63,27 +63,28 @@ struct Checker {
 
 impl Checker {
     /// Check one statement and recursively walk any nested block it owns.
-    fn check_statement(&mut self, statement: &Stmt, depth: usize, loop_depth: usize) {
+    fn check_statement(&mut self, statement: &Stmt, loop_depth: usize) {
         match statement {
             Stmt::Assign { name, expr, span } => {
-                if depth > 0 {
-                    self.diagnostics.push(Diagnostic::at(
-                        "variable declarations inside blocks are not supported in Peps v0",
-                        *span,
-                    ));
-                    return;
-                }
-
-                if self.symbols.contains(name) {
-                    self.diagnostics.push(Diagnostic::at(
-                        format!("Variable {} is already assigned and cannot be reassigned.", name),
-                        *span,
-                    ));
-                    return;
-                }
-
-                if let Some(ty) = self.infer_assignment_rhs(expr) {
-                    self.symbols.insert(name.clone(), ty);
+                let existing_type = self.lookup(name).cloned();
+                if let Some(assigned_type) = self.infer_assignment_rhs(expr) {
+                    if let Some(existing_type) = existing_type {
+                        if assigned_type != existing_type {
+                            self.diagnostics.push(Diagnostic::at(
+                                format!(
+                                    "variable {} has type {} and cannot be assigned a {} value",
+                                    name,
+                                    type_name(&existing_type),
+                                    type_name(&assigned_type)
+                                ),
+                                *span,
+                            ));
+                        }
+                    } else if self.local_scopes.is_empty() {
+                        self.symbols.insert(name.clone(), assigned_type);
+                    } else {
+                        self.insert_local(name.clone(), assigned_type);
+                    }
                 }
             }
             Stmt::Append { name, expr, span } => {
@@ -111,13 +112,17 @@ impl Checker {
                 span,
             } => {
                 self.check_condition(condition, "if", *span);
+                self.push_scope();
                 for statement in then_branch {
-                    self.check_statement(statement, depth + 1, loop_depth);
+                    self.check_statement(statement, loop_depth);
                 }
+                self.pop_scope();
                 if let Some(else_branch) = else_branch {
+                    self.push_scope();
                     for statement in else_branch {
-                        self.check_statement(statement, depth + 1, loop_depth);
+                        self.check_statement(statement, loop_depth);
                     }
+                    self.pop_scope();
                 }
             }
             Stmt::While {
@@ -126,9 +131,11 @@ impl Checker {
                 span,
             } => {
                 self.check_condition(condition, "while", *span);
+                self.push_scope();
                 for statement in body {
-                    self.check_statement(statement, depth + 1, loop_depth + 1);
+                    self.check_statement(statement, loop_depth + 1);
                 }
+                self.pop_scope();
             }
             Stmt::For {
                 variable,
@@ -144,7 +151,7 @@ impl Checker {
                         self.push_scope();
                         self.insert_local(variable.clone(), loop_type);
                         for statement in body {
-                            self.check_statement(statement, depth + 1, loop_depth + 1);
+                            self.check_statement(statement, loop_depth + 1);
                         }
                         self.pop_scope();
                     }
@@ -632,5 +639,16 @@ fn op_symbol(op: BinaryOp) -> &'static str {
         BinaryOp::Gt => "▶️",
         BinaryOp::LtEq => "◀️🟰",
         BinaryOp::GtEq => "▶️🟰",
+    }
+}
+
+/// Return the user-facing name of a static type for diagnostics.
+fn type_name(ty: &Type) -> &'static str {
+    match ty {
+        Type::Num => "num",
+        Type::Str => "text",
+        Type::Bool => "bool",
+        Type::Emoji => "emoji",
+        Type::List(_) => "list",
     }
 }

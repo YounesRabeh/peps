@@ -12,6 +12,38 @@ fn runs_printed_values() {
 }
 
 #[test]
+fn runs_reassignment_and_updates_outer_bindings_from_blocks() {
+    let output = run_source(
+        "🐶 🟰 1️⃣ 🔚 🤔 ✅ 🔓 🐶 🟰 🐶 ➕ 1️⃣ 🔚 🔒 📢 🐶 🔚",
+    )
+    .expect("source should run");
+    assert_eq!(output, vec!["2".to_string()]);
+}
+
+#[test]
+fn keeps_block_locals_visible_only_inside_their_scope() {
+    let output = run_source("🤔 ✅ 🔓 🐶 🟰 5️⃣ 🔚 📢 🐶 🔚 🔒 📢 🐶 🔚")
+        .expect("source should run");
+    assert_eq!(output, vec!["5".to_string(), "🐶".to_string()]);
+}
+
+#[test]
+fn evaluates_a_fresh_declaration_rhs_before_binding_its_name() {
+    let output = run_source("🤔 ✅ 🔓 🐶 🟰 🐶 🔚 📢 🐶 🔚 🔒")
+        .expect("source should run");
+    assert_eq!(output, vec!["🐶".to_string()]);
+}
+
+#[test]
+fn keeps_sibling_branch_locals_independent() {
+    let output = run_source(
+        "🤔 ❌ 🔓 🐶 🟰 1️⃣ 🔚 🔒 😐 🔓 🐶 🟰 ✅ 🔚 📢 🐶 🔚 🔒 📢 🐶 🔚",
+    )
+    .expect("source should run");
+    assert_eq!(output, vec!["✅".to_string(), "🐶".to_string()]);
+}
+
+#[test]
 fn runs_newline_separated_statements_without_statement_end_token() {
     let output = run_source("🐶 🟰 5️⃣\n📢 🐶").expect("source should run");
     assert_eq!(output, vec!["5".to_string()]);
@@ -117,6 +149,50 @@ fn runs_range_loop() {
     let output = run_source("🔁 🐾 🧭 🔢 0️⃣ ➡️ 3️⃣ 🔓 📢 🐾 🔚 🔒")
         .expect("source should run");
     assert_eq!(output, vec!["0".to_string(), "1".to_string(), "2".to_string()]);
+}
+
+#[test]
+fn recreates_loop_local_values_on_each_iteration_without_leaking() {
+    let output = run_source(
+        "🔁 🐾 🧭 🔢 0️⃣ ➡️ 3️⃣ 🔓 🐶 🟰 🐾 🔚 📢 🐶 🔚 🔒 📢 🐶 🔚",
+    )
+    .expect("source should run");
+    assert_eq!(
+        output,
+        vec![
+            "0".to_string(),
+            "1".to_string(),
+            "2".to_string(),
+            "🐶".to_string()
+        ]
+    );
+}
+
+#[test]
+fn while_blocks_can_update_their_condition_binding() {
+    let output = run_source(
+        "🐶 🟰 0️⃣ 🔚 🔁 🐶 ◀️ 3️⃣ 🔓 🐶 🟰 🐶 ➕ 1️⃣ 🔚 🔒 📢 🐶 🔚",
+    )
+    .expect("source should run");
+    assert_eq!(output, vec!["3".to_string()]);
+}
+
+#[test]
+fn block_list_updates_apply_to_the_visible_outer_binding() {
+    let output = run_source(
+        "🍎 🟰 📚 1️⃣ 2️⃣ 📚 🔚 🤔 ✅ 🔓 🍎 📥 3️⃣ 🔚 🔒 📢 🍎 🔚",
+    )
+    .expect("source should run");
+    assert_eq!(output, vec!["📚 1 2 3 📚".to_string()]);
+}
+
+#[test]
+fn scoped_locals_work_with_break_and_continue() {
+    let output = run_source(
+        "🔁 ✅ 🔓 🐶 🟰 1️⃣ 🔚 🛑 🔚 🔒 📢 🐶 🔚 🔁 🐾 🧭 🔢 0️⃣ ➡️ 2️⃣ 🔓 🐱 🟰 🐾 🔚 ⏭️ 🔚 🔒 📢 🐱 🔚",
+    )
+    .expect("source should run");
+    assert_eq!(output, vec!["🐶".to_string(), "🐱".to_string()]);
 }
 
 #[test]

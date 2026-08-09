@@ -19,6 +19,9 @@ Peps is an emoji-first programming language with:
     🛑
 🔒
 ```
+8. Assignments update the nearest visible variable when its type matches; otherwise they declare a variable in the current scope.
+9. Variables declared inside `if`, `else`, `while`, or `for` blocks are visible only in that block and its nested blocks.
+10. `for` iterator names are block-local and cannot reuse the name of an outer variable.
 
 ## Core Syntax
 
@@ -48,6 +51,26 @@ Peps is an emoji-first programming language with:
 | 📚 | list delimiter | `🍎 🟰 📚 1️⃣ 2️⃣ 3️⃣ 📚` |
 | `//` | line comment | `📢 1️⃣ // ignored` |
 | `🤝` / `🔀` / `🚫` | logical operators (AND/OR/NOT) | `✅ 🤝 ❌` |
+
+## Variables and Scope
+
+`🟰` declares a variable when its emoji name is not already visible. Reusing a
+visible name updates that variable, but the new value must have the same type:
+
+```peps
+🐶 🟰 1️⃣
+🤔 ✅ 🔓
+    🐶 🟰 🐶 ➕ 1️⃣ // updates the outer variable
+    🐱 🟰 5️⃣       // local to this block
+    📢 🐱
+🔒
+📢 🐶
+📢 🐱 // 🐱 is an emoji literal here, not the expired local variable
+```
+
+Each `if` branch and each loop body has its own lexical scope. Local variables
+are available to nested blocks. A `for` iterator is local to its loop, and its
+name must not conflict with another visible variable.
 
 ## Example
 

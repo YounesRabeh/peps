@@ -1,5 +1,7 @@
 //! Bytecode compiler for semantically checked Peps programs.
 
+use std::collections::{HashMap, HashSet};
+
 use crate::{
     ast::{BinaryOp, Expr, ForSource, Stmt, UnaryOp},
     bytecode::{Instruction, Value},
@@ -13,7 +15,9 @@ pub fn compile(checked: CheckedProgram) -> Result<Vec<Instruction>, Vec<Diagnost
         instructions: Vec::new(),
         emoji_literals: checked.emoji_literals,
         loop_counter: 0,
+        local_counter: 0,
         loop_stack: Vec::new(),
+        scopes: vec![HashMap::new()],
     };
 
     for statement in &checked.program.statements {
@@ -25,9 +29,12 @@ pub fn compile(checked: CheckedProgram) -> Result<Vec<Instruction>, Vec<Diagnost
 
 struct Compiler {
     instructions: Vec<Instruction>,
-    emoji_literals: std::collections::HashSet<(usize, usize)>,
+    emoji_literals: HashSet<(usize, usize)>,
     loop_counter: usize,
+    local_counter: usize,
     loop_stack: Vec<LoopContext>,
+    /// Source names mapped to their bytecode storage names in each lexical scope.
+    scopes: Vec<HashMap<String, String>>,
 }
 
 #[derive(Default)]
@@ -42,13 +49,20 @@ impl Compiler {
         match statement {
             Stmt::Assign { name, expr, .. } => {
                 self.compile_expr(expr);
-                self.instructions.push(Instruction::StoreVar(name.clone()));
+                let storage_name = self
+                    .resolve_name(name)
+                    .unwrap_or_else(|| self.declare_name(name));
+                self.instructions.push(Instruction::StoreVar(storage_name));
             }
             Stmt::Append { name, expr, .. } => {
-                self.instructions.push(Instruction::LoadVar(name.clone()));
+                let storage_name = self
+                    .resolve_name(name)
+                    .expect("semantic checker accepted an unresolved append target");
+                self.instructions
+                    .push(Instruction::LoadVar(storage_name.clone()));
                 self.compile_expr(expr);
                 self.instructions.push(Instruction::ListAppend);
-                self.instructions.push(Instruction::StoreVar(name.clone()));
+                self.instructions.push(Instruction::StoreVar(storage_name));
             }
             Stmt::Print { expr, .. } => {
                 self.compile_expr(expr);
@@ -65,18 +79,22 @@ impl Compiler {
                 self.compile_expr(condition);
                 let jump_if_false = self.emit_placeholder_jump_if_false();
 
+                self.push_scope();
                 for statement in then_branch {
                     self.compile_statement(statement);
                 }
+                self.pop_scope();
 
                 if let Some(else_branch) = else_branch {
                     let jump_after_else = self.emit_placeholder_jump();
                     let else_start = self.instructions.len();
                     self.patch_jump(jump_if_false, else_start);
 
+                    self.push_scope();
                     for statement in else_branch {
                         self.compile_statement(statement);
                     }
+                    self.pop_scope();
 
                     let after_else = self.instructions.len();
                     self.patch_jump(jump_after_else, after_else);
@@ -93,9 +111,11 @@ impl Compiler {
                 let jump_if_false = self.emit_placeholder_jump_if_false();
                 self.begin_loop();
 
+                self.push_scope();
                 for statement in body {
                     self.compile_statement(statement);
                 }
+                self.pop_scope();
 
                 self.instructions.push(Instruction::Jump(loop_start));
                 let after_loop = self.instructions.len();
@@ -127,6 +147,8 @@ impl Compiler {
         let len_name = format!("__peps_for_{}_len", id);
 
         self.compile_expr(source);
+        self.push_scope();
+        let variable_name = self.declare_name(variable);
         self.instructions.push(Instruction::StoreVar(list_name.clone()));
         self.instructions.push(Instruction::LoadConst(Value::Num(0)));
         self.instructions
@@ -145,7 +167,7 @@ impl Compiler {
         self.instructions.push(Instruction::LoadVar(index_name.clone()));
         self.instructions.push(Instruction::ListGet);
         self.instructions
-            .push(Instruction::StoreVar(variable.to_string()));
+            .push(Instruction::StoreVar(variable_name));
         self.begin_loop();
 
         for statement in body {
@@ -162,6 +184,7 @@ impl Compiler {
         let after_loop = self.instructions.len();
         self.patch_jump(jump_if_false, after_loop);
         self.end_loop(continue_target, after_loop);
+        self.pop_scope();
     }
 
     /// Compile a numeric range loop with an exclusive upper bound.
@@ -175,6 +198,8 @@ impl Compiler {
             .push(Instruction::StoreVar(index_name.clone()));
         self.compile_expr(end);
         self.instructions.push(Instruction::StoreVar(end_name.clone()));
+        self.push_scope();
+        let variable_name = self.declare_name(variable);
 
         let loop_start = self.instructions.len();
         self.instructions.push(Instruction::LoadVar(index_name.clone()));
@@ -184,7 +209,7 @@ impl Compiler {
 
         self.instructions.push(Instruction::LoadVar(index_name.clone()));
         self.instructions
-            .push(Instruction::StoreVar(variable.to_string()));
+            .push(Instruction::StoreVar(variable_name));
         self.begin_loop();
 
         for statement in body {
@@ -201,6 +226,7 @@ impl Compiler {
         let after_loop = self.instructions.len();
         self.patch_jump(jump_if_false, after_loop);
         self.end_loop(continue_target, after_loop);
+        self.pop_scope();
     }
 
     /// Compile an expression so its value is left on the VM stack.
@@ -223,7 +249,10 @@ impl Compiler {
                     self.instructions
                         .push(Instruction::LoadConst(Value::Emoji(name.clone())));
                 } else {
-                    self.instructions.push(Instruction::LoadVar(name.clone()));
+                    let storage_name = self
+                        .resolve_name(name)
+                        .expect("semantic checker accepted an unresolved variable");
+                    self.instructions.push(Instruction::LoadVar(storage_name));
                 }
             }
             Expr::List { elements, .. } => {
@@ -390,6 +419,41 @@ impl Compiler {
         let id = self.loop_counter;
         self.loop_counter += 1;
         id
+    }
+
+    /// Look up the bytecode storage name for the nearest visible binding.
+    fn resolve_name(&self, name: &str) -> Option<String> {
+        self.scopes
+            .iter()
+            .rev()
+            .find_map(|scope| scope.get(name).cloned())
+    }
+
+    /// Declare a source name in the current scope and return its storage name.
+    fn declare_name(&mut self, name: &str) -> String {
+        let storage_name = if self.scopes.len() == 1 {
+            name.to_string()
+        } else {
+            let id = self.local_counter;
+            self.local_counter += 1;
+            format!("__peps_local_{}", id)
+        };
+        self.scopes
+            .last_mut()
+            .expect("compiler scope stack underflow")
+            .insert(name.to_string(), storage_name.clone());
+        storage_name
+    }
+
+    /// Start a lexical block scope.
+    fn push_scope(&mut self) {
+        self.scopes.push(HashMap::new());
+    }
+
+    /// End the innermost lexical block scope.
+    fn pop_scope(&mut self) {
+        assert!(self.scopes.len() > 1, "cannot pop the compiler's top-level scope");
+        self.scopes.pop();
     }
 
     /// Emit an unconditional jump with a placeholder target and return its index.
