@@ -62,7 +62,7 @@ pub async fn run() -> anyhow::Result<()> {
 
     if !dist_dir.exists() {
         eprintln!(
-            "warning: IDE frontend assets were not found. Build the frontend first:\n  cd ide\n  npm install\n  npm run build"
+            "warning: IDE frontend assets were not found. Build the frontend first:\n  cd ide\n  pnpm install --frozen-lockfile\n  pnpm run build"
         );
     }
 

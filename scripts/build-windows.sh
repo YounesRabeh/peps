@@ -54,11 +54,7 @@ fi
 
 cargo build --release --bin peps --target "$TARGET"
 
-if [ -f ide/package-lock.json ]; then
-    (cd ide && npm ci && npm run build)
-else
-    (cd ide && npm install && npm run build)
-fi
+(cd ide && pnpm install --frozen-lockfile && pnpm run build)
 
 if [ ! -f ide/dist/index.html ]; then
     echo "error: frontend build did not produce ide/dist/index.html" >&2

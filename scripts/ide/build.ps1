@@ -15,22 +15,12 @@ if (-not (Test-Path "ide")) {
     throw "ide\ directory not found at project root: $RootDir"
 }
 
-if (Test-Path "ide\package-lock.json") {
-    Push-Location ide
-    try {
-        npm ci
-        npm run build
-    } finally {
-        Pop-Location
-    }
-} else {
-    Push-Location ide
-    try {
-        npm install
-        npm run build
-    } finally {
-        Pop-Location
-    }
+Push-Location ide
+try {
+    pnpm install --frozen-lockfile
+    pnpm run build
+} finally {
+    Pop-Location
 }
 
 if (-not (Test-Path "ide\dist\index.html")) {

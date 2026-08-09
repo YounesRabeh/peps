@@ -105,7 +105,7 @@ cargo run -- examples/basic.peps
 
 ```sh
 cargo test
-cd ide && npm test
+cd ide && pnpm test
 ```
 
 ## Start IDE

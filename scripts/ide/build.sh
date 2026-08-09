@@ -23,11 +23,7 @@ if [ ! -f Cargo.toml ]; then
     exit 1
 fi
 
-if [ -f ide/package-lock.json ]; then
-    (cd ide && npm ci && npm run build)
-else
-    (cd ide && npm install && npm run build)
-fi
+(cd ide && pnpm install --frozen-lockfile && pnpm run build)
 
 cargo build --release --bin peps-ide
 
