@@ -7,6 +7,13 @@ $TargetReleaseDir = Join-Path $RootDir "target\$Target\release"
 
 Set-Location $RootDir
 
+$Version = (Select-String -Path "Cargo.toml" -Pattern '^version\s*=\s*"([^"]+)"').Matches[0].Groups[1].Value
+if (-not $Version) {
+    throw "Could not read package version from Cargo.toml"
+}
+$IdeName = "peps-ide-$Version.exe"
+$LauncherName = "peps-ide-$Version.cmd"
+
 if (-not (Test-Path "Cargo.toml")) {
     throw "Cargo.toml not found at project root: $RootDir"
 }
@@ -32,16 +39,17 @@ cargo build --release --bin peps-ide --target $Target
 Remove-Item $OutDir -Recurse -Force -ErrorAction SilentlyContinue
 New-Item -ItemType Directory -Force -Path (Join-Path $OutDir "frontend") | Out-Null
 
-Copy-Item (Join-Path $TargetReleaseDir "peps-ide.exe") (Join-Path $OutDir "peps-ide.exe") -Force
+Copy-Item (Join-Path $TargetReleaseDir "peps-ide.exe") (Join-Path $OutDir $IdeName) -Force
 Copy-Item "ide\dist" (Join-Path $OutDir "frontend\dist") -Recurse -Force
 
 @"
 @echo off
 set DIR=%~dp0
 cd /d "%DIR%"
-"%DIR%peps-ide.exe" %*
-"@ | Set-Content -Encoding ASCII (Join-Path $OutDir "peps-ide.cmd")
+"%DIR%$IdeName" %*
+"@ | Set-Content -Encoding ASCII (Join-Path $OutDir $LauncherName)
 
 Write-Host "Built Peps IDE Windows dist: dist\ide\windows"
+Write-Host "Version: $Version"
 Write-Host "Windows target: $Target"
-Write-Host "Manual start: .\dist\ide\windows\peps-ide.cmd"
+Write-Host "Manual start: .\dist\ide\windows\$LauncherName"

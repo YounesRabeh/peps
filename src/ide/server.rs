@@ -68,12 +68,14 @@ pub async fn run() -> anyhow::Result<()> {
     let url = format!("http://{}", addr);
     println!("Peps IDE running at {}", url);
 
-    println!("Opening browser...");
-    match open::that(&url) {
-        Ok(_) => println!("Browser open command sent."),
-        Err(error) => {
-            eprintln!("Could not open browser automatically: {error}");
-            eprintln!("Open it manually at: {url}");
+    if env::var_os("PEPS_IDE_NO_BROWSER").is_none() {
+        println!("Opening browser...");
+        match open::that(&url) {
+            Ok(_) => println!("Browser open command sent."),
+            Err(error) => {
+                eprintln!("Could not open browser automatically: {error}");
+                eprintln!("Open it manually at: {url}");
+            }
         }
     }
 

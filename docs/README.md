@@ -54,12 +54,16 @@ cargo build --release --bin peps
 ./target/release/peps examples/basic/01-variables.peps
 ```
 
-To run the browser IDE during development:
+To develop the browser IDE, run this from the `ide` directory:
 
 ```sh
 cd ide
 pnpm dev
 ```
+
+This starts both the Rust compiler API and Vite. Open the Vite URL it prints
+(normally `http://127.0.0.1:5173`); the frontend forwards `/api` requests to
+`http://127.0.0.1:5179`. Press `Ctrl+C` to stop both processes.
 
 ## Test before building artifacts
 
@@ -121,22 +125,29 @@ This creates:
 
 | Artifact | Purpose |
 | --- | --- |
-| `dist/compiler/linux/peps` | Standalone command-line compiler/runtime |
-| `dist/compiler/linux/peps-bytecode` | Secondary CLI copy included by the compiler package |
-| `dist/compiler/linux/linux.sh` | CLI launcher script |
-| `dist/compiler/linux/peps-compiler-x86_64.AppImage` | Portable Linux compiler app |
-| `dist/ide/linux/peps-ide-x86_64.AppImage` | Portable Linux IDE app |
+| `dist/compiler/linux/peps-<version>` | Standalone command-line compiler/runtime |
+| `dist/compiler/linux/peps-bytecode-<version>` | Secondary CLI copy included by the compiler package |
+| `dist/compiler/linux/linux-<version>.sh` | CLI launcher script |
+| `dist/compiler/linux/peps-compiler-<version>-x86_64.AppImage` | Portable Linux compiler app |
+| `dist/ide/linux/peps-ide-<version>-x86_64.AppImage` | Portable Linux IDE app |
+
+`<version>` comes from the `version` field in `Cargo.toml`. For example,
+version `0.8.1` produces `peps-compiler-0.8.1-x86_64.AppImage`.
 
 Verify the CLI artifact before release:
 
 ```sh
-./dist/compiler/linux/linux.sh examples/basic/01-variables.peps
+VERSION=$(sed -n 's/^version = "\([^"]*\)"/\1/p' Cargo.toml | head -n 1)
+./dist/compiler/linux/linux-$VERSION.sh examples/basic/01-variables.peps
 ```
 
-Start the IDE AppImage and confirm that it opens at `http://127.0.0.1:5179`:
+From the repository root, start the IDE AppImage and confirm that it opens at
+`http://127.0.0.1:5179`:
 
 ```sh
-./dist/ide/linux/peps-ide-x86_64.AppImage
+sh scripts/ide/build.sh
+VERSION=$(sed -n 's/^version = "\([^"]*\)"/\1/p' Cargo.toml | head -n 1)
+./dist/ide/linux/peps-ide-$VERSION-x86_64.AppImage
 ```
 
 ### Native Windows packages
@@ -151,17 +162,18 @@ The default target is `x86_64-pc-windows-msvc`. The build produces:
 
 | Artifact | Purpose |
 | --- | --- |
-| `dist\compiler\windows\peps.exe` | Command-line compiler/runtime |
-| `dist\compiler\windows\peps.cmd` | CLI launcher |
-| `dist\ide\windows\peps-ide.exe` | IDE server executable |
-| `dist\ide\windows\peps-ide.cmd` | IDE launcher |
+| `dist\compiler\windows\peps-<version>.exe` | Command-line compiler/runtime |
+| `dist\compiler\windows\peps-<version>.cmd` | CLI launcher |
+| `dist\ide\windows\peps-ide-<version>.exe` | IDE server executable |
+| `dist\ide\windows\peps-ide-<version>.cmd` | IDE launcher |
 | `dist\ide\windows\frontend\dist\` | Browser files required by the IDE executable |
 
-Verify both launchers:
+From the repository root, verify both launchers:
 
 ```powershell
-.\dist\compiler\windows\peps.cmd examples\01-variables.peps
-.\dist\ide\windows\peps-ide.cmd
+$Version = (Select-String -Path Cargo.toml -Pattern '^version\s*=\s*"([^"]+)"').Matches[0].Groups[1].Value
+.\dist\compiler\windows\peps-$Version.cmd examples\basic\01-variables.peps
+.\dist\ide\windows\peps-ide-$Version.cmd
 ```
 
 ### Windows packages from Linux
@@ -174,7 +186,8 @@ sh scripts/build-windows.sh
 
 This produces the same Windows layout under `dist/compiler/windows/` and
 `dist/ide/windows/`. The script builds the frontend with a locked pnpm install,
-then copies the required `frontend/dist` directory beside `peps-ide.exe`.
+then copies the required `frontend/dist` directory beside the versioned
+`peps-ide-<version>.exe`.
 
 ### macOS status
 
@@ -192,9 +205,9 @@ packaging workflow before advertising a macOS release artifact.
 4. Build Linux artifacts on Linux and native Windows artifacts on Windows, or
    use the Linux cross-build for Windows.
 5. Verify the CLI launcher and IDE launcher for every platform being released.
-6. Create archives for multi-file Windows packages. `peps-ide.exe` must be
-   distributed with `peps-ide.cmd` and `frontend/dist/`; do not upload the EXE
-   by itself.
+6. Create archives for multi-file Windows packages. The versioned
+   `peps-ide-<version>.exe` must be distributed with its matching `.cmd` file
+   and `frontend/dist/`; do not upload the EXE by itself.
 7. Create the Git tag and GitHub release according to your project's release
    policy, then upload the verified artifacts.
 8. Include checksums and platform/architecture names in the release notes.
@@ -202,10 +215,11 @@ packaging workflow before advertising a macOS release artifact.
 On Windows, archive the complete package directories with PowerShell:
 
 ```powershell
-Compress-Archive -Path dist\compiler\windows\* -DestinationPath dist\peps-compiler-windows-x86_64.zip -Force
-Compress-Archive -Path dist\ide\windows\* -DestinationPath dist\peps-ide-windows-x86_64.zip -Force
+$Version = (Select-String -Path Cargo.toml -Pattern '^version\s*=\s*"([^"]+)"').Matches[0].Groups[1].Value
+Compress-Archive -Path dist\compiler\windows\* -DestinationPath "dist\peps-compiler-$Version-windows-x86_64.zip" -Force
+Compress-Archive -Path dist\ide\windows\* -DestinationPath "dist\peps-ide-$Version-windows-x86_64.zip" -Force
 ```
 
 For Linux, the two AppImages can be uploaded directly. If you also distribute
-the raw CLI, archive `peps` together with `linux.sh` so users retain the
+the raw CLI, archive `peps-<version>` together with `linux-<version>.sh` so users retain the
 launcher expected by the package.

@@ -76,12 +76,16 @@ pnpm test -- --run
 pnpm run build
 ```
 
-Start the browser IDE during development:
+Develop the browser IDE from the `ide` directory:
 
 ```sh
 cd ide
 pnpm dev
 ```
+
+This starts both Vite and the Rust compiler API. Open the Vite address it
+prints (normally `http://127.0.0.1:5173`); Run requests are forwarded to the
+compiler server at `http://127.0.0.1:5179`. Press `Ctrl+C` to stop both.
 
 For platform requirements, all artifact paths, Linux-to-Windows cross-builds,
 verification, archives, and release uploads, see

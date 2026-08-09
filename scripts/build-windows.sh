@@ -10,6 +10,16 @@ TARGET_RELEASE_DIR="$WINDOWS_TARGET_ROOT/$TARGET/release"
 
 cd "$ROOT_DIR"
 
+VERSION=$(sed -n 's/^version = "\([^"]*\)"/\1/p' Cargo.toml | head -n 1)
+if [ -z "$VERSION" ]; then
+    echo "error: could not read package version from Cargo.toml" >&2
+    exit 1
+fi
+COMPILER_NAME="peps-$VERSION.exe"
+COMPILER_LAUNCHER="peps-$VERSION.cmd"
+IDE_NAME="peps-ide-$VERSION.exe"
+IDE_LAUNCHER="peps-ide-$VERSION.cmd"
+
 if [ "$TARGET" != "x86_64-pc-windows-gnu" ]; then
     echo "error: Linux cross-builds should use PEPS_WINDOWS_TARGET=x86_64-pc-windows-gnu" >&2
     echo "Current target: $TARGET" >&2
@@ -66,24 +76,25 @@ cargo build --release --bin peps-ide --target "$TARGET"
 rm -rf "$COMPILER_OUT" "$IDE_OUT"
 mkdir -p "$COMPILER_OUT" "$IDE_OUT/frontend"
 
-cp "$TARGET_RELEASE_DIR/peps.exe" "$COMPILER_OUT/peps.exe"
-cp "$TARGET_RELEASE_DIR/peps-ide.exe" "$IDE_OUT/peps-ide.exe"
+cp "$TARGET_RELEASE_DIR/peps.exe" "$COMPILER_OUT/$COMPILER_NAME"
+cp "$TARGET_RELEASE_DIR/peps-ide.exe" "$IDE_OUT/$IDE_NAME"
 cp -R ide/dist "$IDE_OUT/frontend/dist"
 
-cat > "$COMPILER_OUT/peps.cmd" <<'CMD'
+cat > "$COMPILER_OUT/$COMPILER_LAUNCHER" <<CMD
 @echo off
 set DIR=%~dp0
-"%DIR%peps.exe" %*
+"%DIR%$COMPILER_NAME" %*
 CMD
 
-cat > "$IDE_OUT/peps-ide.cmd" <<'CMD'
+cat > "$IDE_OUT/$IDE_LAUNCHER" <<CMD
 @echo off
 set DIR=%~dp0
 cd /d "%DIR%"
-"%DIR%peps-ide.exe" %*
+"%DIR%$IDE_NAME" %*
 CMD
 
 echo "Built Peps Windows dists from Linux:"
-echo "  dist/compiler/windows/peps.exe"
-echo "  dist/ide/windows/peps-ide.exe"
+echo "  dist/compiler/windows/$COMPILER_NAME"
+echo "  dist/ide/windows/$IDE_NAME"
+echo "Version: $VERSION"
 echo "Windows Cargo target cache: $WINDOWS_TARGET_ROOT"

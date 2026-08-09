@@ -4,14 +4,20 @@ set -eu
 ROOT_DIR=$(CDPATH= cd -- "$(dirname -- "$0")/../.." && pwd)
 OUT_DIR="$ROOT_DIR/dist/ide/linux"
 APPDIR="$OUT_DIR/PepsIDE.AppDir"
-APPIMAGE="$OUT_DIR/peps-ide-x86_64.AppImage"
 TMP_ROOT="${TMPDIR:-/tmp}/peps-ide-appimage-$$"
 TMP_APPDIR="$TMP_ROOT/PepsIDE.AppDir"
-TMP_APPIMAGE="$TMP_ROOT/peps-ide-x86_64.AppImage"
 APPIMAGETOOL_URL="https://github.com/AppImage/AppImageKit/releases/download/continuous/appimagetool-x86_64.AppImage"
 trap 'rm -rf "$TMP_ROOT"' EXIT
 
 cd "$ROOT_DIR"
+
+VERSION=$(sed -n 's/^version = "\([^"]*\)"/\1/p' Cargo.toml | head -n 1)
+if [ -z "$VERSION" ]; then
+    echo "error: could not read package version from Cargo.toml" >&2
+    exit 1
+fi
+APPIMAGE="$OUT_DIR/peps-ide-$VERSION-x86_64.AppImage"
+TMP_APPIMAGE="$TMP_ROOT/peps-ide-$VERSION-x86_64.AppImage"
 
 if [ ! -d ide ]; then
     echo "error: ide/ directory not found" >&2
@@ -81,4 +87,5 @@ mv "$TMP_APPIMAGE" "$APPIMAGE"
 chmod +x "$APPIMAGE"
 
 echo "Built Peps IDE Linux dist: dist/ide/linux"
-echo "Manual start: ./dist/ide/linux/peps-ide-x86_64.AppImage"
+echo "Version: $VERSION"
+echo "Manual start: ./dist/ide/linux/peps-ide-$VERSION-x86_64.AppImage"

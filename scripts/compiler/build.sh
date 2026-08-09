@@ -4,29 +4,39 @@ set -eu
 ROOT_DIR=$(CDPATH= cd -- "$(dirname -- "$0")/../.." && pwd)
 OUT_DIR="$ROOT_DIR/dist/compiler/linux"
 APPDIR="$OUT_DIR/PepsCompiler.AppDir"
-APPIMAGE="$OUT_DIR/peps-compiler-x86_64.AppImage"
 TMP_ROOT="${TMPDIR:-/tmp}/peps-compiler-appimage-$$"
 TMP_APPDIR="$TMP_ROOT/PepsCompiler.AppDir"
-TMP_APPIMAGE="$TMP_ROOT/peps-compiler-x86_64.AppImage"
 APPIMAGETOOL_URL="https://github.com/AppImage/AppImageKit/releases/download/continuous/appimagetool-x86_64.AppImage"
 trap 'rm -rf "$TMP_ROOT"' EXIT
 
 cd "$ROOT_DIR"
 
+VERSION=$(sed -n 's/^version = "\([^"]*\)"/\1/p' Cargo.toml | head -n 1)
+if [ -z "$VERSION" ]; then
+    echo "error: could not read package version from Cargo.toml" >&2
+    exit 1
+fi
+
+CLI_BINARY="peps-$VERSION"
+BYTECODE_BINARY="peps-bytecode-$VERSION"
+LAUNCHER="linux-$VERSION.sh"
+APPIMAGE="$OUT_DIR/peps-compiler-$VERSION-x86_64.AppImage"
+TMP_APPIMAGE="$TMP_ROOT/peps-compiler-$VERSION-x86_64.AppImage"
+
 cargo build --release --bin peps
 rm -rf "$OUT_DIR"
 mkdir -p "$OUT_DIR" "$TMP_APPDIR/usr/bin"
 
-cp target/release/peps "$OUT_DIR/peps"
-cp target/release/peps "$OUT_DIR/peps-bytecode"
+cp target/release/peps "$OUT_DIR/$CLI_BINARY"
+cp target/release/peps "$OUT_DIR/$BYTECODE_BINARY"
 cp target/release/peps "$TMP_APPDIR/usr/bin/peps"
 
-cat > "$OUT_DIR/linux.sh" <<'LAUNCHER'
+cat > "$OUT_DIR/$LAUNCHER" <<LAUNCHER
 #!/usr/bin/env sh
 set -eu
 
-DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
-exec "$DIR/peps" "$@"
+DIR=\$(CDPATH= cd -- "\$(dirname -- "\$0")" && pwd)
+exec "\$DIR/$CLI_BINARY" "\$@"
 LAUNCHER
 
 cat > "$TMP_APPDIR/AppRun" <<'APPRUN'
@@ -50,7 +60,7 @@ DESKTOP
 cp ide/public/favicon.svg "$TMP_APPDIR/peps.svg"
 cp -R "$TMP_APPDIR" "$APPDIR"
 
-chmod +x "$OUT_DIR/peps" "$OUT_DIR/peps-bytecode" "$OUT_DIR/linux.sh" "$TMP_APPDIR/AppRun" "$TMP_APPDIR/usr/bin/peps"
+chmod +x "$OUT_DIR/$CLI_BINARY" "$OUT_DIR/$BYTECODE_BINARY" "$OUT_DIR/$LAUNCHER" "$TMP_APPDIR/AppRun" "$TMP_APPDIR/usr/bin/peps"
 chmod +x "$APPDIR/AppRun" "$APPDIR/usr/bin/peps"
 
 APPIMAGETOOL="${APPIMAGETOOL:-}"
@@ -76,4 +86,5 @@ mv "$TMP_APPIMAGE" "$APPIMAGE"
 chmod +x "$APPIMAGE"
 
 echo "Built Peps compiler Linux dist: dist/compiler/linux"
-echo "Manual run: './dist/compiler/linux/linux.sh' path/to/file.peps"
+echo "Version: $VERSION"
+echo "Manual run: './dist/compiler/linux/$LAUNCHER' path/to/file.peps"

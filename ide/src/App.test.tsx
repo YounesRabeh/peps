@@ -55,4 +55,14 @@ describe("App", () => {
     fireEvent.click(screen.getByRole("button", { name: "Load example into editor" }));
     expect((screen.getByLabelText("mock editor") as HTMLTextAreaElement).value).toContain("🧩");
   });
+
+  it("collapses and restores the output and documentation panels", () => {
+    render(<App />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Hide panels" }));
+    expect(screen.queryByLabelText("Run results and documentation")).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Show panels" }));
+    expect(screen.getByLabelText("Run results and documentation")).toBeInTheDocument();
+  });
 });
