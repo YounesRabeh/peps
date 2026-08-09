@@ -11,7 +11,7 @@ export function OutputPanel({ running, response, error }: OutputPanelProps) {
   const isSuccess = Boolean(!running && !error && response?.ok && !hasDiagnostics);
 
   return (
-    <aside className="output-panel">
+    <aside className="output-panel" id="output-panel">
       <div className="output-header">
         <h2>Output</h2>
         <span className={`status-pill ${running ? "status-running" : isSuccess ? "status-ok" : hasDiagnostics || error ? "status-error" : "status-idle"}`}>

@@ -65,4 +65,21 @@ describe("App", () => {
     fireEvent.click(screen.getByRole("button", { name: "Show panels" }));
     expect(screen.getByLabelText("Run results and documentation")).toBeInTheDocument();
   });
+
+  it("shows the output panel when Run is pressed after panels are hidden", async () => {
+    vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(
+      new Response(JSON.stringify({ ok: true, output: [], diagnostics: [] }), { status: 200 })
+    );
+
+    render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "Hide panels" }));
+    fireEvent.click(screen.getByRole("button", { name: "Run ▶" }));
+
+    expect(screen.getByLabelText("Run results and documentation")).toBeInTheDocument();
+    expect(screen.getByRole("separator", { name: "Resize output and documentation" })).toBeInTheDocument();
+
+    await waitFor(() => {
+      expect(screen.getByText("Program finished with no output.")).toBeInTheDocument();
+    });
+  });
 });

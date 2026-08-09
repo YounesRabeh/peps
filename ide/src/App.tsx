@@ -12,11 +12,15 @@ export function App() {
   const [response, setResponse] = useState<RunResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [sidebarWidth, setSidebarWidth] = useState(440);
+  const [outputHeight, setOutputHeight] = useState<number | null>(null);
   const [panelsVisible, setPanelsVisible] = useState(true);
   const [resizing, setResizing] = useState(false);
+  const [resizingOutput, setResizingOutput] = useState(false);
   const workbenchRef = useRef<HTMLDivElement | null>(null);
+  const sidebarRef = useRef<HTMLElement | null>(null);
 
   async function handleRun() {
+    setPanelsVisible(true);
     setRunning(true);
     setError(null);
     setResponse(null);
@@ -81,6 +85,55 @@ export function App() {
     }
   }
 
+  function clampOutputHeight(requestedHeight: number) {
+    const sidebar = sidebarRef.current;
+    if (!sidebar) return Math.max(140, requestedHeight);
+
+    const bounds = sidebar.getBoundingClientRect();
+    const minimumOutputHeight = 140;
+    const minimumDocsHeight = 220;
+    const maximumOutputHeight = Math.max(
+      minimumOutputHeight,
+      bounds.height - minimumDocsHeight - 10,
+    );
+    return Math.min(maximumOutputHeight, Math.max(minimumOutputHeight, requestedHeight));
+  }
+
+  function setOutputHeightFromPointer(clientY: number) {
+    const sidebar = sidebarRef.current;
+    if (!sidebar) return;
+
+    const bounds = sidebar.getBoundingClientRect();
+    setOutputHeight(clampOutputHeight(clientY - bounds.top - 5));
+  }
+
+  function handlePanelDividerPointerDown(event: React.PointerEvent<HTMLButtonElement>) {
+    event.currentTarget.setPointerCapture(event.pointerId);
+    setResizingOutput(true);
+    setOutputHeightFromPointer(event.clientY);
+  }
+
+  function handlePanelDividerPointerMove(event: React.PointerEvent<HTMLButtonElement>) {
+    if (resizingOutput) setOutputHeightFromPointer(event.clientY);
+  }
+
+  function handlePanelDividerPointerUp(event: React.PointerEvent<HTMLButtonElement>) {
+    if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+      event.currentTarget.releasePointerCapture(event.pointerId);
+    }
+    setResizingOutput(false);
+  }
+
+  function handlePanelDividerKeyDown(event: React.KeyboardEvent<HTMLButtonElement>) {
+    if (event.key === "ArrowUp") {
+      event.preventDefault();
+      setOutputHeight((height) => clampOutputHeight((height ?? 260) - 24));
+    } else if (event.key === "ArrowDown") {
+      event.preventDefault();
+      setOutputHeight((height) => clampOutputHeight((height ?? 260) + 24));
+    }
+  }
+
   return (
     <main className="app-shell">
       <Toolbar
@@ -90,7 +143,13 @@ export function App() {
         onTogglePanels={() => setPanelsVisible((visible) => !visible)}
       />
       <div
-        className={resizing ? "workbench is-resizing" : "workbench"}
+        className={
+          resizing
+            ? "workbench is-resizing-horizontal"
+            : resizingOutput
+              ? "workbench is-resizing-vertical"
+              : "workbench"
+        }
         ref={workbenchRef}
         style={{
           gridTemplateColumns: panelsVisible
@@ -115,8 +174,28 @@ export function App() {
             type="button"
           />
         )}
-        {panelsVisible && <section className="runner-sidebar" id="runner-sidebar" aria-label="Run results and documentation">
+        {panelsVisible && <section
+          className="runner-sidebar"
+          id="runner-sidebar"
+          aria-label="Run results and documentation"
+          ref={sidebarRef}
+          style={outputHeight === null ? undefined : { gridTemplateRows: `${outputHeight}px 10px minmax(220px, 1fr)` }}
+        >
           <OutputPanel running={running} response={response} error={error} />
+          <button
+            aria-controls="output-panel docs-panel"
+            aria-label="Resize output and documentation"
+            aria-orientation="horizontal"
+            aria-valuemin={140}
+            aria-valuenow={Math.round(outputHeight ?? 260)}
+            className="runner-divider"
+            onKeyDown={handlePanelDividerKeyDown}
+            onPointerDown={handlePanelDividerPointerDown}
+            onPointerMove={handlePanelDividerPointerMove}
+            onPointerUp={handlePanelDividerPointerUp}
+            role="separator"
+            type="button"
+          />
           <DocsPanel onLoadExample={setSource} />
         </section>}
       </div>

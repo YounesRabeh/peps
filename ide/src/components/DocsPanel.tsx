@@ -203,7 +203,7 @@ export function DocsPanel({ onLoadExample }: DocsPanelProps) {
   const guide = guides[selectedGuide];
 
   return (
-    <aside className="docs-panel" aria-label="Peps documentation">
+    <aside className="docs-panel" id="docs-panel" aria-label="Peps documentation">
       <div className="docs-header">
         <div>
           <h2>Docs</h2>
