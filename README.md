@@ -61,6 +61,16 @@ Commands for running examples, testing, browser IDE development, packaging,
 and releases are kept in one place: [Development, Testing, and
 Releases](docs/README.md).
 
+On Linux, run the complete local release build with:
+
+```sh
+sh scripts/build-all.sh
+```
+
+It checks formatting, Rust tests, Clippy, and IDE tests before building the
+local development container plus Linux and Windows compiler and IDE artifacts.
+It does not upload the container or release files.
+
 ### IDE Preview
 
 ![Peps IDE](.github/img/peps-ide.png)

@@ -149,17 +149,20 @@ build removes and replaces that directory.
 
 ### Linux and Windows in one command
 
-On Linux, after installing the Linux packaging and Windows cross-build
-prerequisites above, build both compiler and IDE artifacts for Linux and
-Windows with:
+On Linux, after installing Docker plus the Linux packaging and Windows
+cross-build prerequisites above, run all formatting, Rust, lint, and IDE checks,
+then build the local development container and both compiler and IDE artifacts
+for Linux and Windows with:
 
 ```sh
 sh scripts/build-all.sh
 ```
 
 This creates `dist/compiler/linux`, `dist/ide/linux`,
-`dist/compiler/windows`, and `dist/ide/windows`. macOS archives are created by
-the automated release workflow.
+`dist/compiler/windows`, and `dist/ide/windows`, and tags the local container
+as `ghcr.io/younesrabeh/peps-dev:<version>` and `:latest`. It does not upload
+the container; use `sh scripts/devcontainer/build.sh --push` to publish it.
+macOS archives are created by the automated release workflow.
 
 ### Linux packages
 
@@ -269,10 +272,12 @@ To sign the tag with a configured GPG key, replace `git tag` above with
 `git tag -s "v$VERSION" -m "Peps v$VERSION"`.
 
 The workflow runs all Rust and IDE checks, builds compiler and IDE packages for
-Linux x86_64, Windows x86_64, and Intel macOS, generates `SHA256SUMS`, then
-creates a draft GitHub release. Review the generated notes and artifacts before
-publishing the draft. The workflow uses the repository-provided `GITHUB_TOKEN`;
-no release secret is required.
+Linux x86_64, Windows x86_64, and Intel macOS, deploys the browser IDE to
+GitHub Pages, and publishes the development container to
+`ghcr.io/younesrabeh/peps-dev:<version>` and `:latest`. It then generates
+`SHA256SUMS` and creates a draft GitHub release. Review the generated notes and
+artifacts before publishing the draft. The workflow uses the
+repository-provided `GITHUB_TOKEN`; no release secret is required.
 
 ## Release checklist
 
