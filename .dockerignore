@@ -1,0 +1,8 @@
+.git
+.tools
+.pnpm-store
+dist
+target
+ide/dist
+ide/node_modules
+ide/src/wasm

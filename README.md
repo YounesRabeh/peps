@@ -23,12 +23,6 @@ Follow the guides in order. Every guide has a matching runnable program in
 - [Algorithms](examples/algorithms/) contains five well-known algorithms
   recreated in Peps.
 
-Run any example from the project root:
-
-```sh
-cargo run -- examples/basic/01-variables.peps
-```
-
 ## Core Syntax
 
 | Emoji | Meaning | Example |
@@ -61,40 +55,11 @@ cargo run -- examples/basic/01-variables.peps
 | `//` | line comment | `📢 1️⃣ // ignored` |
 | `🤝` / `🔀` / `🚫` | logical operators (AND/OR/NOT) | `✅ 🤝 ❌` |
 
-## Run, Test, and Build
+## Development and releases
 
-Run the Rust and browser IDE checks before opening a pull request or making a
-release:
-
-```sh
-cargo fmt --check
-cargo test
-cargo clippy --all-targets --all-features -- -D warnings
-
-cd ide
-pnpm test -- --run
-pnpm run build
-```
-
-Develop the browser IDE from the `ide` directory:
-
-```sh
-cd ide
-pnpm install --frozen-lockfile
-pnpm dev
-```
-
-This builds the Rust compiler as WebAssembly and starts Vite. Open the address
-it prints (normally `http://127.0.0.1:5173`). Programs execute locally in the
-browser, so no compiler server is required.
-
-The hosted IDE is deployed to
-[`https://younesrabeh.github.io/peps/`](https://younesrabeh.github.io/peps/)
-by the GitHub Pages workflow.
-
-For platform requirements, all artifact paths, Linux-to-Windows cross-builds,
-verification, archives, and release uploads, see
-[Development, Testing, and Releases](docs/README.md).
+Commands for running examples, testing, browser IDE development, packaging,
+and releases are kept in one place: [Development, Testing, and
+Releases](docs/README.md).
 
 ### IDE Preview
 

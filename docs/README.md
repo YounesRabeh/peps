@@ -20,8 +20,18 @@ distribution artifacts, and prepare a release.
 
 Install these before developing locally:
 
-- Rust and Cargo (stable toolchain)
-- Node.js and pnpm for the browser IDE
+- Rustup. The checked-in `rust-toolchain.toml` selects Rust 1.97.1 and includes
+  `clippy`, `rustfmt`, `wasm32-unknown-unknown`, and
+  `x86_64-pc-windows-gnu`.
+- Node.js 24 and pnpm 11.18 for the browser IDE.
+
+When using Rustup, opening this repository with a Rust command installs the
+toolchain and its declared components and targets automatically. If a target
+is missing, install both targets explicitly with:
+
+```sh
+rustup target add wasm32-unknown-unknown x86_64-pc-windows-gnu
+```
 
 For a Linux-to-Windows cross-build, also install the MinGW compiler and Rust's
 GNU Windows target:
@@ -32,12 +42,27 @@ sudo dnf install mingw64-gcc
 
 # Ubuntu / Debian
 sudo apt install gcc-mingw-w64-x86-64
+```
 
-rustup target add x86_64-pc-windows-gnu
+If Rust was installed from Fedora system packages instead of Rustup, install
+the matching standard libraries:
+
+```sh
+sudo dnf install rust-std-static-wasm32-unknown-unknown \
+  rust-std-static-x86_64-pc-windows-gnu
 ```
 
 Linux packaging uses `appimagetool`. The Linux build scripts use an installed
 copy when available, otherwise download it to `.tools/` with `curl`.
+
+> [!IMPORTANT]
+>
+> For a reproducible environment with the toolchain and system dependencies
+> preinstalled, open the repository in VS Code and choose **Dev Containers:
+> Reopen in Container**, or create a GitHub Codespace. The container installs
+> the locked project dependencies after creation. See the
+> [development container guide](../.devcontainer/README.md) for local and GHCR
+> usage.
 
 ## Run Peps locally
 
@@ -54,18 +79,6 @@ cargo build --release --bin peps
 ./target/release/peps examples/basic/01-variables.peps
 ```
 
-Install the Rust WebAssembly target once. With rustup:
-
-```sh
-rustup target add wasm32-unknown-unknown
-```
-
-On Fedora when Rust is installed from the system packages:
-
-```sh
-sudo dnf install rust-std-static-wasm32-unknown-unknown
-```
-
 Then develop the browser IDE from the `ide` directory:
 
 ```sh
@@ -80,14 +93,15 @@ browser and are not sent to a backend. Press `Ctrl+C` to stop Vite.
 
 ## GitHub Pages IDE
 
-The Pages workflow in [`.github/workflows/pages.yml`](../.github/workflows/pages.yml)
-tests and builds the browser IDE on pushes to `main` or `dev`, then deploys it
-to [`https://younesrabeh.github.io/peps/`](https://younesrabeh.github.io/peps/).
+The [release workflow](../.github/workflows/release.yml) builds the tagged
+browser IDE as WebAssembly, deploys it to
+[`https://younesrabeh.github.io/peps/`](https://younesrabeh.github.io/peps/),
+and only then creates the draft GitHub release.
 
-To enable the first deployment, open the repository's GitHub settings, choose
-**Pages**, and set **Source** to **GitHub Actions**. The deployment contains only
-static HTML, CSS, JavaScript, and WebAssembly. It has no server, database, or
-compiler API, and user programs remain on the user's device.
+For a fork or new repository, enable Pages once in GitHub **Settings** by
+setting **Source** to **GitHub Actions**. The deployment contains only static
+HTML, CSS, JavaScript, and WebAssembly. It has no server, database, or compiler
+API, and user programs remain on the user's device.
 
 ## Test before building artifacts
 
@@ -96,14 +110,17 @@ gate because they cover Rust behavior, IDE behavior, formatting, linting, and
 the production web bundle.
 
 ```sh
-cargo fmt --check
-cargo test
+cargo fmt --all --check
+cargo test --all-targets --all-features
 cargo clippy --all-targets --all-features -- -D warnings
 
 cd ide
 pnpm test -- --run
 pnpm run build
 ```
+
+`pnpm test -- --run` runs Vitest once and exits; without `-- --run`, Vitest
+stays open to re-run tests as files change.
 
 Also run every numbered learning example. This catches documentation examples
 that no longer match the language:
@@ -130,6 +147,20 @@ The package commands recreate their output directory. Do not place manual files
 inside `dist/compiler/<platform>` or `dist/ide/<platform>` because the next
 build removes and replaces that directory.
 
+### Linux and Windows in one command
+
+On Linux, after installing the Linux packaging and Windows cross-build
+prerequisites above, build both compiler and IDE artifacts for Linux and
+Windows with:
+
+```sh
+sh scripts/build-all.sh
+```
+
+This creates `dist/compiler/linux`, `dist/ide/linux`,
+`dist/compiler/windows`, and `dist/ide/windows`. macOS archives are created by
+the automated release workflow.
+
 ### Linux packages
 
 On Linux, build both packages with:
@@ -155,8 +186,7 @@ This creates:
 | `dist/compiler/linux/peps-compiler-<version>-x86_64.AppImage` | Portable Linux compiler app |
 | `dist/ide/linux/peps-ide-<version>-x86_64.AppImage` | Portable Linux IDE app |
 
-`<version>` comes from the `version` field in `Cargo.toml`. For example,
-version `0.8.1` produces `peps-compiler-0.8.1-x86_64.AppImage`.
+`<version>` comes from the `version` field in `Cargo.toml`.
 
 Verify the CLI artifact before release:
 
@@ -234,6 +264,9 @@ VERSION=$(sed -n 's/^version = "\([^"]*\)"/\1/p' Cargo.toml | head -n 1)
 git tag "v$VERSION"
 git push origin "v$VERSION"
 ```
+
+To sign the tag with a configured GPG key, replace `git tag` above with
+`git tag -s "v$VERSION" -m "Peps v$VERSION"`.
 
 The workflow runs all Rust and IDE checks, builds compiler and IDE packages for
 Linux x86_64, Windows x86_64, and Intel macOS, generates `SHA256SUMS`, then

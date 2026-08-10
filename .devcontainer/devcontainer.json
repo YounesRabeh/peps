@@ -1,0 +1,38 @@
+{
+  "name": "Peps",
+  "build": {
+    "context": "..",
+    "dockerfile": "Dockerfile",
+    "args": {
+      "RUST_VERSION": "1.97.1",
+      "PNPM_VERSION": "11.18.0"
+    }
+  },
+  "remoteUser": "node",
+  "postCreateCommand": "pnpm --dir ide install --frozen-lockfile && cargo fetch",
+  "forwardPorts": [5173, 5179],
+  "portsAttributes": {
+    "5173": {
+      "label": "Peps browser IDE",
+      "onAutoForward": "openPreview"
+    },
+    "5179": {
+      "label": "Peps packaged IDE server",
+      "onAutoForward": "notify"
+    }
+  },
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "rust-lang.rust-analyzer",
+        "vadimcn.vscode-lldb",
+        "esbenp.prettier-vscode"
+      ]
+    }
+  },
+  "hostRequirements": {
+    "cpus": 2,
+    "memory": "4gb",
+    "storage": "16gb"
+  }
+}
