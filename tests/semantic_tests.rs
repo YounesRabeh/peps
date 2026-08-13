@@ -19,6 +19,47 @@ fn infers_variable_declaration() {
 }
 
 #[test]
+fn infers_top_level_and_block_constants() {
+    let checked = check("🔐 🐶 🟰 4️⃣2️⃣ 🔚 🤔 ✅ 🔓 🔐 🐱 🟰 💬fixed💬 🔚 📢 🐱 🔚 🔒 📢 🐶 🔚")
+        .expect("constants should check");
+    assert_eq!(checked.symbols.get("🐶"), Some(&Type::Num));
+    assert_eq!(checked.symbols.get("🐱"), None);
+}
+
+#[test]
+fn rejects_constant_reassignment_and_mutation() {
+    assert!(first_error("🔐 🐶 🟰 1️⃣ 🔚 🐶 🟰 2️⃣ 🔚").contains("cannot be reassigned"));
+    assert!(first_error("🔐 🍎 🟰 📚 1️⃣ 2️⃣ 📚 🔚 🍎 📥 3️⃣ 🔚").contains("cannot be mutated"));
+    assert!(
+        first_error("🔐 📖 🟰 🗺️ 💬one💬 ➡️ 1️⃣ 🗺️ 🔚 📖 📥 🗺️ 💬two💬 ➡️ 2️⃣ 🗺️ 🔚")
+            .contains("cannot be mutated")
+    );
+}
+
+#[test]
+fn rejects_redeclaring_visible_names_as_constants() {
+    assert!(first_error("🐶 🟰 1️⃣ 🔚 🔐 🐶 🟰 2️⃣ 🔚").contains("already declared"));
+    assert!(first_error("🔐 🐶 🟰 1️⃣ 🔚 🔐 🐶 🟰 2️⃣ 🔚").contains("already declared"));
+}
+
+#[test]
+fn functions_can_read_but_not_reassign_global_constants() {
+    check("🔐 🐶 🟰 4️⃣2️⃣ 🔚 🧩 🧪 📚 📚 🔓 ↩️ 🐶 🔒 📢 📞 🧪 📚 📚 🔚")
+        .expect("functions should read global constants");
+    assert!(
+        first_error("🔐 🐶 🟰 1️⃣ 🔚 🧩 🧪 📚 📚 🔓 🐶 🟰 2️⃣ 🔚 ↩️ 🐶 🔒")
+            .contains("cannot be reassigned")
+    );
+}
+
+#[test]
+fn constant_scope_ends_with_its_block() {
+    let checked = check("🤔 ✅ 🔓 🔐 🐶 🟰 1️⃣ 🔚 📢 🐶 🔚 🔒 🐶 🟰 2️⃣ 🔚 📢 🐶 🔚")
+        .expect("expired constant name should be reusable");
+    assert_eq!(checked.symbols.get("🐶"), Some(&Type::Num));
+}
+
+#[test]
 fn infers_float_and_mixed_numeric_expressions() {
     let checked =
         check("🐶 🟰 1️⃣.5️⃣ 🔚 🐱 🟰 🐶 ➕ 2️⃣ 🔚").expect("mixed numeric source should check");
@@ -72,6 +113,25 @@ fn infers_map_literals_lookup_length_and_merge() {
     );
     assert_eq!(checked.symbols.get("🐶"), Some(&Type::Num));
     assert_eq!(checked.symbols.get("🐱"), Some(&Type::Num));
+}
+
+#[test]
+fn infers_map_key_existence_as_boolean() {
+    let checked = check(
+        "📖 🟰 🗺️ 💬name💬 ➡️ 💬Peps💬 🗺️ 🔚 🐶 🟰 🔑 📖 💬name💬 🔚 📝 🟰 💬missing💬 🔚 🐱 🟰 🔑 📖 📝 🔚",
+    )
+    .expect("map key existence should check");
+    assert_eq!(checked.symbols.get("🐶"), Some(&Type::Bool));
+    assert_eq!(checked.symbols.get("🐱"), Some(&Type::Bool));
+}
+
+#[test]
+fn rejects_invalid_map_key_existence_operands() {
+    assert!(first_error("🐶 🟰 🔑 1️⃣ 💬name💬 🔚").contains("requires a map"));
+    assert!(
+        first_error("📖 🟰 🗺️ 💬name💬 ➡️ 1️⃣ 🗺️ 🔚 🐶 🟰 🔑 📖 1️⃣ 🔚")
+            .contains("requires a text key")
+    );
 }
 
 #[test]

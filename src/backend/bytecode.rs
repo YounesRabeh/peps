@@ -30,6 +30,7 @@ pub enum Instruction {
     MakeMap(usize),
     ListLen,
     ListGet,
+    MapHas,
     ListAppend,
     Print,
     Pop,

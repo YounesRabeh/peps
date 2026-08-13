@@ -33,7 +33,9 @@ describe("App", () => {
     expect(source).toContain("⌨️ 🔤");
     expect(source).toContain("🔄 🔢");
     expect(source).toContain("🗺️");
+    expect(source).toContain("🔑 📖 💬year💬");
     expect(source).toContain("📏 🐱");
+    expect(source).toContain("🔐 💎");
   });
 
   it("runs source and renders output", async () => {
@@ -56,6 +58,26 @@ describe("App", () => {
     });
   });
 
+  it("labels runtime errors with their source line", async () => {
+    runPepsSourceMock.mockResolvedValueOnce({
+      ok: false,
+      output: ["g"],
+      diagnostics: [{
+        kind: "runtime",
+        message: "text is not a valid integer",
+        line: 2,
+        column: 5
+      }]
+    });
+
+    render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "Run ▶" }));
+
+    expect(await screen.findByText(
+      "runtime error at line 2: text is not a valid integer"
+    )).toBeInTheDocument();
+  });
+
   it("keeps the numbered documentation panel in the IDE and loads examples", () => {
     render(<App />);
 
@@ -65,6 +87,11 @@ describe("App", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Load example into editor" }));
     expect((screen.getByLabelText("mock editor") as HTMLTextAreaElement).value).toContain("🧩");
+
+    fireEvent.click(screen.getByRole("button", { name: "14 Map key existence" }));
+    expect(screen.getByRole("heading", { name: "14. Map key existence" })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Load example into editor" }));
+    expect((screen.getByLabelText("mock editor") as HTMLTextAreaElement).value).toContain("🔑");
   });
 
   it("collapses and restores the terminal and documentation panels", () => {

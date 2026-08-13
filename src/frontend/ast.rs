@@ -17,6 +17,11 @@ pub enum Stmt {
         expr: Expr,
         span: Span,
     },
+    Const {
+        name: String,
+        expr: Expr,
+        span: Span,
+    },
     Append {
         name: String,
         expr: Expr,
@@ -69,6 +74,7 @@ impl Stmt {
     pub fn span(&self) -> Span {
         match self {
             Stmt::Assign { span, .. }
+            | Stmt::Const { span, .. }
             | Stmt::Append { span, .. }
             | Stmt::Print { span, .. }
             | Stmt::Break { span, .. }
@@ -140,6 +146,11 @@ pub enum Expr {
         entries: Vec<(Expr, Expr)>,
         span: Span,
     },
+    MapHas {
+        map: Box<Expr>,
+        key: Box<Expr>,
+        span: Span,
+    },
     Unary {
         op: UnaryOp,
         expr: Box<Expr>,
@@ -171,6 +182,7 @@ impl Expr {
             | Expr::Variable { span, .. }
             | Expr::List { span, .. }
             | Expr::Map { span, .. }
+            | Expr::MapHas { span, .. }
             | Expr::Unary { span, .. }
             | Expr::Binary { span, .. } => *span,
             Expr::Call { span, .. } => *span,

@@ -10,6 +10,7 @@ use crate::{
     ast::{ConversionKind, InputKind},
     bytecode::{Instruction, Value},
     diagnostic::Diagnostic,
+    source::Span,
 };
 
 /// Maximum instructions used for browser IDE executions.
@@ -109,7 +110,26 @@ where
     S: Into<String>,
 {
     let mut inputs = inputs.into_iter().map(Into::into).collect::<VecDeque<_>>();
-    execute_with_input_reader(instructions, execution_limit, |kind| {
+    execute_with_input_reader_and_spans(instructions, None, execution_limit, |kind| {
+        inputs
+            .pop_front()
+            .ok_or_else(|| format!("{}{}", INPUT_REQUIRED_PREFIX, kind.name()))
+    })
+}
+
+/// Execute browser bytecode with source locations for runtime diagnostics.
+pub(crate) fn execute_with_inputs_and_source_spans<I, S>(
+    instructions: &[Instruction],
+    source_spans: &[Option<Span>],
+    inputs: I,
+    execution_limit: ExecutionLimit,
+) -> Result<Vec<String>, RunError>
+where
+    I: IntoIterator<Item = S>,
+    S: Into<String>,
+{
+    let mut inputs = inputs.into_iter().map(Into::into).collect::<VecDeque<_>>();
+    execute_with_input_reader_and_spans(instructions, Some(source_spans), execution_limit, |kind| {
         inputs
             .pop_front()
             .ok_or_else(|| format!("{}{}", INPUT_REQUIRED_PREFIX, kind.name()))
@@ -120,6 +140,18 @@ where
 pub fn execute_with_input_reader<F>(
     instructions: &[Instruction],
     execution_limit: ExecutionLimit,
+    read_input: F,
+) -> Result<Vec<String>, RunError>
+where
+    F: FnMut(InputKind) -> Result<String, String>,
+{
+    execute_with_input_reader_and_spans(instructions, None, execution_limit, read_input)
+}
+
+fn execute_with_input_reader_and_spans<F>(
+    instructions: &[Instruction],
+    source_spans: Option<&[Option<Span>]>,
+    execution_limit: ExecutionLimit,
     mut read_input: F,
 ) -> Result<Vec<String>, RunError>
 where
@@ -127,6 +159,7 @@ where
 {
     let mut vm = Vm {
         instructions,
+        source_spans,
         ip: 0,
         stack: Vec::new(),
         globals: HashMap::new(),
@@ -145,6 +178,8 @@ where
 struct Vm<'a> {
     /// Compiled bytecode being executed.
     instructions: &'a [Instruction],
+    /// Optional source location corresponding to each bytecode instruction.
+    source_spans: Option<&'a [Option<Span>]>,
     /// Current instruction pointer.
     ip: usize,
     /// Operand stack used by bytecode instructions.
@@ -362,6 +397,21 @@ impl Vm<'_> {
                         _ => return self.fail("lookup requires text, a list, or a map value"),
                     };
                     self.stack.push(value);
+                    self.ip += 1;
+                }
+                Instruction::MapHas => {
+                    let key = self.pop("map key existence")?;
+                    let map = self.pop("map key existence")?;
+                    let exists = match (map, key) {
+                        (RuntimeValue::Map(entries), RuntimeValue::Str(key)) => {
+                            entries.iter().any(|(entry, _)| entry == &key)
+                        }
+                        (RuntimeValue::Map(_), _) => {
+                            return self.fail("map key existence requires a text key");
+                        }
+                        _ => return self.fail("map key existence requires a map value"),
+                    };
+                    self.stack.push(RuntimeValue::Bool(exists));
                     self.ip += 1;
                 }
                 Instruction::ListAppend => {
@@ -748,9 +798,17 @@ impl Vm<'_> {
 
     /// Build a runtime error while preserving output produced so far.
     fn error(&self, message: impl Into<String>) -> RunError {
+        let span = self
+            .source_spans
+            .and_then(|source_spans| source_spans.get(self.ip))
+            .copied()
+            .flatten();
         RunError {
             output: self.output.clone(),
-            diagnostics: vec![Diagnostic::new(message)],
+            diagnostics: vec![Diagnostic {
+                message: message.into(),
+                span,
+            }],
         }
     }
 }

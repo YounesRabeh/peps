@@ -1,6 +1,7 @@
 import initializePeps, { run_peps as runPeps } from "./wasm/peps.js";
 
 export type IdeDiagnostic = {
+  kind?: "compile" | "runtime";
   message: string;
   line?: number | null;
   column?: number | null;

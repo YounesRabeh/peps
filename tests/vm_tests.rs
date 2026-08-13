@@ -14,6 +14,47 @@ fn runs_printed_values() {
 }
 
 #[test]
+fn runs_top_level_block_and_function_constants() {
+    let output = run_source(
+        "🔐 🐶 🟰 4️⃣2️⃣ 🔚 🤔 ✅ 🔓 🔐 🐱 🟰 💬block💬 🔚 📢 🐱 🔚 🔒 🧩 🧪 📚 📚 🔓 🔐 🦊 🟰 2️⃣ 🔚 ↩️ 🐶 ➕ 🦊 🔒 📢 🐶 🔚 📢 📞 🧪 📚 📚 🔚",
+    )
+    .expect("constants should run");
+    assert_eq!(output, vec!["block", "42", "44"]);
+}
+
+#[test]
+fn checks_present_and_missing_map_keys() {
+    let output =
+        run_source("📖 🟰 🗺️ 💬name💬 ➡️ 💬Peps💬 🗺️ 🔚 📢 🔑 📖 💬name💬 🔚 📢 🔑 📖 💬year💬 🔚")
+            .expect("map key checks should run");
+    assert_eq!(output, vec!["✅", "❌"]);
+}
+
+#[test]
+fn dynamically_checks_map_key_existence_operands() {
+    let wrong_map =
+        run_source("🧩 🧪 📚 👜 🗝️ 📚 🔓 ↩️ 🔑 👜 🗝️ 🔒 📝 🟰 💬name💬 🔚 📢 📞 🧪 📚 1️⃣ 📝 📚 🔚")
+            .expect_err("a dynamic non-map should fail");
+    assert!(wrong_map.diagnostics[0]
+        .message
+        .contains("requires a map value"));
+
+    let wrong_key = run_source(
+        "🧩 🧪 📚 👜 🗝️ 📚 🔓 ↩️ 🔑 👜 🗝️ 🔒 📖 🟰 🗺️ 💬name💬 ➡️ 1️⃣ 🗺️ 🔚 📢 📞 🧪 📚 📖 1️⃣ 📚 🔚",
+    )
+    .expect_err("a dynamic non-text key should fail");
+    assert!(wrong_key.diagnostics[0]
+        .message
+        .contains("requires a text key"));
+}
+
+#[test]
+fn fresh_constant_initializer_uses_the_preexisting_literal_rule() {
+    let output = run_source("🔐 🐶 🟰 🐶 🔚 📢 🐶 🔚").expect("constant should run");
+    assert_eq!(output, vec!["🐶"]);
+}
+
+#[test]
 fn runs_reassignment_and_updates_outer_bindings_from_blocks() {
     let output = run_source("🐶 🟰 1️⃣ 🔚 🤔 ✅ 🔓 🐶 🟰 🐶 ➕ 1️⃣ 🔚 🔒 📢 🐶 🔚")
         .expect("source should run");

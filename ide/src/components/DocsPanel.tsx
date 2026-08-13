@@ -126,6 +126,7 @@ const mapsExample = `📖 🟰 🗺️
 🗺️
 
 📢 📖 🔎 💬year💬
+📢 🔑 📖 💬year💬
 📢 📏 📖
 
 📖 📥 🗺️ 💬users💬 ➡️ 4️⃣2️⃣ 🗺️
@@ -141,6 +142,34 @@ const textOperationsExample = `📝 🟰 💬A👨‍👩‍👧‍👦é💬
 
 📢 📏 💬Peps 🚀💬
 📢 💬Peps 🚀💬 🔎 5️⃣
+`;
+
+const constantsExample = `🔐 🐶 🟰 4️⃣2️⃣
+🔐 📝 🟰 💬Peps💬
+🔐 🍎 🟰 📚 1️⃣ 2️⃣ 3️⃣ 📚
+
+📢 🐶
+📢 📝
+📢 🍎 🔎 1️⃣
+
+🤔 ✅ 🔓
+    🔐 🐱 🟰 💬block constant💬
+    📢 🐱
+🔒
+`;
+
+const mapKeyExistenceExample = `📖 🟰 🗺️
+    💬name💬 ➡️ 💬Peps💬
+    💬year💬 ➡️ 💬2026💬
+🗺️
+
+📢 🔑 📖 💬name💬
+📢 🔑 📖 💬missing💬
+
+📝 🟰 💬year💬
+🤔 🔑 📖 📝 🔓
+    📢 📖 🔎 📝
+🔒
 `;
 
 type DocsPanelProps = {
@@ -275,6 +304,7 @@ const guides: Guide[] = [
       "Use ➡️ between each text key and value.",
       "Values may be numbers, text, booleans, or emoji, with one value type per map.",
       "🔎 looks up a text key and 📏 counts unique keys.",
+      "🔑 safely reports whether a text key exists.",
       "📥 merges another map, updating existing keys and inserting new ones."
     ],
     example: mapsExample
@@ -289,6 +319,28 @@ const guides: Guide[] = [
       "Composed emoji remain intact, and out-of-bounds indexes produce a runtime diagnostic."
     ],
     example: textOperationsExample
+  },
+  {
+    number: 13,
+    title: "Constants",
+    description: "Declare read-only lexical bindings with 🔐.",
+    points: [
+      "Constants infer their type and may hold any supported value.",
+      "They cannot be reassigned or mutated with 📥.",
+      "Block and function constants follow normal lexical scope; functions may read global constants."
+    ],
+    example: constantsExample
+  },
+  {
+    number: 14,
+    title: "Map key existence",
+    description: "Check for a map key without triggering a missing-key diagnostic.",
+    points: [
+      "Write 🔑 followed by a map and a text key.",
+      "The expression returns ✅ when present and ❌ when absent.",
+      "Use the boolean result in assignments, output, and conditions before 🔎 lookup."
+    ],
+    example: mapKeyExistenceExample
   }
 ];
 

@@ -110,6 +110,12 @@ describe("emoji autocomplete helpers", () => {
   it("suggests map syntax", () => {
     expect(getEmojiSuggestions("map").some((item) => item.emoji === "🗺️")).toBe(true);
     expect(getEmojiSuggestions("dictionary").some((item) => item.emoji === "🗺️")).toBe(true);
+    expect(getEmojiSuggestions("exists").some((item) => item.emoji === "🔑")).toBe(true);
+  });
+
+  it("suggests constant declarations", () => {
+    expect(getEmojiSuggestions("constant").some((item) => item.emoji === "🔐")).toBe(true);
+    expect(getEmojiSuggestions("readonly").some((item) => item.emoji === "🔐")).toBe(true);
   });
 
   it("replaces the entire colon token", () => {

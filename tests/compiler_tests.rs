@@ -14,6 +14,19 @@ fn compiles_assignment() {
 }
 
 #[test]
+fn compiles_constant_declaration_with_existing_storage_instructions() {
+    assert_eq!(
+        compile_source("🔐 🐶 🟰 4️⃣2️⃣ 🔚 📢 🐶 🔚").expect("source should compile"),
+        vec![
+            Instruction::LoadConst(Value::Num(BigInt::from(42))),
+            Instruction::StoreVar("🐶".to_string()),
+            Instruction::LoadVar("🐶".to_string()),
+            Instruction::Print,
+        ]
+    );
+}
+
+#[test]
 fn compiles_float_literal() {
     assert_eq!(
         compile_source("🐶 🟰 1️⃣.5️⃣ 🔚").expect("source should compile"),
@@ -92,6 +105,24 @@ fn compiles_map_creation_lookup_and_merge() {
             Instruction::MakeMap(1),
             Instruction::ListAppend,
             Instruction::StoreVar("📖".to_string()),
+        ]
+    );
+}
+
+#[test]
+fn compiles_map_key_existence() {
+    assert_eq!(
+        compile_source("📖 🟰 🗺️ 💬name💬 ➡️ 1️⃣ 🗺️ 🔚 📢 🔑 📖 💬name💬 🔚",)
+            .expect("source should compile"),
+        vec![
+            Instruction::LoadConst(Value::Str("name".to_string())),
+            Instruction::LoadConst(Value::Num(BigInt::from(1))),
+            Instruction::MakeMap(1),
+            Instruction::StoreVar("📖".to_string()),
+            Instruction::LoadVar("📖".to_string()),
+            Instruction::LoadConst(Value::Str("name".to_string())),
+            Instruction::MapHas,
+            Instruction::Print,
         ]
     );
 }

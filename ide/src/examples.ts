@@ -1,4 +1,5 @@
 export const OVERVIEW_SAMPLE = `// Peps overview: values, collections, control flow, scope, functions, input, and conversion.
+🔐 💎 🟰 💬Peps overview💬
 🐶 🟰 8️⃣
 🐱 🟰 💬hello peps💬
 📦 🟰 🥊
@@ -14,6 +15,7 @@ export const OVERVIEW_SAMPLE = `// Peps overview: values, collections, control f
 📢 🐱
 📢 📦
 📢 🦊
+📢 💎
 📢 📏 🐱
 📢 🐱 🔎 0️⃣
 
@@ -29,6 +31,8 @@ export const OVERVIEW_SAMPLE = `// Peps overview: values, collections, control f
 📖 🟰 🗺️ 💬visits💬 ➡️ 1️⃣2️⃣0️⃣ 💬year💬 ➡️ 2️⃣0️⃣2️⃣6️⃣ 🗺️
 📖 📥 🗺️ 💬users💬 ➡️ 4️⃣2️⃣ 🗺️
 📢 📖 🔎 💬year💬
+📢 🔑 📖 💬year💬
+📢 🔑 📖 💬missing💬
 📢 📏 📖
 
 🐸 🟰 0️⃣

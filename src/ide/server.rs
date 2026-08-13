@@ -142,6 +142,7 @@ mod tests {
 
         assert!(!response.ok);
         assert!(!response.diagnostics.is_empty());
+        assert_eq!(response.diagnostics[0].kind, "compile");
     }
 
     #[tokio::test]
@@ -154,7 +155,26 @@ mod tests {
         .0;
 
         assert!(!response.ok);
+        assert_eq!(response.diagnostics[0].kind, "runtime");
+        assert_eq!(response.diagnostics[0].line, Some(1));
         assert!(response.diagnostics[0].message.contains("step limit"));
+    }
+
+    #[tokio::test]
+    async fn api_run_reports_the_runtime_error_line() {
+        let response = run_handler(Json(RunRequest {
+            source: "📝 🟰 💬g💬\n🐶 🟰 🔄 🔢 📝".to_string(),
+            inputs: Vec::new(),
+        }))
+        .await
+        .0;
+
+        assert!(!response.ok);
+        assert_eq!(response.diagnostics[0].kind, "runtime");
+        assert_eq!(response.diagnostics[0].line, Some(2));
+        assert!(response.diagnostics[0]
+            .message
+            .contains("text is not a valid integer"));
     }
 
     #[tokio::test]
