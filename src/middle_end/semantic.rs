@@ -3,7 +3,7 @@
 use std::collections::{HashMap, HashSet};
 
 use crate::{
-    ast::{BinaryOp, Expr, ForSource, InputKind, Program, Stmt, UnaryOp},
+    ast::{BinaryOp, ConversionKind, Expr, ForSource, InputKind, Program, Stmt, UnaryOp},
     diagnostic::Diagnostic,
     symbol_table::SymbolTable,
     types::Type,
@@ -351,6 +351,7 @@ impl Checker {
                 InputKind::Float => Type::Float,
                 InputKind::Bool => Type::Bool,
             }),
+            Expr::Convert { kind, expr, span } => self.infer_conversion(*kind, expr, *span),
             Expr::String { span, .. } => {
                 self.diagnostics.push(Diagnostic::at(
                     "Raw string literals can only be assigned to variables in Peps v0.",
@@ -439,6 +440,37 @@ impl Checker {
                 right,
                 span,
             } => self.infer_binary(left, *op, right, *span),
+        }
+    }
+
+    fn infer_conversion(
+        &mut self,
+        kind: ConversionKind,
+        expr: &Expr,
+        span: crate::source::Span,
+    ) -> Option<Type> {
+        let source_type = self.infer_expr_allow_raw_strings(expr)?;
+        match kind {
+            ConversionKind::Integer if matches!(source_type, Type::Str | Type::Unknown) => {
+                Some(Type::Num)
+            }
+            ConversionKind::Float
+                if matches!(source_type, Type::Str | Type::Num | Type::Unknown) =>
+            {
+                Some(Type::Float)
+            }
+            ConversionKind::Integer => {
+                self.diagnostics
+                    .push(Diagnostic::at("integer conversion requires text", span));
+                None
+            }
+            ConversionKind::Float => {
+                self.diagnostics.push(Diagnostic::at(
+                    "float conversion requires text or an integer",
+                    span,
+                ));
+                None
+            }
         }
     }
 
@@ -652,6 +684,7 @@ impl Checker {
                 InputKind::Float => Type::Float,
                 InputKind::Bool => Type::Bool,
             }),
+            Expr::Convert { kind, expr, span } => self.infer_conversion(*kind, expr, *span),
             Expr::Bool { .. } => Some(Type::Bool),
             Expr::Emoji { .. } => Some(Type::Emoji),
             Expr::Variable { name, span } => match self.lookup(name) {

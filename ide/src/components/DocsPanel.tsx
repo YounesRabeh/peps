@@ -110,6 +110,16 @@ const inputExample = `📝 🟰 ⌨️ 🔤
 📢 🐱
 `;
 
+const conversionExample = `📝 🟰 💬42💬
+🐶 🟰 🔄 🔢 📝
+🦊 🟰 🔄 🔣 🐶
+🐱 🟰 🔄 🔣 💬3.5💬
+
+📢 🐶 ➕ 1️⃣
+📢 🦊
+📢 🐱 ➕ 0️⃣.5️⃣
+`;
+
 type DocsPanelProps = {
   onLoadExample: (source: string) => void;
 };
@@ -222,6 +232,17 @@ const guides: Guide[] = [
       "Boolean input accepts ✅, ❌, true, or false."
     ],
     example: inputExample
+  },
+  {
+    number: 10,
+    title: "Type conversion",
+    description: "Convert text to numbers and integers to floats explicitly with 🔄.",
+    points: [
+      "🔄 🔢 converts integer text to an arbitrary-precision integer.",
+      "🔄 🔣 converts float text or an integer to a 64-bit float.",
+      "Invalid text and non-finite float results produce runtime diagnostics."
+    ],
+    example: conversionExample
   }
 ];
 

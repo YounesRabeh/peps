@@ -1,4 +1,4 @@
-// Peps overview: values, expressions, control flow, lists, scope, functions, and input.
+// Peps overview: values, expressions, control flow, lists, scope, functions, input, and conversion.
 🐶 🟰 8️⃣
 🐱 🟰 💬hello peps💬
 📦 🟰 🥊
@@ -61,3 +61,7 @@
 
 📝 🟰 ⌨️ 🔤
 📢 📝
+🐺 🟰 🔄 🔢 📝
+🦄 🟰 🔄 🔣 🐺
+📢 🐺 ➕ 1️⃣
+📢 🦄

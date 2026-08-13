@@ -42,6 +42,8 @@ pub enum TokenKind {
     InputFloat,
     /// Boolean input type marker.
     InputBool,
+    /// Explicit numeric conversion expression prefix.
+    Convert,
 
     /// Print statement keyword.
     Print,

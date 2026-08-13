@@ -175,6 +175,22 @@ fn lexes_typed_input_tokens() {
 }
 
 #[test]
+fn lexes_explicit_conversion_tokens() {
+    assert_eq!(
+        kinds("🔄 🔢 📝 🔄 🔣 🐶"),
+        vec![
+            TokenKind::Convert,
+            TokenKind::Range,
+            TokenKind::Identifier("📝".to_string()),
+            TokenKind::Convert,
+            TokenKind::InputFloat,
+            TokenKind::Identifier("🐶".to_string()),
+            TokenKind::Eof,
+        ]
+    );
+}
+
+#[test]
 fn lexes_emoji_variables() {
     assert_eq!(
         kinds("🚀 🟰 🌙 🔚"),

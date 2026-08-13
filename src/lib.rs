@@ -22,7 +22,7 @@ pub use frontend::{ast, lexer, parser, token};
 pub use middle_end::{semantic, symbol_table, types};
 pub use runtime::vm;
 
-pub use ast::{BinaryOp, Expr, ForSource, InputKind, Program, Stmt, UnaryOp};
+pub use ast::{BinaryOp, ConversionKind, Expr, ForSource, InputKind, Program, Stmt, UnaryOp};
 pub use bytecode::{Instruction, Value};
 pub use diagnostic::Diagnostic;
 pub use source::Span;

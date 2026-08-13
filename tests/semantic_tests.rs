@@ -44,6 +44,23 @@ fn infers_typed_input_values() {
 }
 
 #[test]
+fn infers_explicit_numeric_conversions() {
+    let checked = check("🐶 🟰 🔄 🔢 💬42💬 🔚 🦊 🟰 🔄 🔣 🐶 🔚 🐱 🟰 🔄 🔣 💬3.5💬 🔚")
+        .expect("valid conversions should check");
+    assert_eq!(checked.symbols.get("🐶"), Some(&Type::Num));
+    assert_eq!(checked.symbols.get("🦊"), Some(&Type::Float));
+    assert_eq!(checked.symbols.get("🐱"), Some(&Type::Float));
+}
+
+#[test]
+fn rejects_unsupported_numeric_conversions() {
+    assert!(first_error("🐶 🟰 🔄 🔢 ✅ 🔚").contains("integer conversion requires text"));
+    assert!(
+        first_error("🐶 🟰 🔄 🔣 ✅ 🔚").contains("float conversion requires text or an integer")
+    );
+}
+
+#[test]
 fn rejects_float_ranges_and_list_indexes() {
     assert!(first_error("🔁 🐾 🧭 🔢 0️⃣.5️⃣ ➡️ 2️⃣ 🔓 📢 🐾 🔚 🔒")
         .contains("range bounds must be integers"));

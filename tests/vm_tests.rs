@@ -126,6 +126,54 @@ fn reports_exhausted_and_invalid_input() {
 }
 
 #[test]
+fn runs_explicit_text_and_integer_conversions() {
+    let output = run_source(
+        "🐶 🟰 🔄 🔢 💬42💬 🔚 🦊 🟰 🔄 🔣 🐶 🔚 🐱 🟰 🔄 🔣 💬3.5💬 🔚 📢 🐶 ➕ 1️⃣ 🔚 📢 🦊 🔚 📢 🐱 ➕ 0️⃣.5️⃣ 🔚",
+    )
+    .expect("explicit conversions should run");
+    assert_eq!(output, vec!["43", "42", "4"]);
+}
+
+#[test]
+fn explicit_integer_to_float_conversion_allows_rounding() {
+    let output = run_source("📢 🔄 🔣 9️⃣0️⃣0️⃣7️⃣1️⃣9️⃣9️⃣2️⃣5️⃣4️⃣7️⃣4️⃣0️⃣9️⃣9️⃣3️⃣ 🔚")
+        .expect("explicit conversion should permit float rounding");
+    assert_eq!(output, vec!["9007199254740992"]);
+}
+
+#[test]
+fn reports_invalid_text_conversions() {
+    let integer_error =
+        run_source("📢 🔄 🔢 💬hello💬 🔚").expect_err("invalid integer text should fail");
+    assert!(integer_error.diagnostics[0]
+        .message
+        .contains("not a valid integer"));
+
+    let float_error =
+        run_source("📢 🔄 🔣 💬not-a-float💬 🔚").expect_err("invalid float text should fail");
+    assert!(float_error.diagnostics[0]
+        .message
+        .contains("not a valid float"));
+
+    let non_finite_error =
+        run_source("📢 🔄 🔣 💬infinity💬 🔚").expect_err("non-finite float text should fail");
+    assert!(non_finite_error.diagnostics[0].message.contains("finite"));
+}
+
+#[test]
+fn validates_dynamic_function_conversions_at_runtime() {
+    let output = run_source("🧩 🧪 📚 🐾 📚 🔓 ↩️ 🔄 🔢 🐾 🔒 📝 🟰 💬7💬 🔚 📢 📞 🧪 📚 📝 📚 🔚")
+        .expect("text parameter should convert at runtime");
+    assert_eq!(output, vec!["7"]);
+
+    let error = run_source("🧩 🧪 📚 🐾 📚 🔓 ↩️ 🔄 🔢 🐾 🔒 🐱 🟰 ✅ 🔚 📢 📞 🧪 📚 🐱 📚 🔚")
+        .expect_err("boolean parameter should fail conversion at runtime");
+    assert!(error.diagnostics[0]
+        .message
+        .contains("integer conversion requires text"));
+}
+
+#[test]
 fn reports_float_division_by_zero() {
     let error = run_source("📢 1️⃣.0️⃣ ➗ 0️⃣.0️⃣ 🔚").expect_err("float division by zero should fail");
     assert!(error.diagnostics[0].message.contains("division by zero"));

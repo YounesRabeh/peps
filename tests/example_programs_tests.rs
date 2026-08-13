@@ -18,7 +18,7 @@ fn every_basic_and_algorithm_example_runs() {
             .unwrap_or_else(|error| panic!("could not read {}: {error}", program.display()));
         let inputs = match program.file_name().and_then(|name| name.to_str()) {
             Some("09-input.peps") => vec!["hello Peps", "41", "3.5", "true"],
-            Some("overview.peps") => vec!["overview input"],
+            Some("overview.peps") => vec!["42"],
             _ => Vec::new(),
         };
         peps::run_source_with_inputs(&source, inputs).unwrap_or_else(|error| {

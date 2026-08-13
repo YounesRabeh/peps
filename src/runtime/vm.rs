@@ -6,7 +6,7 @@ use num_bigint::BigInt;
 use num_traits::{FromPrimitive, ToPrimitive, Zero};
 
 use crate::{
-    ast::InputKind,
+    ast::{ConversionKind, InputKind},
     bytecode::{Instruction, Value},
     diagnostic::Diagnostic,
 };
@@ -197,6 +197,7 @@ impl Vm<'_> {
                     self.stack.push(value);
                     self.ip += 1;
                 }
+                Instruction::Convert(kind) => self.convert_value(kind)?,
                 Instruction::LoadVar(name) => {
                     let Some(value) = self.globals.get(&name).cloned() else {
                         return self.fail(format!("runtime variable {} is not declared", name));
@@ -595,6 +596,42 @@ impl Vm<'_> {
                 _ => Err(self.error("boolean input must be ✅, ❌, true, or false")),
             },
         }
+    }
+
+    fn convert_value(&mut self, kind: ConversionKind) -> Result<(), RunError> {
+        let value = self.pop("convert")?;
+        let converted = match (kind, value) {
+            (ConversionKind::Integer, RuntimeValue::Str(value)) => value
+                .trim()
+                .parse::<BigInt>()
+                .map(RuntimeValue::Num)
+                .map_err(|_| self.error("text is not a valid integer"))?,
+            (ConversionKind::Float, RuntimeValue::Str(value)) => {
+                let converted = value
+                    .trim()
+                    .parse::<f64>()
+                    .map_err(|_| self.error("text is not a valid float"))?;
+                if !converted.is_finite() {
+                    return self.fail("float conversion must produce a finite value");
+                }
+                RuntimeValue::Float(converted)
+            }
+            (ConversionKind::Float, RuntimeValue::Num(value)) => {
+                let Some(converted) = value.to_f64().filter(|value| value.is_finite()) else {
+                    return self.fail("integer is too large to convert to a finite float");
+                };
+                RuntimeValue::Float(converted)
+            }
+            (ConversionKind::Integer, _) => {
+                return self.fail("integer conversion requires text");
+            }
+            (ConversionKind::Float, _) => {
+                return self.fail("float conversion requires text or an integer");
+            }
+        };
+        self.stack.push(converted);
+        self.ip += 1;
+        Ok(())
     }
 
     /// Pop and type-check a boolean stack value.

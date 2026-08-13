@@ -65,6 +65,25 @@ fn rejects_input_without_a_type_marker() {
 }
 
 #[test]
+fn parses_explicit_numeric_conversions() {
+    let program = parse("🐶 🟰 🔄 🔢 💬42💬 🔚 🦊 🟰 🔄 🔣 🐶 🔚");
+    let expected = [peps::ConversionKind::Integer, peps::ConversionKind::Float];
+    for (statement, expected_kind) in program.statements.iter().zip(expected) {
+        let Stmt::Assign { expr, .. } = statement else {
+            panic!("expected assignment");
+        };
+        assert!(matches!(expr, Expr::Convert { kind, .. } if *kind == expected_kind));
+    }
+}
+
+#[test]
+fn rejects_conversion_without_a_numeric_target() {
+    let tokens = lexer::lex("🐶 🟰 🔄 🔤 📝 🔚").expect("lexing should succeed");
+    let diagnostics = parser::parse(tokens).expect_err("invalid conversion target should fail");
+    assert!(diagnostics[0].message.contains("expected conversion type"));
+}
+
+#[test]
 fn errors_on_ascii_variable_definition() {
     let tokens = lexer::lex("counter 🟰 5️⃣ 🔚").expect("lexing should succeed");
     let diagnostics = parser::parse(tokens).expect_err("ascii variable should fail");

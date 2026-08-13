@@ -2,12 +2,13 @@
 
 use num_bigint::BigInt;
 
-use crate::ast::InputKind;
+use crate::ast::{ConversionKind, InputKind};
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum Instruction {
     LoadConst(Value),
     Input(InputKind),
+    Convert(ConversionKind),
     LoadVar(String),
     StoreVar(String),
     LoadLocal(String),

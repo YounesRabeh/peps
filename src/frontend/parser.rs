@@ -12,7 +12,7 @@
 //! [`TokenKind::StatementEnd`].
 
 use crate::{
-    ast::{BinaryOp, Expr, ForSource, InputKind, Program, Stmt, UnaryOp},
+    ast::{BinaryOp, ConversionKind, Expr, ForSource, InputKind, Program, Stmt, UnaryOp},
     diagnostic::Diagnostic,
     source::Span,
     token::{Token, TokenKind},
@@ -441,6 +441,10 @@ impl Parser {
     }
 
     fn parse_unary(&mut self) -> Result<Expr, Diagnostic> {
+        if matches!(self.peek().kind, TokenKind::Convert) {
+            return self.parse_conversion_expression();
+        }
+
         if matches!(self.peek().kind, TokenKind::Minus) {
             let op_span = self.advance().span;
             let expr = self.parse_unary()?;
@@ -574,6 +578,28 @@ impl Parser {
         })
     }
 
+    fn parse_conversion_expression(&mut self) -> Result<Expr, Diagnostic> {
+        let start = self.advance().span;
+        let type_token = self.advance().clone();
+        let kind = match type_token.kind {
+            TokenKind::Range => ConversionKind::Integer,
+            TokenKind::InputFloat => ConversionKind::Float,
+            _ => {
+                return Err(Diagnostic::at(
+                    "expected conversion type 🔢 or 🔣 after 🔄",
+                    type_token.span,
+                ));
+            }
+        };
+        let expr = self.parse_unary()?;
+        let span = start.merge(expr.span());
+        Ok(Expr::Convert {
+            kind,
+            expr: Box::new(expr),
+            span,
+        })
+    }
+
     fn parse_list(&mut self, start: Span) -> Result<Expr, Diagnostic> {
         let mut elements = Vec::new();
 
@@ -650,6 +676,7 @@ impl Parser {
                 | TokenKind::ListDelimiter
                 | TokenKind::Call
                 | TokenKind::Input
+                | TokenKind::Convert
         )
     }
 

@@ -56,6 +56,21 @@ fn compiles_typed_input_expressions() {
 }
 
 #[test]
+fn compiles_explicit_numeric_conversions() {
+    assert_eq!(
+        compile_source("🐶 🟰 🔄 🔢 💬42💬 🔚 🦊 🟰 🔄 🔣 🐶 🔚").expect("source should compile"),
+        vec![
+            Instruction::LoadConst(Value::Str("42".to_string())),
+            Instruction::Convert(peps::ConversionKind::Integer),
+            Instruction::StoreVar("🐶".to_string()),
+            Instruction::LoadVar("🐶".to_string()),
+            Instruction::Convert(peps::ConversionKind::Float),
+            Instruction::StoreVar("🦊".to_string()),
+        ]
+    );
+}
+
+#[test]
 fn compiles_reassignment_to_the_existing_storage_name() {
     assert_eq!(
         compile_source("🐶 🟰 1️⃣ 🔚 🐶 🟰 🐶 ➕ 1️⃣ 🔚").expect("source should compile"),

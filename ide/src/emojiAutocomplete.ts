@@ -26,6 +26,7 @@ const PEPS_SUGGESTIONS: EmojiSuggestion[] = [
   entry("📞", "call", ["call", "invoke"], ["function"], "Peps keyword"),
   entry("↩️", "return", ["return"], ["function", "result"], "Peps keyword"),
   entry("⌨️", "input", ["input", "read"], ["terminal", "keyboard"], "Peps keyword"),
+  entry("🔄", "convert", ["convert", "conversion", "cast"], ["type", "integer", "float"], "Peps keyword"),
   entry("🔤", "text input", ["text", "string"], ["input", "type"], "Peps syntax"),
   entry("🔣", "float input", ["float", "decimal"], ["input", "type"], "Peps syntax"),
   entry("☑️", "boolean input", ["boolean", "bool"], ["input", "type"], "Peps syntax"),

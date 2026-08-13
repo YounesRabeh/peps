@@ -17,10 +17,11 @@ Follow the guides in order. Every guide has a matching runnable program in
 7. [Functions](docs/07-functions.md) 
 8. [Execution model](docs/08-execution-model.md)
 9. [Input](docs/09-input.md)
+10. [Type conversion](docs/10-type-conversion.md)
 
 ## Examples
 
-- [Basic examples](examples/basic/) progress from variables to functions.
+- [Basic examples](examples/basic/) progress from variables to type conversion.
 - [Algorithms](examples/algorithms/) contains five well-known algorithms
   recreated in Peps.
 
@@ -39,6 +40,7 @@ Follow the guides in order. Every guide has a matching runnable program in
 | ↩️ | return from function | `↩️ 🐶 ➕ 🐱` |
 | ⌨️ | read typed input | `🐶 🟰 ⌨️ 🔢` |
 | 🔤 / 🔢 / 🔣 / ☑️ | text / integer / float / boolean input type | `📝 🟰 ⌨️ 🔤` |
+| 🔄 | explicit numeric conversion | `🐶 🟰 🔄 🔢 📝`, `🦊 🟰 🔄 🔣 🐶` |
 | 🧭 | in (for loops) | `🔁 🐾 🧭 🍎 🔓` |
 | 🔢 | range | `🔁 🐾 🧭 🔢 0️⃣ ➡️ 3️⃣ 🔓` |
 | 🟰 | assign | `🐶 🟰 5️⃣` |

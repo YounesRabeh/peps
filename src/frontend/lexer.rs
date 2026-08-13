@@ -373,6 +373,7 @@ fn single_token_kind(text: &str) -> Option<TokenKind> {
         "🔤" => Some(TokenKind::InputText),
         "🔣" => Some(TokenKind::InputFloat),
         "☑️" | "☑" => Some(TokenKind::InputBool),
+        "🔄" => Some(TokenKind::Convert),
         "🧭" => Some(TokenKind::In),
         "🔢" => Some(TokenKind::Range),
         "✅" => Some(TokenKind::Bool(true)),

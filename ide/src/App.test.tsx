@@ -31,6 +31,7 @@ describe("App", () => {
     expect(source).toContain("Peps overview");
     expect(source).toContain("🧩");
     expect(source).toContain("⌨️ 🔤");
+    expect(source).toContain("🔄 🔢");
   });
 
   it("runs source and renders output", async () => {

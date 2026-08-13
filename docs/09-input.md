@@ -37,3 +37,5 @@ and functions reads a new terminal line each time the expression executes.
 Try [the complete input example](../examples/basic/09-input.peps).
 ___
 Back to: [Execution model](08-execution-model.md).
+
+Next: [Type conversion](10-type-conversion.md).

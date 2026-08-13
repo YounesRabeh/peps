@@ -111,6 +111,11 @@ pub enum Expr {
         kind: InputKind,
         span: Span,
     },
+    Convert {
+        kind: ConversionKind,
+        expr: Box<Expr>,
+        span: Span,
+    },
     String {
         value: String,
         span: Span,
@@ -155,6 +160,7 @@ impl Expr {
             Expr::Number { span, .. }
             | Expr::Float { span, .. }
             | Expr::Input { span, .. }
+            | Expr::Convert { span, .. }
             | Expr::String { span, .. }
             | Expr::Bool { span, .. }
             | Expr::Emoji { span, .. }
@@ -163,6 +169,21 @@ impl Expr {
             | Expr::Unary { span, .. }
             | Expr::Binary { span, .. } => *span,
             Expr::Call { span, .. } => *span,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ConversionKind {
+    Integer,
+    Float,
+}
+
+impl ConversionKind {
+    pub fn name(self) -> &'static str {
+        match self {
+            Self::Integer => "integer",
+            Self::Float => "float",
         }
     }
 }
