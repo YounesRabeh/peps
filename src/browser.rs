@@ -3,9 +3,10 @@
 use serde::Serialize;
 
 use crate::{
+    compiler,
     diagnostic::Diagnostic,
-    run_source_with_inputs_and_step_limit,
-    vm::{IDE_STEP_LIMIT, INPUT_REQUIRED_PREFIX},
+    lexer, parser, semantic,
+    vm::{self, ExecutionLimit, IDE_STEP_LIMIT, INPUT_REQUIRED_PREFIX},
 };
 
 /// JSON-compatible result returned to the browser IDE.
@@ -25,6 +26,8 @@ pub struct RunResponse {
 /// Diagnostic shape consumed by the browser IDE.
 #[derive(Debug, Serialize, PartialEq, Eq)]
 pub struct IdeDiagnostic {
+    /// Whether this diagnostic came from compilation or program execution.
+    pub kind: &'static str,
     /// Human-readable diagnostic message.
     pub message: String,
     /// One-based source line, when a source span is available.
@@ -39,7 +42,29 @@ pub struct IdeDiagnostic {
 
 /// Compile and run browser-submitted source with the IDE safety limit.
 pub fn run_source_for_browser(source: &str, inputs: &[String]) -> RunResponse {
-    match run_source_with_inputs_and_step_limit(source, inputs.iter().cloned(), IDE_STEP_LIMIT) {
+    let compiled = lexer::lex(source)
+        .and_then(parser::parse)
+        .and_then(semantic::check)
+        .and_then(compiler::compile_with_source_spans);
+
+    let compiled = match compiled {
+        Ok(compiled) => compiled,
+        Err(diagnostics) => {
+            return RunResponse {
+                ok: false,
+                output: Vec::new(),
+                diagnostics: diagnostics.iter().map(IdeDiagnostic::compiler).collect(),
+                input_request: None,
+            };
+        }
+    };
+
+    match vm::execute_with_inputs_and_source_spans(
+        &compiled.instructions,
+        &compiled.source_spans,
+        inputs.iter().cloned(),
+        ExecutionLimit::Steps(IDE_STEP_LIMIT),
+    ) {
         Ok(output) => RunResponse {
             ok: true,
             output,
@@ -58,7 +83,11 @@ pub fn run_source_for_browser(source: &str, inputs: &[String]) -> RunResponse {
                 diagnostics: if input_request.is_some() {
                     Vec::new()
                 } else {
-                    error.diagnostics.iter().map(IdeDiagnostic::from).collect()
+                    error
+                        .diagnostics
+                        .iter()
+                        .map(IdeDiagnostic::runtime)
+                        .collect()
                 },
                 input_request,
             }
@@ -66,9 +95,18 @@ pub fn run_source_for_browser(source: &str, inputs: &[String]) -> RunResponse {
     }
 }
 
-impl From<&Diagnostic> for IdeDiagnostic {
-    fn from(diagnostic: &Diagnostic) -> Self {
+impl IdeDiagnostic {
+    fn compiler(diagnostic: &Diagnostic) -> Self {
+        Self::from_diagnostic(diagnostic, "compile")
+    }
+
+    fn runtime(diagnostic: &Diagnostic) -> Self {
+        Self::from_diagnostic(diagnostic, "runtime")
+    }
+
+    fn from_diagnostic(diagnostic: &Diagnostic, kind: &'static str) -> Self {
         Self {
+            kind,
             message: diagnostic.message.clone(),
             line: diagnostic.span.map(|span| span.line),
             column: diagnostic.span.map(|span| span.column),

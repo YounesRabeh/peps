@@ -44,6 +44,8 @@ pub enum TokenKind {
     InputBool,
     /// Explicit numeric conversion expression prefix.
     Convert,
+    /// Read-only variable declaration keyword.
+    Const,
 
     /// Print statement keyword.
     Print,
@@ -77,6 +79,8 @@ pub enum TokenKind {
     ListLen,
     /// List indexing operator.
     ListIndex,
+    /// Map key existence operator.
+    MapHas,
     /// List append operator.
     ListAppend,
 

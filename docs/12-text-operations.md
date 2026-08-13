@@ -30,3 +30,5 @@ The original text is not changed by indexing.
 Try [the text-operations example](../examples/basic/12-text-operations.peps).
 ___
 Back to: [Maps](11-maps.md).
+
+Next: [Constants](13-constants.md).

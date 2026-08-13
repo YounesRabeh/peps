@@ -9,10 +9,24 @@ use crate::{
     bytecode::{Instruction, Value},
     diagnostic::Diagnostic,
     semantic::CheckedProgram,
+    source::Span,
 };
 
 /// Compile a semantically checked Peps program into bytecode instructions.
 pub fn compile(checked: CheckedProgram) -> Result<Vec<Instruction>, Vec<Diagnostic>> {
+    compile_with_source_spans(checked).map(|compiled| compiled.instructions)
+}
+
+/// Bytecode plus statement-level source locations used by the browser IDE.
+pub(crate) struct CompiledBytecode {
+    pub instructions: Vec<Instruction>,
+    pub source_spans: Vec<Option<Span>>,
+}
+
+/// Compile bytecode while retaining a source span for each emitted instruction.
+pub(crate) fn compile_with_source_spans(
+    checked: CheckedProgram,
+) -> Result<CompiledBytecode, Vec<Diagnostic>> {
     let global_scope = checked
         .symbols
         .iter()
@@ -20,6 +34,7 @@ pub fn compile(checked: CheckedProgram) -> Result<Vec<Instruction>, Vec<Diagnost
         .collect();
     let mut compiler = Compiler {
         instructions: Vec::new(),
+        source_spans: Vec::new(),
         emoji_literals: checked.emoji_literals,
         loop_counter: 0,
         local_counter: 0,
@@ -57,11 +72,18 @@ pub fn compile(checked: CheckedProgram) -> Result<Vec<Instruction>, Vec<Diagnost
         }
     }
 
-    Ok(compiler.instructions)
+    compiler
+        .source_spans
+        .resize(compiler.instructions.len(), None);
+    Ok(CompiledBytecode {
+        instructions: compiler.instructions,
+        source_spans: compiler.source_spans,
+    })
 }
 
 struct Compiler {
     instructions: Vec<Instruction>,
+    source_spans: Vec<Option<Span>>,
     emoji_literals: HashSet<(usize, usize)>,
     loop_counter: usize,
     local_counter: usize,
@@ -87,8 +109,16 @@ struct LoopContext {
 impl Compiler {
     /// Compile one statement and append its bytecode to the instruction stream.
     fn compile_statement(&mut self, statement: &Stmt) {
+        let instruction_start = self.instructions.len();
         match statement {
             Stmt::Assign { name, expr, .. } => {
+                self.compile_expr(expr);
+                let binding = self
+                    .resolve_name(name)
+                    .unwrap_or_else(|| self.declare_name(name));
+                self.emit_store(&binding);
+            }
+            Stmt::Const { name, expr, .. } => {
                 self.compile_expr(expr);
                 let binding = self
                     .resolve_name(name)
@@ -177,6 +207,13 @@ impl Compiler {
                 body,
                 ..
             } => self.compile_for(variable, source, body),
+        }
+
+        self.source_spans.resize(self.instructions.len(), None);
+        for source_span in &mut self.source_spans[instruction_start..] {
+            if source_span.is_none() {
+                *source_span = Some(statement.span());
+            }
         }
     }
 
@@ -368,6 +405,11 @@ impl Compiler {
                     self.compile_expr(value);
                 }
                 self.instructions.push(Instruction::MakeMap(entries.len()));
+            }
+            Expr::MapHas { map, key, .. } => {
+                self.compile_expr(map);
+                self.compile_expr(key);
+                self.instructions.push(Instruction::MapHas);
             }
             Expr::Unary {
                 op: UnaryOp::Negate,

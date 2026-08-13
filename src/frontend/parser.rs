@@ -76,6 +76,7 @@ impl Parser {
     fn parse_statement(&mut self) -> Result<Stmt, Diagnostic> {
         match &self.peek().kind {
             TokenKind::Identifier(_) => self.parse_identifier_statement(),
+            TokenKind::Const => self.parse_const_declaration(),
             TokenKind::Print => self.parse_print(),
             TokenKind::Break => self.parse_break(),
             TokenKind::Continue => self.parse_continue(),
@@ -199,6 +200,33 @@ impl Parser {
             name,
             span: name_token.span.merge(end),
             expr,
+        })
+    }
+
+    fn parse_const_declaration(&mut self) -> Result<Stmt, Diagnostic> {
+        let start = self.advance().span;
+        let name_token = self.advance().clone();
+        let TokenKind::Identifier(name) = name_token.kind else {
+            return Err(Diagnostic::at(
+                "expected one-emoji constant name after 🔐",
+                name_token.span,
+            ));
+        };
+        if !is_single_emoji_identifier(&name)
+            || matches!(self.peek().kind, TokenKind::Identifier(_))
+        {
+            return Err(Diagnostic::at(
+                "constant identifiers must be exactly one emoji long",
+                name_token.span.merge(self.peek().span),
+            ));
+        }
+        self.expect_assign()?;
+        let expr = self.parse_expression(0)?;
+        let end = self.expect_statement_end()?;
+        Ok(Stmt::Const {
+            name,
+            expr,
+            span: start.merge(end),
         })
     }
 
@@ -443,6 +471,18 @@ impl Parser {
     fn parse_unary(&mut self) -> Result<Expr, Diagnostic> {
         if matches!(self.peek().kind, TokenKind::Convert) {
             return self.parse_conversion_expression();
+        }
+
+        if matches!(self.peek().kind, TokenKind::MapHas) {
+            let op_span = self.advance().span;
+            let map = self.parse_unary()?;
+            let key = self.parse_unary()?;
+            let span = op_span.merge(key.span());
+            return Ok(Expr::MapHas {
+                map: Box::new(map),
+                key: Box::new(key),
+                span,
+            });
         }
 
         if matches!(self.peek().kind, TokenKind::Minus) {
@@ -702,6 +742,7 @@ impl Parser {
                 | TokenKind::Minus
                 | TokenKind::Not
                 | TokenKind::ListLen
+                | TokenKind::MapHas
                 | TokenKind::ListDelimiter
                 | TokenKind::MapDelimiter
                 | TokenKind::Call

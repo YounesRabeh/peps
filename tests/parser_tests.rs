@@ -15,6 +15,26 @@ fn parses_assignment() {
 }
 
 #[test]
+fn parses_constant_declaration() {
+    let program = parse("🔐 🐶 🟰 4️⃣2️⃣ 🔚");
+    assert!(matches!(
+        &program.statements[0],
+        Stmt::Const { name, expr: Expr::Number { .. }, .. } if name == "🐶"
+    ));
+}
+
+#[test]
+fn rejects_invalid_constant_declarations() {
+    let tokens = lexer::lex("🔐 🟰 1️⃣ 🔚").expect("lexing should succeed");
+    let diagnostics = parser::parse(tokens).expect_err("missing constant name should fail");
+    assert!(diagnostics[0].message.contains("constant name"));
+
+    let tokens = lexer::lex("🔐 🐶🐱 🟰 1️⃣ 🔚").expect("lexing should succeed");
+    let diagnostics = parser::parse(tokens).expect_err("long constant name should fail");
+    assert!(diagnostics[0].message.contains("exactly one emoji"));
+}
+
+#[test]
 fn parses_float_literal() {
     let program = parse("🐶 🟰 1️⃣.5️⃣ 🔚");
     let Stmt::Assign { expr, .. } = &program.statements[0] else {
@@ -93,6 +113,20 @@ fn parses_map_literals() {
         panic!("expected map literal");
     };
     assert_eq!(entries.len(), 2);
+}
+
+#[test]
+fn parses_map_key_existence_expression() {
+    let program = parse("🐶 🟰 🔑 📖 💬name💬 🔚");
+    let Stmt::Assign { expr, .. } = &program.statements[0] else {
+        panic!("expected assignment");
+    };
+    assert!(matches!(
+        expr,
+        Expr::MapHas { map, key, .. }
+            if matches!(map.as_ref(), Expr::Variable { name, .. } if name == "📖")
+                && matches!(key.as_ref(), Expr::String { value, .. } if value == "name")
+    ));
 }
 
 #[test]

@@ -31,6 +31,8 @@ pub fn check(program: Program) -> Result<CheckedProgram, Vec<Diagnostic>> {
     let mut checker = Checker {
         symbols: SymbolTable::new(),
         local_scopes: Vec::new(),
+        top_level_constants: HashSet::new(),
+        local_constant_scopes: Vec::new(),
         diagnostics: Vec::new(),
         emoji_literals: HashSet::new(),
         functions: HashMap::new(),
@@ -92,6 +94,10 @@ struct Checker {
     symbols: SymbolTable,
     /// Bindings declared in nested lexical scopes.
     local_scopes: Vec<HashMap<String, Type>>,
+    /// Names of read-only top-level bindings.
+    top_level_constants: HashSet<String>,
+    /// Read-only names declared in each nested lexical scope.
+    local_constant_scopes: Vec<HashSet<String>>,
     /// Semantic errors collected during the pass.
     diagnostics: Vec<Diagnostic>,
     /// Unresolved identifier spans that are valid emoji literal expressions.
@@ -104,14 +110,39 @@ impl Checker {
     /// Check one statement and recursively walk any nested block it owns.
     fn check_statement(&mut self, statement: &Stmt, loop_depth: usize) {
         match statement {
-            Stmt::Assign { name, expr, .. } => {
+            Stmt::Assign { name, expr, span } => {
                 if let Some(assigned_type) = self.infer_assignment_rhs(expr) {
-                    if self.lookup(name).is_some() {
+                    if self.is_constant(name) {
+                        self.diagnostics.push(Diagnostic::at(
+                            format!("constant {} cannot be reassigned", name),
+                            *span,
+                        ));
+                    } else if self.lookup(name).is_some() {
                         self.replace_visible_binding(name, assigned_type);
                     } else if self.local_scopes.is_empty() {
                         self.symbols.insert(name.clone(), assigned_type);
                     } else {
                         self.insert_local(name.clone(), assigned_type);
+                    }
+                }
+            }
+            Stmt::Const { name, expr, span } => {
+                let constant_type = self.infer_assignment_rhs(expr);
+                if self.lookup(name).is_some() {
+                    self.diagnostics.push(Diagnostic::at(
+                        format!("constant name {} is already declared", name),
+                        *span,
+                    ));
+                } else if let Some(constant_type) = constant_type {
+                    if self.local_scopes.is_empty() {
+                        self.symbols.insert(name.clone(), constant_type);
+                        self.top_level_constants.insert(name.clone());
+                    } else {
+                        self.insert_local(name.clone(), constant_type);
+                        self.local_constant_scopes
+                            .last_mut()
+                            .expect("local constant scope exists")
+                            .insert(name.clone());
                     }
                 }
             }
@@ -301,6 +332,14 @@ impl Checker {
 
     /// Validate append-assignment syntax against an existing collection variable.
     fn check_append_statement(&mut self, name: &str, expr: &Expr, span: crate::source::Span) {
+        if self.is_constant(name) {
+            self.infer_assignment_rhs(expr);
+            self.diagnostics.push(Diagnostic::at(
+                format!("constant {} cannot be mutated", name),
+                span,
+            ));
+            return;
+        }
         let Some(target_ty) = self.lookup(name).cloned() else {
             self.diagnostics.push(Diagnostic::at(
                 format!("collection append target {} is not declared", name),
@@ -373,6 +412,7 @@ impl Checker {
             },
             Expr::List { elements, span } => self.infer_list(elements, *span, false, false),
             Expr::Map { entries, span } => self.infer_map(entries, *span, false, false),
+            Expr::MapHas { map, key, span } => self.infer_map_has(map, key, *span),
             Expr::Call {
                 name,
                 arguments,
@@ -478,6 +518,26 @@ impl Checker {
                 None
             }
         }
+    }
+
+    fn infer_map_has(&mut self, map: &Expr, key: &Expr, span: crate::source::Span) -> Option<Type> {
+        let map_type = self.infer_expr(map)?;
+        let key_type = self.infer_expr_allow_raw_strings(key)?;
+
+        if !matches!(map_type, Type::Map(_) | Type::Unknown) {
+            self.diagnostics
+                .push(Diagnostic::at("map key existence requires a map", span));
+            return None;
+        }
+        if !matches!(key_type, Type::Str | Type::Unknown) {
+            self.diagnostics.push(Diagnostic::at(
+                "map key existence requires a text key",
+                span,
+            ));
+            return None;
+        }
+
+        Some(Type::Bool)
     }
 
     fn infer_binary(
@@ -781,6 +841,7 @@ impl Checker {
             },
             Expr::List { elements, span } => self.infer_list(elements, *span, true, false),
             Expr::Map { entries, span } => self.infer_map(entries, *span, true, false),
+            Expr::MapHas { map, key, span } => self.infer_map_has(map, key, *span),
             Expr::Call { .. } => self.infer_expr(expr),
             Expr::Unary { op, expr, span } => match op {
                 UnaryOp::Negate => {
@@ -903,11 +964,13 @@ impl Checker {
     /// Start a new block-local scope.
     fn push_scope(&mut self) {
         self.local_scopes.push(HashMap::new());
+        self.local_constant_scopes.push(HashSet::new());
     }
 
     /// End the innermost block-local scope.
     fn pop_scope(&mut self) {
         self.local_scopes.pop();
+        self.local_constant_scopes.pop();
     }
 
     /// Insert a binding into the innermost local scope.
@@ -926,6 +989,15 @@ impl Checker {
             }
         }
         self.symbols.insert(name.to_string(), ty);
+    }
+
+    fn is_constant(&self, name: &str) -> bool {
+        for constants in self.local_constant_scopes.iter().rev() {
+            if constants.contains(name) {
+                return true;
+            }
+        }
+        self.top_level_constants.contains(name)
     }
 }
 

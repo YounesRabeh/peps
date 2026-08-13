@@ -1,0 +1,10 @@
+// Check map keys without failing when a key is absent.
+📖 🟰 🗺️ 💬name💬 ➡️ 💬Peps💬 💬year💬 ➡️ 💬2026💬 🗺️
+
+📢 🔑 📖 💬name💬
+📢 🔑 📖 💬missing💬
+
+📝 🟰 💬year💬
+🤔 🔑 📖 📝 🔓
+    📢 📖 🔎 📝
+🔒

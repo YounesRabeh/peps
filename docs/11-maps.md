@@ -17,12 +17,14 @@ Map keys must be text. Like lists, all values in one map must have the same
 type. Values can be text, integers, floats, booleans, or emoji values; maps are
 not limited to text-to-text pairs. Separate maps can use different value types.
 An empty map is rejected because its value type cannot be inferred. `🔎` looks
-up a key and `📏` returns the number of unique keys. Looking up a missing key
-stops execution with a runtime diagnostic.
+up a key, `🔑` reports whether a key exists, and `📏` returns the number of
+unique keys. Looking up a missing key with `🔎` stops execution with a runtime
+diagnostic, while `🔑` safely returns `❌`.
 
 ```peps
 🚦 🟰 🗺️ 💬ready💬 ➡️ ✅ 💬cached💬 ➡️ ❌ 🗺️
 📢 🚦 🔎 💬ready💬
+📢 🔑 🚦 💬cached💬
 ```
 
 Use `📥` with another map to insert and update entries:

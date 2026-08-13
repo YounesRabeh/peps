@@ -206,6 +206,33 @@ fn lexes_map_tokens() {
 }
 
 #[test]
+fn lexes_map_key_existence_operator() {
+    assert_eq!(
+        kinds("🔑 📖 💬name💬"),
+        vec![
+            TokenKind::MapHas,
+            TokenKind::Identifier("📖".to_string()),
+            TokenKind::StringLiteral("name".to_string()),
+            TokenKind::Eof,
+        ]
+    );
+}
+
+#[test]
+fn lexes_constant_declaration() {
+    assert_eq!(
+        kinds("🔐 🐶 🟰 4️⃣2️⃣"),
+        vec![
+            TokenKind::Const,
+            TokenKind::Identifier("🐶".to_string()),
+            TokenKind::Assign,
+            TokenKind::Number(BigInt::from(42)),
+            TokenKind::Eof,
+        ]
+    );
+}
+
+#[test]
 fn lexes_emoji_variables() {
     assert_eq!(
         kinds("🚀 🟰 🌙 🔚"),

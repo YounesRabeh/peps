@@ -100,7 +100,7 @@ export function TerminalPanel({
         )}
         {!running && response && response.diagnostics.map((diagnostic, index) => (
           <div className="terminal-error" key={`${diagnostic.message}-${index}`}>
-            {formatLocation(diagnostic.line, diagnostic.column)}: {diagnostic.message}
+            {formatDiagnostic(diagnostic)}
           </div>
         ))}
       </div>
@@ -129,7 +129,17 @@ export function TerminalPanel({
   );
 }
 
+function formatDiagnostic(diagnostic: RunResponse["diagnostics"][number]): string {
+  if (diagnostic.kind === "runtime") {
+    const location = diagnostic.line ? ` at line ${diagnostic.line}` : "";
+    return `runtime error${location}: ${diagnostic.message}`;
+  }
+
+  return `${formatLocation(diagnostic.line, diagnostic.column)}: ${diagnostic.message}`;
+}
+
 function formatLocation(line?: number | null, column?: number | null): string {
   if (line && column) return `line ${line}, column ${column}`;
-  return "runtime";
+  if (line) return `line ${line}`;
+  return "compile error";
 }

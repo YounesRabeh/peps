@@ -20,10 +20,12 @@ Follow the guides in order. Every guide has a matching runnable program in
 10. [Type conversion](docs/10-type-conversion.md)
 11. [Maps](docs/11-maps.md)
 12. [Text operations](docs/12-text-operations.md)
+13. [Constants](docs/13-constants.md)
+14. [Map key existence](docs/14-map-key-existence.md)
 
 ## Examples
 
-- [Basic examples](examples/basic/) progress from variables to maps.
+- [Basic examples](examples/basic/) progress from variables to map key checks.
 - [Algorithms](examples/algorithms/) contains five well-known algorithms
   recreated in Peps.
 
@@ -43,6 +45,7 @@ Follow the guides in order. Every guide has a matching runnable program in
 | ⌨️ | read typed input | `🐶 🟰 ⌨️ 🔢` |
 | 🔤 / 🔢 / 🔣 / ☑️ | text / integer / float / boolean input type | `📝 🟰 ⌨️ 🔤` |
 | 🔄 | explicit numeric conversion | `🐶 🟰 🔄 🔢 📝`, `🦊 🟰 🔄 🔣 🐶` |
+| 🔐 | declare read-only constant | `🔐 🐶 🟰 4️⃣2️⃣` |
 | 🗺️ | map delimiter | `📖 🟰 🗺️ 💬year💬 ➡️ 2️⃣0️⃣2️⃣6️⃣ 🗺️` |
 | ➡️ | range end / map key-value separator | `🔢 0️⃣ ➡️ 3️⃣`, `💬name💬 ➡️ 💬Peps💬` |
 | 🧭 | in (for loops) | `🔁 🐾 🧭 🍎 🔓` |
@@ -58,6 +61,7 @@ Follow the guides in order. Every guide has a matching runnable program in
 | 🟰🟰 / ❌🟰 | equal / not equal | `✅ 🟰🟰 ✅` |
 | 📏 | text length / collection size | `📏 📝`, `📏 🍎`, `📏 📖` |
 | 🔎 | text/list index or map lookup | `📝 🔎 0️⃣`, `🍎 🔎 1️⃣`, `📖 🔎 💬name💬` |
+| 🔑 | map key exists | `🔑 📖 💬name💬` |
 | 📥 | list append / map merge | `🍎 📥 4️⃣`, `📖 📥 🗺️ 💬users💬 ➡️ 4️⃣2️⃣ 🗺️` |
 | 🔓 / 🔒 | block start / end | `🤔 ✅ 🔓 ... 🔒` |
 | 💬 | string delimiter | `🐶 🟰 💬hello💬` |
