@@ -33,7 +33,7 @@ export function registerPepsLanguage(monaco: typeof Monaco): void {
         [/🟰|➕|➖|✖️|➗|◀️|▶️|🤝|🔀|🚫|📏|🔎|📥/, "operator"],
 
         // Delimiters
-        [/🔓|🔒|🔚|📚/, "delimiter"],
+        [/🔓|🔒|🔚|📚|🗺️|🗺/, "delimiter"],
 
         // Whitespace
         [/\s+/, "white"],

@@ -27,6 +27,7 @@ pub enum Instruction {
     GtEq,
 
     MakeList(usize),
+    MakeMap(usize),
     ListLen,
     ListGet,
     ListAppend,

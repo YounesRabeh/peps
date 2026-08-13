@@ -40,6 +40,8 @@ pub enum RuntimeValue {
     Emoji(String),
     /// List value containing runtime values in source order.
     List(Vec<RuntimeValue>),
+    /// Ordered text-keyed map.
+    Map(Vec<(String, RuntimeValue)>),
 }
 
 /// Runtime failure with any output produced before the error.
@@ -274,52 +276,134 @@ impl Vm<'_> {
                     self.stack.push(RuntimeValue::List(elements));
                     self.ip += 1;
                 }
+                Instruction::MakeMap(count) => {
+                    let value_count = count
+                        .checked_mul(2)
+                        .ok_or_else(|| self.error("map is too large"))?;
+                    if self.stack.len() < value_count {
+                        return self.fail("not enough values on the stack to build map");
+                    }
+                    let start = self.stack.len() - value_count;
+                    let values = self.stack.split_off(start);
+                    let mut entries = Vec::with_capacity(count);
+                    for pair in values.chunks_exact(2) {
+                        let RuntimeValue::Str(key) = &pair[0] else {
+                            return self.fail("map keys must be text");
+                        };
+                        if let Some((_, existing)) =
+                            entries.iter_mut().find(|(existing, _)| existing == key)
+                        {
+                            *existing = pair[1].clone();
+                        } else {
+                            entries.push((key.clone(), pair[1].clone()));
+                        }
+                    }
+                    if let Some((_, expected)) = entries.first() {
+                        if entries
+                            .iter()
+                            .any(|(_, value)| !same_runtime_type(expected, value))
+                        {
+                            return self.fail("map values must all have the same type");
+                        }
+                    }
+                    self.stack.push(RuntimeValue::Map(entries));
+                    self.ip += 1;
+                }
                 Instruction::ListLen => {
-                    let value = self.pop("list length")?;
-                    let RuntimeValue::List(elements) = value else {
-                        return self.fail("list length requires a list value");
+                    let value = self.pop("collection length")?;
+                    let length = match value {
+                        RuntimeValue::List(elements) => elements.len(),
+                        RuntimeValue::Map(entries) => entries.len(),
+                        _ => return self.fail("collection length requires a list or map value"),
                     };
-                    self.stack
-                        .push(RuntimeValue::Num(BigInt::from(elements.len())));
+                    self.stack.push(RuntimeValue::Num(BigInt::from(length)));
                     self.ip += 1;
                 }
                 Instruction::ListGet => {
-                    let index = self.pop_num("list index")?;
-                    let list = self.pop("list index")?;
-                    let RuntimeValue::List(elements) = list else {
-                        return self.fail("list index requires a list value");
+                    let key = self.pop("collection lookup")?;
+                    let collection = self.pop("collection lookup")?;
+                    let value = match (collection, key) {
+                        (RuntimeValue::List(elements), RuntimeValue::Num(index)) => {
+                            let Some(index_value) = index.to_usize() else {
+                                return self.fail(format!("list index {} is out of bounds", index));
+                            };
+                            let Some(value) = elements.get(index_value).cloned() else {
+                                return self.fail(format!("list index {} is out of bounds", index));
+                            };
+                            value
+                        }
+                        (RuntimeValue::List(_), _) => {
+                            return self.fail("list index requires an integer value");
+                        }
+                        (RuntimeValue::Map(entries), RuntimeValue::Str(key)) => {
+                            let Some((_, value)) = entries.iter().find(|(entry, _)| entry == &key)
+                            else {
+                                return self.fail(format!("map key {:?} was not found", key));
+                            };
+                            value.clone()
+                        }
+                        (RuntimeValue::Map(_), _) => {
+                            return self.fail("map lookup requires a text key");
+                        }
+                        _ => return self.fail("lookup requires a list or map value"),
                     };
-                    let Some(index_value) = index.to_usize() else {
-                        return self.fail(format!("list index {} is out of bounds", index));
-                    };
-                    if index_value >= elements.len() {
-                        return self.fail(format!("list index {} is out of bounds", index));
-                    }
-                    self.stack.push(elements[index_value].clone());
+                    self.stack.push(value);
                     self.ip += 1;
                 }
                 Instruction::ListAppend => {
-                    let value = self.pop("list append")?;
-                    let list = self.pop("list append")?;
-                    let RuntimeValue::List(mut elements) = list else {
-                        return self.fail("list append requires a list value");
-                    };
-                    let appended = match value {
-                        RuntimeValue::List(values) => values,
-                        value => vec![value],
-                    };
-                    if let Some(expected) = elements.first().or_else(|| appended.first()) {
-                        if appended
-                            .iter()
-                            .any(|value| !same_runtime_type(expected, value))
-                        {
-                            return self.fail(
-                                "list append requires values matching the list element type",
-                            );
+                    let right = self.pop("collection append")?;
+                    let left = self.pop("collection append")?;
+                    let result = match (left, right) {
+                        (RuntimeValue::List(mut elements), value) => {
+                            let appended = match value {
+                                RuntimeValue::List(values) => values,
+                                value => vec![value],
+                            };
+                            if let Some(expected) = elements.first().or_else(|| appended.first()) {
+                                if appended
+                                    .iter()
+                                    .any(|value| !same_runtime_type(expected, value))
+                                {
+                                    return self.fail(
+                                        "list append requires values matching the list element type",
+                                    );
+                                }
+                            }
+                            elements.extend(appended);
+                            RuntimeValue::List(elements)
                         }
-                    }
-                    elements.extend(appended);
-                    self.stack.push(RuntimeValue::List(elements));
+                        (RuntimeValue::Map(mut entries), RuntimeValue::Map(appended)) => {
+                            if let Some(expected) = entries
+                                .first()
+                                .map(|(_, value)| value)
+                                .or_else(|| appended.first().map(|(_, value)| value))
+                            {
+                                if appended
+                                    .iter()
+                                    .any(|(_, value)| !same_runtime_type(expected, value))
+                                {
+                                    return self.fail(
+                                        "map merge requires values matching the map value type",
+                                    );
+                                }
+                            }
+                            for (key, value) in appended {
+                                if let Some((_, existing)) =
+                                    entries.iter_mut().find(|(existing, _)| existing == &key)
+                                {
+                                    *existing = value;
+                                } else {
+                                    entries.push((key, value));
+                                }
+                            }
+                            RuntimeValue::Map(entries)
+                        }
+                        (RuntimeValue::Map(_), _) => {
+                            return self.fail("map merge requires another map");
+                        }
+                        _ => return self.fail("collection append requires a list or map value"),
+                    };
+                    self.stack.push(result);
                     self.ip += 1;
                 }
                 Instruction::Print => {
@@ -480,14 +564,6 @@ impl Vm<'_> {
         self.stack
             .pop()
             .ok_or_else(|| self.error(format!("stack underflow during {}", operation)))
-    }
-
-    /// Pop and type-check a numeric stack value.
-    fn pop_num(&mut self, operation: &'static str) -> Result<BigInt, RunError> {
-        match self.pop(operation)? {
-            RuntimeValue::Num(value) => Ok(value),
-            _ => Err(self.error(format!("{} requires an integer value", operation))),
-        }
     }
 
     /// Pop either numeric runtime representation.
@@ -674,6 +750,7 @@ fn same_runtime_type(left: &RuntimeValue, right: &RuntimeValue) -> bool {
             | (RuntimeValue::Bool(_), RuntimeValue::Bool(_))
             | (RuntimeValue::Emoji(_), RuntimeValue::Emoji(_))
             | (RuntimeValue::List(_), RuntimeValue::List(_))
+            | (RuntimeValue::Map(_), RuntimeValue::Map(_))
     )
 }
 
@@ -706,6 +783,14 @@ fn format_runtime_value(value: &RuntimeValue) -> String {
                 .collect::<Vec<_>>()
                 .join(" ");
             format!("📚 {} 📚", items)
+        }
+        RuntimeValue::Map(entries) => {
+            let items = entries
+                .iter()
+                .map(|(key, value)| format!("💬{}💬 ➡️ {}", key, format_runtime_value(value)))
+                .collect::<Vec<_>>()
+                .join(" ");
+            format!("🗺️ {} 🗺️", items)
         }
     }
 }

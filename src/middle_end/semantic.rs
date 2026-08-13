@@ -299,29 +299,31 @@ impl Checker {
         }
     }
 
-    /// Validate append-assignment syntax against an existing list variable.
+    /// Validate append-assignment syntax against an existing collection variable.
     fn check_append_statement(&mut self, name: &str, expr: &Expr, span: crate::source::Span) {
         let Some(target_ty) = self.lookup(name).cloned() else {
             self.diagnostics.push(Diagnostic::at(
-                format!("list append target {} is not declared", name),
+                format!("collection append target {} is not declared", name),
                 span,
             ));
             return;
         };
 
         if target_ty == Type::Unknown {
-            self.infer_expr(expr);
+            self.infer_assignment_rhs(expr);
             return;
         }
-        let Type::List(element_type) = target_ty else {
-            self.diagnostics.push(Diagnostic::at(
-                "list append requires a list variable on the left",
-                span,
-            ));
-            return;
+        match target_ty {
+            Type::List(element_type) => self.check_append_rhs(expr, &element_type, span),
+            Type::Map(value_type) => self.check_map_merge_rhs(expr, &value_type, span),
+            _ => {
+                self.diagnostics.push(Diagnostic::at(
+                    "collection append requires a list or map variable on the left",
+                    span,
+                ));
+                None
+            }
         };
-
-        self.check_append_rhs(expr, &element_type, span);
     }
 
     /// Infer an assignment right-hand side using declaration-only literal rules.
@@ -336,6 +338,7 @@ impl Checker {
                 }
             },
             Expr::List { elements, span } => self.infer_list(elements, *span, true, true),
+            Expr::Map { entries, span } => self.infer_map(entries, *span, true, true),
             _ => self.infer_expr(expr),
         }
     }
@@ -369,6 +372,7 @@ impl Checker {
                 }
             },
             Expr::List { elements, span } => self.infer_list(elements, *span, false, false),
+            Expr::Map { entries, span } => self.infer_map(entries, *span, false, false),
             Expr::Call {
                 name,
                 arguments,
@@ -425,11 +429,13 @@ impl Checker {
                 }
                 UnaryOp::Len => {
                     let ty = self.infer_expr(expr)?;
-                    if matches!(ty, Type::List(_) | Type::Unknown) {
+                    if matches!(ty, Type::List(_) | Type::Map(_) | Type::Unknown) {
                         Some(Type::Num)
                     } else {
-                        self.diagnostics
-                            .push(Diagnostic::at("list length requires a list operand", *span));
+                        self.diagnostics.push(Diagnostic::at(
+                            "collection length requires a list or map operand",
+                            *span,
+                        ));
                         None
                     }
                 }
@@ -484,14 +490,23 @@ impl Checker {
         match op {
             BinaryOp::Index => {
                 let left_ty = self.infer_expr(left)?;
-                let right_ty = self.infer_expr(right)?;
+                let right_ty = if matches!(left_ty, Type::Map(_) | Type::Unknown) {
+                    self.infer_expr_allow_raw_strings(right)?
+                } else {
+                    self.infer_expr(right)?
+                };
                 match (left_ty, right_ty) {
-                    (Type::List(element_type), Type::Num) => Some(*element_type),
-                    (Type::List(element_type), Type::Unknown) => Some(*element_type),
-                    (Type::Unknown, Type::Num | Type::Unknown) => Some(Type::Unknown),
+                    (Type::List(element_type), Type::Num | Type::Unknown) => Some(*element_type),
+                    (Type::Map(value_type), Type::Str | Type::Unknown) => Some(*value_type),
+                    (Type::Unknown, Type::Num | Type::Str | Type::Unknown) => Some(Type::Unknown),
                     (Type::List(_), _) => {
                         self.diagnostics
                             .push(Diagnostic::at("list index requires an integer index", span));
+                        None
+                    }
+                    (Type::Map(_), _) => {
+                        self.diagnostics
+                            .push(Diagnostic::at("map lookup requires a text key", span));
                         None
                     }
                     _ => {
@@ -509,16 +524,25 @@ impl Checker {
                     self.infer_expr(right)?;
                     return Some(Type::Unknown);
                 }
-                let Type::List(element_type) = left_ty else {
-                    self.diagnostics.push(Diagnostic::at(
-                        "list append requires a list value on the left",
-                        span,
-                    ));
-                    return None;
-                };
-                let expected_type = (*element_type).clone();
-                self.check_append_rhs(right, &expected_type, span)?;
-                Some(Type::List(Box::new(expected_type)))
+                match left_ty {
+                    Type::List(element_type) => {
+                        let expected_type = (*element_type).clone();
+                        self.check_append_rhs(right, &expected_type, span)?;
+                        Some(Type::List(Box::new(expected_type)))
+                    }
+                    Type::Map(value_type) => {
+                        let expected_type = (*value_type).clone();
+                        self.check_map_merge_rhs(right, &expected_type, span)?;
+                        Some(Type::Map(Box::new(expected_type)))
+                    }
+                    _ => {
+                        self.diagnostics.push(Diagnostic::at(
+                            "collection append requires a list or map value on the left",
+                            span,
+                        ));
+                        None
+                    }
+                }
             }
             BinaryOp::And | BinaryOp::Or => {
                 let left_ty = self.infer_expr(left)?;
@@ -591,11 +615,11 @@ impl Checker {
                 let right_ty = self.infer_expr(right)?;
                 if left_ty == Type::Unknown || right_ty == Type::Unknown {
                     Some(Type::Bool)
-                } else if matches!(left_ty, Type::List(_)) || matches!(right_ty, Type::List(_)) {
-                    self.diagnostics.push(Diagnostic::at(
-                        "list equality is not supported in Peps v0",
-                        span,
-                    ));
+                } else if matches!(left_ty, Type::List(_) | Type::Map(_))
+                    || matches!(right_ty, Type::List(_) | Type::Map(_))
+                {
+                    self.diagnostics
+                        .push(Diagnostic::at("collection equality is not supported", span));
                     None
                 } else if left_ty == right_ty || (is_numeric(&left_ty) && is_numeric(&right_ty)) {
                     Some(Type::Bool)
@@ -672,6 +696,61 @@ impl Checker {
         element_type.map(|ty| Type::List(Box::new(ty)))
     }
 
+    fn infer_map(
+        &mut self,
+        entries: &[(Expr, Expr)],
+        span: crate::source::Span,
+        allow_raw_strings: bool,
+        allow_emoji_literals: bool,
+    ) -> Option<Type> {
+        if entries.is_empty() {
+            self.diagnostics.push(Diagnostic::at(
+                "empty maps are not supported because their value type cannot be inferred",
+                span,
+            ));
+            return None;
+        }
+
+        let mut value_type: Option<Type> = None;
+        for (key, value) in entries {
+            let key_type = match key {
+                Expr::String { .. } => Type::Str,
+                _ => self.infer_expr(key)?,
+            };
+            if !matches!(key_type, Type::Str | Type::Unknown) {
+                self.diagnostics
+                    .push(Diagnostic::at("map keys must be text", key.span()));
+                return None;
+            }
+
+            let ty = match value {
+                Expr::String { .. } if allow_raw_strings => Type::Str,
+                Expr::Variable { name, span }
+                    if allow_emoji_literals && self.lookup(name).is_none() =>
+                {
+                    self.emoji_literals.insert((span.start, span.end));
+                    Type::Emoji
+                }
+                _ => self.infer_expr(value)?,
+            };
+            if let Some(expected) = &value_type {
+                if expected == &Type::Unknown && ty != Type::Unknown {
+                    value_type = Some(ty);
+                } else if ty != Type::Unknown && expected != &ty {
+                    self.diagnostics.push(Diagnostic::at(
+                        "map values must all have the same type",
+                        value.span(),
+                    ));
+                    return None;
+                }
+            } else {
+                value_type = Some(ty);
+            }
+        }
+
+        value_type.map(|ty| Type::Map(Box::new(ty)))
+    }
+
     /// Infer an expression type in a context where raw string literals are legal.
     fn infer_expr_allow_raw_strings(&mut self, expr: &Expr) -> Option<Type> {
         match expr {
@@ -695,6 +774,7 @@ impl Checker {
                 }
             },
             Expr::List { elements, span } => self.infer_list(elements, *span, true, false),
+            Expr::Map { entries, span } => self.infer_map(entries, *span, true, false),
             Expr::Call { .. } => self.infer_expr(expr),
             Expr::Unary { op, expr, span } => match op {
                 UnaryOp::Negate => {
@@ -721,11 +801,13 @@ impl Checker {
                 }
                 UnaryOp::Len => {
                     let ty = self.infer_expr_allow_raw_strings(expr)?;
-                    if matches!(ty, Type::List(_) | Type::Unknown) {
+                    if matches!(ty, Type::List(_) | Type::Map(_) | Type::Unknown) {
                         Some(Type::Num)
                     } else {
-                        self.diagnostics
-                            .push(Diagnostic::at("list length requires a list operand", *span));
+                        self.diagnostics.push(Diagnostic::at(
+                            "collection length requires a list or map operand",
+                            *span,
+                        ));
                         None
                     }
                 }
@@ -760,6 +842,34 @@ impl Checker {
                 span,
             ));
             None
+        }
+    }
+
+    fn check_map_merge_rhs(
+        &mut self,
+        expr: &Expr,
+        expected_type: &Type,
+        span: crate::source::Span,
+    ) -> Option<()> {
+        let right_type = match expr {
+            Expr::Map { entries, span } => self.infer_map(entries, *span, true, true)?,
+            _ => self.infer_expr(expr)?,
+        };
+        match right_type {
+            Type::Map(value_type)
+                if *expected_type == Type::Unknown
+                    || *value_type == Type::Unknown
+                    || *value_type == *expected_type =>
+            {
+                Some(())
+            }
+            _ => {
+                self.diagnostics.push(Diagnostic::at(
+                    "map merge requires a map with the same value type",
+                    span,
+                ));
+                None
+            }
         }
     }
 

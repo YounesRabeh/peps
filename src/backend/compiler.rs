@@ -362,6 +362,13 @@ impl Compiler {
                 self.instructions
                     .push(Instruction::MakeList(elements.len()));
             }
+            Expr::Map { entries, .. } => {
+                for (key, value) in entries {
+                    self.compile_expr(key);
+                    self.compile_expr(value);
+                }
+                self.instructions.push(Instruction::MakeMap(entries.len()));
+            }
             Expr::Unary {
                 op: UnaryOp::Negate,
                 expr,

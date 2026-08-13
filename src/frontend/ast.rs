@@ -136,6 +136,10 @@ pub enum Expr {
         elements: Vec<Expr>,
         span: Span,
     },
+    Map {
+        entries: Vec<(Expr, Expr)>,
+        span: Span,
+    },
     Unary {
         op: UnaryOp,
         expr: Box<Expr>,
@@ -166,6 +170,7 @@ impl Expr {
             | Expr::Emoji { span, .. }
             | Expr::Variable { span, .. }
             | Expr::List { span, .. }
+            | Expr::Map { span, .. }
             | Expr::Unary { span, .. }
             | Expr::Binary { span, .. } => *span,
             Expr::Call { span, .. } => *span,

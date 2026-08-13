@@ -17,4 +17,6 @@ pub enum Type {
     Emoji,
     /// Homogeneous list values.
     List(Box<Type>),
+    /// Ordered text-keyed map with homogeneous values.
+    Map(Box<Type>),
 }

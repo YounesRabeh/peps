@@ -174,6 +174,53 @@ fn validates_dynamic_function_conversions_at_runtime() {
 }
 
 #[test]
+fn runs_map_creation_lookup_length_and_printing() {
+    let output = run_source(
+        "📖 🟰 🗺️ 💬one💬 ➡️ 1️⃣ 💬two💬 ➡️ 2️⃣ 🗺️ 🔚 📢 📖 🔎 💬one💬 🔚 📢 📏 📖 🔚 📢 📖 🔚",
+    )
+    .expect("map operations should run");
+    assert_eq!(output, vec!["1", "2", "🗺️ 💬one💬 ➡️ 1 💬two💬 ➡️ 2 🗺️"]);
+}
+
+#[test]
+fn map_merge_inserts_and_updates_without_reordering() {
+    let output = run_source(
+        "📖 🟰 🗺️ 💬one💬 ➡️ 1️⃣ 💬two💬 ➡️ 2️⃣ 🗺️ 🔚 📖 📥 🗺️ 💬two💬 ➡️ 2️⃣0️⃣ 💬three💬 ➡️ 3️⃣ 🗺️ 🔚 📢 📖 🔚",
+    )
+    .expect("map merge should run");
+    assert_eq!(
+        output,
+        vec!["🗺️ 💬one💬 ➡️ 1 💬two💬 ➡️ 20 💬three💬 ➡️ 3 🗺️"]
+    );
+}
+
+#[test]
+fn duplicate_map_keys_keep_the_last_value() {
+    let output =
+        run_source("📖 🟰 🗺️ 💬key💬 ➡️ 1️⃣ 💬key💬 ➡️ 2️⃣ 🗺️ 🔚 📢 📏 📖 🔚 📢 📖 🔎 💬key💬 🔚")
+            .expect("duplicate map key should update its value");
+    assert_eq!(output, vec!["1", "2"]);
+}
+
+#[test]
+fn reports_missing_map_keys() {
+    let error = run_source("📖 🟰 🗺️ 💬one💬 ➡️ 1️⃣ 🗺️ 🔚 📢 📖 🔎 💬missing💬 🔚")
+        .expect_err("missing map key should fail");
+    assert!(error.diagnostics[0].message.contains("was not found"));
+}
+
+#[test]
+fn rejects_mixed_dynamic_map_values_at_runtime() {
+    let error = run_source(
+        "🧩 🪞 📚 🐾 📚 🔓 ↩️ 🐾 🔒 📖 🟰 🗺️ 💬number💬 ➡️ 📞 🪞 📚 1️⃣ 📚 💬bool💬 ➡️ 📞 🪞 📚 ✅ 📚 🗺️ 🔚",
+    )
+    .expect_err("mixed dynamic map values should fail at runtime");
+    assert!(error.diagnostics[0]
+        .message
+        .contains("map values must all have the same type"));
+}
+
+#[test]
 fn reports_float_division_by_zero() {
     let error = run_source("📢 1️⃣.0️⃣ ➗ 0️⃣.0️⃣ 🔚").expect_err("float division by zero should fail");
     assert!(error.diagnostics[0].message.contains("division by zero"));

@@ -114,6 +114,8 @@ pub enum TokenKind {
     StatementEnd,
     /// List element delimiter.
     ListDelimiter,
+    /// Map opening and closing delimiter.
+    MapDelimiter,
 
     /// End-of-file marker appended by the lexer.
     Eof,

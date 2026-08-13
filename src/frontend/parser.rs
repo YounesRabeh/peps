@@ -520,6 +520,7 @@ impl Parser {
                 }
             }
             TokenKind::ListDelimiter => self.parse_list(token.span),
+            TokenKind::MapDelimiter => self.parse_map(token.span),
             _ => Err(Diagnostic::at("expected expression", token.span)),
         }
     }
@@ -629,6 +630,34 @@ impl Parser {
         })
     }
 
+    fn parse_map(&mut self, start: Span) -> Result<Expr, Diagnostic> {
+        let mut entries = Vec::new();
+
+        while !matches!(self.peek().kind, TokenKind::MapDelimiter | TokenKind::Eof) {
+            self.skip_statement_separators();
+            if matches!(self.peek().kind, TokenKind::MapDelimiter) {
+                break;
+            }
+            let key = self.parse_expression(0)?;
+            self.expect_arrow()?;
+            let value = self.parse_expression(0)?;
+            entries.push((key, value));
+        }
+
+        if matches!(self.peek().kind, TokenKind::Eof) {
+            return Err(Diagnostic::at(
+                "missing closing map delimiter 🗺️",
+                self.peek().span,
+            ));
+        }
+
+        let end = self.advance().span;
+        Ok(Expr::Map {
+            entries,
+            span: start.merge(end),
+        })
+    }
+
     fn current_binary_op(&self) -> Option<(BinaryOp, u8)> {
         // Higher numbers bind tighter. Equal-precedence operators are
         // left-associative because the recursive call uses `precedence + 1`.
@@ -674,6 +703,7 @@ impl Parser {
                 | TokenKind::Not
                 | TokenKind::ListLen
                 | TokenKind::ListDelimiter
+                | TokenKind::MapDelimiter
                 | TokenKind::Call
                 | TokenKind::Input
                 | TokenKind::Convert

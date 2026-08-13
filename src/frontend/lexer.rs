@@ -396,6 +396,7 @@ fn single_token_kind(text: &str) -> Option<TokenKind> {
         "🔒" => Some(TokenKind::BlockEnd),
         "🔚" => Some(TokenKind::StatementEnd),
         "📚" => Some(TokenKind::ListDelimiter),
+        "🗺️" | "🗺" => Some(TokenKind::MapDelimiter),
         _ => None,
     }
 }

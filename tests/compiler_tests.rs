@@ -71,6 +71,32 @@ fn compiles_explicit_numeric_conversions() {
 }
 
 #[test]
+fn compiles_map_creation_lookup_and_merge() {
+    assert_eq!(
+        compile_source(
+            "📖 🟰 🗺️ 💬one💬 ➡️ 1️⃣ 🗺️ 🔚 📢 📖 🔎 💬one💬 🔚 📖 📥 🗺️ 💬two💬 ➡️ 2️⃣ 🗺️ 🔚",
+        )
+        .expect("source should compile"),
+        vec![
+            Instruction::LoadConst(Value::Str("one".to_string())),
+            Instruction::LoadConst(Value::Num(BigInt::from(1))),
+            Instruction::MakeMap(1),
+            Instruction::StoreVar("📖".to_string()),
+            Instruction::LoadVar("📖".to_string()),
+            Instruction::LoadConst(Value::Str("one".to_string())),
+            Instruction::ListGet,
+            Instruction::Print,
+            Instruction::LoadVar("📖".to_string()),
+            Instruction::LoadConst(Value::Str("two".to_string())),
+            Instruction::LoadConst(Value::Num(BigInt::from(2))),
+            Instruction::MakeMap(1),
+            Instruction::ListAppend,
+            Instruction::StoreVar("📖".to_string()),
+        ]
+    );
+}
+
+#[test]
 fn compiles_reassignment_to_the_existing_storage_name() {
     assert_eq!(
         compile_source("🐶 🟰 1️⃣ 🔚 🐶 🟰 🐶 ➕ 1️⃣ 🔚").expect("source should compile"),

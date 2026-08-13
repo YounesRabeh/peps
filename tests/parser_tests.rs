@@ -84,6 +84,29 @@ fn rejects_conversion_without_a_numeric_target() {
 }
 
 #[test]
+fn parses_map_literals() {
+    let program = parse("📖 🟰 🗺️ 💬one💬 ➡️ 1️⃣ 💬two💬 ➡️ 2️⃣ 🗺️ 🔚");
+    let Stmt::Assign { expr, .. } = &program.statements[0] else {
+        panic!("expected assignment");
+    };
+    let Expr::Map { entries, .. } = expr else {
+        panic!("expected map literal");
+    };
+    assert_eq!(entries.len(), 2);
+}
+
+#[test]
+fn rejects_malformed_map_literals() {
+    let tokens = lexer::lex("📖 🟰 🗺️ 💬one💬 1️⃣ 🗺️ 🔚").expect("lexing should succeed");
+    let diagnostics = parser::parse(tokens).expect_err("missing map arrow should fail");
+    assert!(diagnostics[0].message.contains("expected range end arrow"));
+
+    let tokens = lexer::lex("📖 🟰 🗺️ 💬one💬 ➡️ 1️⃣").expect("lexing should succeed");
+    let diagnostics = parser::parse(tokens).expect_err("missing map delimiter should fail");
+    assert!(diagnostics[0].message.contains("closing map delimiter"));
+}
+
+#[test]
 fn errors_on_ascii_variable_definition() {
     let tokens = lexer::lex("counter 🟰 5️⃣ 🔚").expect("lexing should succeed");
     let diagnostics = parser::parse(tokens).expect_err("ascii variable should fail");

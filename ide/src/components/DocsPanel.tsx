@@ -120,6 +120,18 @@ const conversionExample = `📝 🟰 💬42💬
 📢 🐱 ➕ 0️⃣.5️⃣
 `;
 
+const mapsExample = `📖 🟰 🗺️
+    💬visits💬 ➡️ 1️⃣2️⃣0️⃣
+    💬year💬 ➡️ 2️⃣0️⃣2️⃣6️⃣
+🗺️
+
+📢 📖 🔎 💬year💬
+📢 📏 📖
+
+📖 📥 🗺️ 💬users💬 ➡️ 4️⃣2️⃣ 🗺️
+📢 📖
+`;
+
 type DocsPanelProps = {
   onLoadExample: (source: string) => void;
 };
@@ -243,6 +255,18 @@ const guides: Guide[] = [
       "Invalid text and non-finite float results produce runtime diagnostics."
     ],
     example: conversionExample
+  },
+  {
+    number: 11,
+    title: "Maps",
+    description: "Associate text keys with homogeneous values inside 🗺️ delimiters.",
+    points: [
+      "Use ➡️ between each text key and value.",
+      "Values may be numbers, text, booleans, or emoji, with one value type per map.",
+      "🔎 looks up a text key and 📏 counts unique keys.",
+      "📥 merges another map, updating existing keys and inserting new ones."
+    ],
+    example: mapsExample
   }
 ];
 

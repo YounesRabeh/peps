@@ -61,6 +61,42 @@ fn rejects_unsupported_numeric_conversions() {
 }
 
 #[test]
+fn infers_map_literals_lookup_length_and_merge() {
+    let checked = check(
+        "📖 🟰 🗺️ 💬one💬 ➡️ 1️⃣ 💬two💬 ➡️ 2️⃣ 🗺️ 🔚 🐶 🟰 📖 🔎 💬one💬 🔚 🐱 🟰 📏 📖 🔚 📖 📥 🗺️ 💬three💬 ➡️ 3️⃣ 🗺️ 🔚",
+    )
+    .expect("map operations should check");
+    assert_eq!(
+        checked.symbols.get("📖"),
+        Some(&Type::Map(Box::new(Type::Num)))
+    );
+    assert_eq!(checked.symbols.get("🐶"), Some(&Type::Num));
+    assert_eq!(checked.symbols.get("🐱"), Some(&Type::Num));
+}
+
+#[test]
+fn allows_text_map_values() {
+    let checked = check("📖 🟰 🗺️ 💬name💬 ➡️ 💬Peps💬 💬kind💬 ➡️ 💬language💬 🗺️ 🔚")
+        .expect("text map should check");
+    assert_eq!(
+        checked.symbols.get("📖"),
+        Some(&Type::Map(Box::new(Type::Str)))
+    );
+}
+
+#[test]
+fn rejects_invalid_map_shapes_and_operations() {
+    assert!(first_error("📖 🟰 🗺️ 🗺️ 🔚").contains("empty maps"));
+    assert!(first_error("📖 🟰 🗺️ 1️⃣ ➡️ 2️⃣ 🗺️ 🔚").contains("keys must be text"));
+    assert!(first_error("📖 🟰 🗺️ 💬a💬 ➡️ 1️⃣ 💬b💬 ➡️ ✅ 🗺️ 🔚").contains("same type"));
+    assert!(first_error("📖 🟰 🗺️ 💬a💬 ➡️ 1️⃣ 🗺️ 🔚 📢 📖 🔎 1️⃣ 🔚").contains("text key"));
+    assert!(
+        first_error("📖 🟰 🗺️ 💬a💬 ➡️ 1️⃣ 🗺️ 🔚 📖 📥 🗺️ 💬b💬 ➡️ ✅ 🗺️ 🔚")
+            .contains("same value type")
+    );
+}
+
+#[test]
 fn rejects_float_ranges_and_list_indexes() {
     assert!(first_error("🔁 🐾 🧭 🔢 0️⃣.5️⃣ ➡️ 2️⃣ 🔓 📢 🐾 🔚 🔒")
         .contains("range bounds must be integers"));
@@ -151,7 +187,7 @@ fn rejects_logical_type_error() {
 
 #[test]
 fn rejects_list_op_type_errors() {
-    assert!(first_error("🐶 🟰 📏 5️⃣ 🔚").contains("list length"));
+    assert!(first_error("🐶 🟰 📏 5️⃣ 🔚").contains("collection length"));
     assert!(first_error("🐶 🟰 5️⃣ 🔎 0️⃣ 🔚").contains("list value on the left"));
     assert!(first_error("🍎 🟰 📚 1️⃣ 2️⃣ 📚 🔚 🐶 🟰 🍎 🔎 ✅ 🔚").contains("integer index"));
     assert!(first_error("🍎 🟰 📚 1️⃣ 2️⃣ 📚 🔚 🐶 🟰 🍎 📥 ✅ 🔚").contains("element type"));

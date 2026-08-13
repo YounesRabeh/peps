@@ -107,6 +107,11 @@ describe("emoji autocomplete helpers", () => {
     expect(getEmojiSuggestions("convert").some((item) => item.emoji === "🔄")).toBe(true);
   });
 
+  it("suggests map syntax", () => {
+    expect(getEmojiSuggestions("map").some((item) => item.emoji === "🗺️")).toBe(true);
+    expect(getEmojiSuggestions("dictionary").some((item) => item.emoji === "🗺️")).toBe(true);
+  });
+
   it("replaces the entire colon token", () => {
     const line = "📢 :happy";
     const range = findColonPrefixBeforeCursor(line, line.length + 1);

@@ -32,3 +32,5 @@ mixed-number operations continue to reject lossy integer promotion.
 Try [the type-conversion example](../examples/basic/10-type-conversion.peps).
 ___
 Back to: [Input](09-input.md).
+
+Next: [Maps](11-maps.md).

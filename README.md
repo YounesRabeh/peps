@@ -18,10 +18,11 @@ Follow the guides in order. Every guide has a matching runnable program in
 8. [Execution model](docs/08-execution-model.md)
 9. [Input](docs/09-input.md)
 10. [Type conversion](docs/10-type-conversion.md)
+11. [Maps](docs/11-maps.md)
 
 ## Examples
 
-- [Basic examples](examples/basic/) progress from variables to type conversion.
+- [Basic examples](examples/basic/) progress from variables to maps.
 - [Algorithms](examples/algorithms/) contains five well-known algorithms
   recreated in Peps.
 
@@ -41,6 +42,8 @@ Follow the guides in order. Every guide has a matching runnable program in
 | ⌨️ | read typed input | `🐶 🟰 ⌨️ 🔢` |
 | 🔤 / 🔢 / 🔣 / ☑️ | text / integer / float / boolean input type | `📝 🟰 ⌨️ 🔤` |
 | 🔄 | explicit numeric conversion | `🐶 🟰 🔄 🔢 📝`, `🦊 🟰 🔄 🔣 🐶` |
+| 🗺️ | map delimiter | `📖 🟰 🗺️ 💬year💬 ➡️ 2️⃣0️⃣2️⃣6️⃣ 🗺️` |
+| ➡️ | range end / map key-value separator | `🔢 0️⃣ ➡️ 3️⃣`, `💬name💬 ➡️ 💬Peps💬` |
 | 🧭 | in (for loops) | `🔁 🐾 🧭 🍎 🔓` |
 | 🔢 | range | `🔁 🐾 🧭 🔢 0️⃣ ➡️ 3️⃣ 🔓` |
 | 🟰 | assign | `🐶 🟰 5️⃣` |
@@ -52,9 +55,9 @@ Follow the guides in order. Every guide has a matching runnable program in
 | ▶️ / ◀️ | greater / less than | `5️⃣ ▶️ 3️⃣`, `2️⃣ ◀️ 4️⃣` |
 | ▶️🟰 / ◀️🟰 | greater-or-equal / less-or-equal | `5️⃣ ▶️🟰 5️⃣` |
 | 🟰🟰 / ❌🟰 | equal / not equal | `✅ 🟰🟰 ✅` |
-| 📏 | list length | `📏 🍎` |
-| 🔎 | list index | `🍎 🔎 1️⃣` |
-| 📥 | list append / extend | `🍎 📥 4️⃣`, `🍎 📥 4️⃣ 5️⃣`, `🥝 🟰 🍎 📥 6️⃣ 5️⃣` |
+| 📏 | collection size | `📏 🍎`, `📏 📖` |
+| 🔎 | list index / map lookup | `🍎 🔎 1️⃣`, `📖 🔎 💬name💬` |
+| 📥 | list append / map merge | `🍎 📥 4️⃣`, `📖 📥 🗺️ 💬users💬 ➡️ 4️⃣2️⃣ 🗺️` |
 | 🔓 / 🔒 | block start / end | `🤔 ✅ 🔓 ... 🔒` |
 | 💬 | string delimiter | `🐶 🟰 💬hello💬` |
 | 📚 | list delimiter | `🍎 🟰 📚 1️⃣ 2️⃣ 3️⃣ 📚` |

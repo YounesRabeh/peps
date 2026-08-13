@@ -191,6 +191,21 @@ fn lexes_explicit_conversion_tokens() {
 }
 
 #[test]
+fn lexes_map_tokens() {
+    assert_eq!(
+        kinds("🗺️ 💬name💬 ➡️ 💬Peps💬 🗺️"),
+        vec![
+            TokenKind::MapDelimiter,
+            TokenKind::StringLiteral("name".to_string()),
+            TokenKind::Arrow,
+            TokenKind::StringLiteral("Peps".to_string()),
+            TokenKind::MapDelimiter,
+            TokenKind::Eof,
+        ]
+    );
+}
+
+#[test]
 fn lexes_emoji_variables() {
     assert_eq!(
         kinds("🚀 🟰 🌙 🔚"),

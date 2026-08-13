@@ -45,12 +45,13 @@ const PEPS_SUGGESTIONS: EmojiSuggestion[] = [
   entry("➖", "minus", ["minus", "subtract", "negative"], [], "Peps operator"),
   entry("✖️", "multiply", ["multiply", "times"], [], "Peps operator"),
   entry("➗", "divide", ["divide"], [], "Peps operator"),
-  entry("➡️", "range end", ["to", "arrow"], [], "Peps operator"),
+  entry("➡️", "arrow", ["to", "arrow", "pair"], ["range", "map", "key", "value"], "Peps operator"),
   entry("🔓", "block start", ["block", "open", "start"], [], "Peps syntax"),
   entry("🔒", "block end", ["end", "close"], [], "Peps syntax"),
   entry("🔚", "statement end", ["end", "line", "statement"], [], "Peps syntax"),
   entry("💬", "string", ["string", "text", "quote"], [], "Peps syntax"),
-  entry("📚", "list", ["list", "array"], [], "Peps syntax")
+  entry("📚", "list", ["list", "array"], [], "Peps syntax"),
+  entry("🗺️", "map", ["map", "dictionary", "dict"], ["key", "value"], "Peps syntax")
 ];
 
 const FALLBACK_EMOJIS: EmojiSuggestion[] = [
