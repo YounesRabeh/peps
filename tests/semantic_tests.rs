@@ -34,6 +34,16 @@ fn infers_negative_integer_and_float_values() {
 }
 
 #[test]
+fn infers_typed_input_values() {
+    let checked = check("📝 🟰 ⌨️ 🔤 🔚 🐶 🟰 ⌨️ 🔢 🔚 🦊 🟰 ⌨️ 🔣 🔚 🐱 🟰 ⌨️ ☑️ 🔚")
+        .expect("typed inputs should check");
+    assert_eq!(checked.symbols.get("📝"), Some(&Type::Str));
+    assert_eq!(checked.symbols.get("🐶"), Some(&Type::Num));
+    assert_eq!(checked.symbols.get("🦊"), Some(&Type::Float));
+    assert_eq!(checked.symbols.get("🐱"), Some(&Type::Bool));
+}
+
+#[test]
 fn rejects_float_ranges_and_list_indexes() {
     assert!(first_error("🔁 🐾 🧭 🔢 0️⃣.5️⃣ ➡️ 2️⃣ 🔓 📢 🐾 🔚 🔒")
         .contains("range bounds must be integers"));

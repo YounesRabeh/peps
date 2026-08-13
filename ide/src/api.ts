@@ -12,6 +12,7 @@ export type RunResponse = {
   ok: boolean;
   output: string[];
   diagnostics: IdeDiagnostic[];
+  inputRequest?: "text" | "integer" | "float" | "boolean" | null;
 };
 
 let wasmInitialization: Promise<unknown> | null = null;
@@ -21,7 +22,10 @@ function initializeWasm() {
   return wasmInitialization;
 }
 
-export async function runPepsSource(source: string): Promise<RunResponse> {
+export async function runPepsSource(
+  source: string,
+  inputs: string[] = []
+): Promise<RunResponse> {
   await initializeWasm();
-  return JSON.parse(runPeps(source)) as RunResponse;
+  return JSON.parse(runPeps(source, JSON.stringify(inputs))) as RunResponse;
 }

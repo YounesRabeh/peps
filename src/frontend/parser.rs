@@ -12,7 +12,7 @@
 //! [`TokenKind::StatementEnd`].
 
 use crate::{
-    ast::{BinaryOp, Expr, ForSource, Program, Stmt, UnaryOp},
+    ast::{BinaryOp, Expr, ForSource, InputKind, Program, Stmt, UnaryOp},
     diagnostic::Diagnostic,
     source::Span,
     token::{Token, TokenKind},
@@ -481,6 +481,9 @@ impl Parser {
         if matches!(self.peek().kind, TokenKind::Call) {
             return self.parse_call_expression();
         }
+        if matches!(self.peek().kind, TokenKind::Input) {
+            return self.parse_input_expression();
+        }
         let token = self.advance().clone();
         match token.kind {
             TokenKind::Number(value) => Ok(Expr::Number {
@@ -547,6 +550,27 @@ impl Parser {
             name,
             arguments,
             span: start.merge(end),
+        })
+    }
+
+    fn parse_input_expression(&mut self) -> Result<Expr, Diagnostic> {
+        let start = self.advance().span;
+        let type_token = self.advance().clone();
+        let kind = match type_token.kind {
+            TokenKind::InputText => InputKind::Text,
+            TokenKind::Range => InputKind::Integer,
+            TokenKind::InputFloat => InputKind::Float,
+            TokenKind::InputBool => InputKind::Bool,
+            _ => {
+                return Err(Diagnostic::at(
+                    "expected input type 🔤, 🔢, 🔣, or ☑️ after ⌨️",
+                    type_token.span,
+                ));
+            }
+        };
+        Ok(Expr::Input {
+            kind,
+            span: start.merge(type_token.span),
         })
     }
 
@@ -625,6 +649,7 @@ impl Parser {
                 | TokenKind::ListLen
                 | TokenKind::ListDelimiter
                 | TokenKind::Call
+                | TokenKind::Input
         )
     }
 

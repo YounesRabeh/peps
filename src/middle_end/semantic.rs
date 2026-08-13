@@ -3,7 +3,7 @@
 use std::collections::{HashMap, HashSet};
 
 use crate::{
-    ast::{BinaryOp, Expr, ForSource, Program, Stmt, UnaryOp},
+    ast::{BinaryOp, Expr, ForSource, InputKind, Program, Stmt, UnaryOp},
     diagnostic::Diagnostic,
     symbol_table::SymbolTable,
     types::Type,
@@ -345,6 +345,12 @@ impl Checker {
         match expr {
             Expr::Number { .. } => Some(Type::Num),
             Expr::Float { .. } => Some(Type::Float),
+            Expr::Input { kind, .. } => Some(match kind {
+                InputKind::Text => Type::Str,
+                InputKind::Integer => Type::Num,
+                InputKind::Float => Type::Float,
+                InputKind::Bool => Type::Bool,
+            }),
             Expr::String { span, .. } => {
                 self.diagnostics.push(Diagnostic::at(
                     "Raw string literals can only be assigned to variables in Peps v0.",
@@ -640,6 +646,12 @@ impl Checker {
             Expr::String { .. } => Some(Type::Str),
             Expr::Number { .. } => Some(Type::Num),
             Expr::Float { .. } => Some(Type::Float),
+            Expr::Input { kind, .. } => Some(match kind {
+                InputKind::Text => Type::Str,
+                InputKind::Integer => Type::Num,
+                InputKind::Float => Type::Float,
+                InputKind::Bool => Type::Bool,
+            }),
             Expr::Bool { .. } => Some(Type::Bool),
             Expr::Emoji { .. } => Some(Type::Emoji),
             Expr::Variable { name, span } => match self.lookup(name) {

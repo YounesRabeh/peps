@@ -157,6 +157,24 @@ fn lexes_function_tokens() {
 }
 
 #[test]
+fn lexes_typed_input_tokens() {
+    assert_eq!(
+        kinds("⌨️ 🔤 ⌨️ 🔢 ⌨️ 🔣 ⌨️ ☑️"),
+        vec![
+            TokenKind::Input,
+            TokenKind::InputText,
+            TokenKind::Input,
+            TokenKind::Range,
+            TokenKind::Input,
+            TokenKind::InputFloat,
+            TokenKind::Input,
+            TokenKind::InputBool,
+            TokenKind::Eof,
+        ]
+    );
+}
+
+#[test]
 fn lexes_emoji_variables() {
     assert_eq!(
         kinds("🚀 🟰 🌙 🔚"),

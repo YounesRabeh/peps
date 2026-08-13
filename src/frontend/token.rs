@@ -34,6 +34,15 @@ pub enum TokenKind {
     /// Boolean literal.
     Bool(bool),
 
+    /// Typed input expression prefix.
+    Input,
+    /// Text input type marker.
+    InputText,
+    /// Floating-point input type marker.
+    InputFloat,
+    /// Boolean input type marker.
+    InputBool,
+
     /// Print statement keyword.
     Print,
     /// If statement keyword.

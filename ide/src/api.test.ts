@@ -28,6 +28,15 @@ describe("runPepsSource", () => {
       output: ["7"],
       diagnostics: []
     });
-    expect(wasmMocks.run).toHaveBeenCalledWith("📢 7️⃣");
+    expect(wasmMocks.run).toHaveBeenCalledWith("📢 7️⃣", "[]");
+  });
+
+  it("passes terminal input lines to WebAssembly", async () => {
+    wasmMocks.run.mockReturnValue(
+      JSON.stringify({ ok: true, output: ["42"], diagnostics: [], inputRequest: null })
+    );
+
+    await runPepsSource("🐶 🟰 ⌨️ 🔢", ["42"]);
+    expect(wasmMocks.run).toHaveBeenCalledWith("🐶 🟰 ⌨️ 🔢", '["42"]');
   });
 });

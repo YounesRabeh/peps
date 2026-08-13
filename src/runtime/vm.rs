@@ -1,17 +1,20 @@
 //! Stack-based bytecode runner for compiled Peps programs.
 
-use std::collections::HashMap;
+use std::collections::{HashMap, VecDeque};
 
 use num_bigint::BigInt;
 use num_traits::{FromPrimitive, ToPrimitive, Zero};
 
 use crate::{
+    ast::InputKind,
     bytecode::{Instruction, Value},
     diagnostic::Diagnostic,
 };
 
 /// Maximum instructions used for browser IDE executions.
 pub const IDE_STEP_LIMIT: usize = 100_000;
+/// Diagnostic prefix used when execution needs another input value.
+pub const INPUT_REQUIRED_PREFIX: &str = "input required: ";
 
 /// Optional instruction limit for a VM execution.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -50,7 +53,11 @@ pub struct RunError {
 
 /// Execute bytecode without an instruction limit.
 pub fn execute(instructions: &[Instruction]) -> Result<Vec<String>, RunError> {
-    execute_with_limit(instructions, ExecutionLimit::Unlimited)
+    execute_with_inputs_and_limit(
+        instructions,
+        std::iter::empty::<String>(),
+        ExecutionLimit::Unlimited,
+    )
 }
 
 /// Execute bytecode with a caller-provided instruction step limit.
@@ -61,7 +68,11 @@ pub fn execute_with_step_limit(
     instructions: &[Instruction],
     step_limit: usize,
 ) -> Result<Vec<String>, RunError> {
-    execute_with_limit(instructions, ExecutionLimit::Steps(step_limit))
+    execute_with_inputs_and_limit(
+        instructions,
+        std::iter::empty::<String>(),
+        ExecutionLimit::Steps(step_limit),
+    )
 }
 
 /// Execute bytecode with an explicit instruction-limit policy.
@@ -69,6 +80,48 @@ pub fn execute_with_limit(
     instructions: &[Instruction],
     execution_limit: ExecutionLimit,
 ) -> Result<Vec<String>, RunError> {
+    execute_with_inputs_and_limit(instructions, std::iter::empty::<String>(), execution_limit)
+}
+
+/// Execute bytecode using input lines supplied in source order.
+pub fn execute_with_inputs<I, S>(
+    instructions: &[Instruction],
+    inputs: I,
+) -> Result<Vec<String>, RunError>
+where
+    I: IntoIterator<Item = S>,
+    S: Into<String>,
+{
+    execute_with_inputs_and_limit(instructions, inputs, ExecutionLimit::Unlimited)
+}
+
+/// Execute bytecode with queued inputs and an explicit instruction limit.
+pub fn execute_with_inputs_and_limit<I, S>(
+    instructions: &[Instruction],
+    inputs: I,
+    execution_limit: ExecutionLimit,
+) -> Result<Vec<String>, RunError>
+where
+    I: IntoIterator<Item = S>,
+    S: Into<String>,
+{
+    let mut inputs = inputs.into_iter().map(Into::into).collect::<VecDeque<_>>();
+    execute_with_input_reader(instructions, execution_limit, |kind| {
+        inputs
+            .pop_front()
+            .ok_or_else(|| format!("{}{}", INPUT_REQUIRED_PREFIX, kind.name()))
+    })
+}
+
+/// Execute bytecode with an on-demand input reader.
+pub fn execute_with_input_reader<F>(
+    instructions: &[Instruction],
+    execution_limit: ExecutionLimit,
+    mut read_input: F,
+) -> Result<Vec<String>, RunError>
+where
+    F: FnMut(InputKind) -> Result<String, String>,
+{
     let mut vm = Vm {
         instructions,
         ip: 0,
@@ -83,7 +136,7 @@ pub fn execute_with_limit(
         steps: 0,
         execution_limit,
     };
-    vm.run()
+    vm.run(&mut read_input)
 }
 
 struct Vm<'a> {
@@ -119,7 +172,10 @@ enum NumberValue {
 
 impl Vm<'_> {
     /// Run instructions until completion, an error, or the step limit.
-    fn run(&mut self) -> Result<Vec<String>, RunError> {
+    fn run<F>(&mut self, read_input: &mut F) -> Result<Vec<String>, RunError>
+    where
+        F: FnMut(InputKind) -> Result<String, String>,
+    {
         while self.ip < self.instructions.len() {
             if let ExecutionLimit::Steps(step_limit) = self.execution_limit {
                 if self.steps >= step_limit {
@@ -133,6 +189,12 @@ impl Vm<'_> {
             match self.instructions[self.ip].clone() {
                 Instruction::LoadConst(value) => {
                     self.stack.push(RuntimeValue::from(value));
+                    self.ip += 1;
+                }
+                Instruction::Input(kind) => {
+                    let raw = read_input(kind).map_err(|message| self.error(message))?;
+                    let value = self.parse_input(kind, raw)?;
+                    self.stack.push(value);
                     self.ip += 1;
                 }
                 Instruction::LoadVar(name) => {
@@ -505,6 +567,33 @@ impl Vm<'_> {
             Ok(RuntimeValue::Float(value))
         } else {
             Err(self.error(format!("{} produced a non-finite float", operation)))
+        }
+    }
+
+    fn parse_input(&self, kind: InputKind, raw: String) -> Result<RuntimeValue, RunError> {
+        match kind {
+            InputKind::Text => Ok(RuntimeValue::Str(raw)),
+            InputKind::Integer => raw
+                .trim()
+                .parse::<BigInt>()
+                .map(RuntimeValue::Num)
+                .map_err(|_| self.error("input is not a valid integer")),
+            InputKind::Float => {
+                let value = raw
+                    .trim()
+                    .parse::<f64>()
+                    .map_err(|_| self.error("input is not a valid float"))?;
+                if value.is_finite() {
+                    Ok(RuntimeValue::Float(value))
+                } else {
+                    Err(self.error("float input must be finite"))
+                }
+            }
+            InputKind::Bool => match raw.trim() {
+                "✅" | "true" => Ok(RuntimeValue::Bool(true)),
+                "❌" | "false" => Ok(RuntimeValue::Bool(false)),
+                _ => Err(self.error("boolean input must be ✅, ❌, true, or false")),
+            },
         }
     }
 

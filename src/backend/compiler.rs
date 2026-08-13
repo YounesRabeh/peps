@@ -330,6 +330,7 @@ impl Compiler {
             Expr::Float { value, .. } => self
                 .instructions
                 .push(Instruction::LoadConst(Value::Float(*value))),
+            Expr::Input { kind, .. } => self.instructions.push(Instruction::Input(*kind)),
             Expr::String { value, .. } => self
                 .instructions
                 .push(Instruction::LoadConst(Value::Str(value.clone()))),

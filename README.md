@@ -16,6 +16,7 @@ Follow the guides in order. Every guide has a matching runnable program in
 6. [Scope](docs/06-scope.md) 
 7. [Functions](docs/07-functions.md) 
 8. [Execution model](docs/08-execution-model.md)
+9. [Input](docs/09-input.md)
 
 ## Examples
 
@@ -36,6 +37,8 @@ Follow the guides in order. Every guide has a matching runnable program in
 | 🧩 | define function | `🧩 🧮 📚 🐶 🐱 📚 🔓 ... 🔒` |
 | 📞 | call function | `📞 🧮 📚 1️⃣ 2️⃣ 📚` |
 | ↩️ | return from function | `↩️ 🐶 ➕ 🐱` |
+| ⌨️ | read typed input | `🐶 🟰 ⌨️ 🔢` |
+| 🔤 / 🔢 / 🔣 / ☑️ | text / integer / float / boolean input type | `📝 🟰 ⌨️ 🔤` |
 | 🧭 | in (for loops) | `🔁 🐾 🧭 🍎 🔓` |
 | 🔢 | range | `🔁 🐾 🧭 🔢 0️⃣ ➡️ 3️⃣ 🔓` |
 | 🟰 | assign | `🐶 🟰 5️⃣` |

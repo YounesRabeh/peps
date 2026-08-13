@@ -2,37 +2,80 @@ import { useRef, useState } from "react";
 import { runPepsSource, type RunResponse } from "./api";
 import { EditorPane } from "./components/EditorPane";
 import { DocsPanel } from "./components/DocsPanel";
-import { OutputPanel } from "./components/OutputPanel";
+import { TerminalPanel, type TerminalEntry } from "./components/TerminalPanel";
 import { Toolbar } from "./components/Toolbar";
-import { BASIC_SAMPLE } from "./examples";
+import { OVERVIEW_SAMPLE } from "./examples";
 
 export function App() {
-  const [source, setSource] = useState(BASIC_SAMPLE);
+  const [source, setSource] = useState(OVERVIEW_SAMPLE);
   const [running, setRunning] = useState(false);
   const [response, setResponse] = useState<RunResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [terminalInputs, setTerminalInputs] = useState<string[]>([]);
+  const [terminalTranscript, setTerminalTranscript] = useState<TerminalEntry[]>([]);
+  const [cumulativeOutputCount, setCumulativeOutputCount] = useState(0);
+  const [sessionSource, setSessionSource] = useState(OVERVIEW_SAMPLE);
   const [sidebarWidth, setSidebarWidth] = useState(440);
-  const [outputHeight, setOutputHeight] = useState<number | null>(null);
+  const [terminalHeight, setTerminalHeight] = useState<number | null>(null);
   const [panelsVisible, setPanelsVisible] = useState(true);
   const [resizing, setResizing] = useState(false);
-  const [resizingOutput, setResizingOutput] = useState(false);
+  const [resizingTerminal, setResizingTerminal] = useState(false);
   const workbenchRef = useRef<HTMLDivElement | null>(null);
   const sidebarRef = useRef<HTMLElement | null>(null);
 
-  async function handleRun() {
+  async function executeProgram(
+    programSource: string,
+    inputs: string[],
+    previousOutputCount: number
+  ) {
     setPanelsVisible(true);
     setRunning(true);
     setError(null);
     setResponse(null);
 
     try {
-      const result = await runPepsSource(source);
-      setResponse(result);
+      const result = await runPepsSource(programSource, inputs);
+      setCumulativeOutputCount(result.output.length);
+      setResponse({
+        ...result,
+        output: result.output.slice(previousOutputCount)
+      });
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
     } finally {
       setRunning(false);
     }
+  }
+
+  async function handleRun() {
+    setTerminalInputs([]);
+    setTerminalTranscript([]);
+    setCumulativeOutputCount(0);
+    setSessionSource(source);
+    await executeProgram(source, [], 0);
+  }
+
+  async function handleTerminalInput(value: string) {
+    const inputs = [...terminalInputs, value];
+    const completedOutput: TerminalEntry[] = (response?.output ?? []).map((line) => ({
+      kind: "output",
+      value: line
+    }));
+    setTerminalInputs(inputs);
+    setTerminalTranscript((transcript) => [
+      ...transcript,
+      ...completedOutput,
+      { kind: "input", value }
+    ]);
+    await executeProgram(sessionSource, inputs, cumulativeOutputCount);
+  }
+
+  function handleClearTerminal() {
+    setTerminalInputs([]);
+    setTerminalTranscript([]);
+    setCumulativeOutputCount(0);
+    setResponse(null);
+    setError(null);
   }
 
   function clampSidebarWidth(requestedWidth: number) {
@@ -85,52 +128,52 @@ export function App() {
     }
   }
 
-  function clampOutputHeight(requestedHeight: number) {
+  function clampTerminalHeight(requestedHeight: number) {
     const sidebar = sidebarRef.current;
     if (!sidebar) return Math.max(140, requestedHeight);
 
     const bounds = sidebar.getBoundingClientRect();
-    const minimumOutputHeight = 140;
+    const minimumTerminalHeight = 140;
     const minimumDocsHeight = 220;
-    const maximumOutputHeight = Math.max(
-      minimumOutputHeight,
+    const maximumTerminalHeight = Math.max(
+      minimumTerminalHeight,
       bounds.height - minimumDocsHeight - 10,
     );
-    return Math.min(maximumOutputHeight, Math.max(minimumOutputHeight, requestedHeight));
+    return Math.min(maximumTerminalHeight, Math.max(minimumTerminalHeight, requestedHeight));
   }
 
-  function setOutputHeightFromPointer(clientY: number) {
+  function setTerminalHeightFromPointer(clientY: number) {
     const sidebar = sidebarRef.current;
     if (!sidebar) return;
 
     const bounds = sidebar.getBoundingClientRect();
-    setOutputHeight(clampOutputHeight(clientY - bounds.top - 5));
+    setTerminalHeight(clampTerminalHeight(clientY - bounds.top - 5));
   }
 
   function handlePanelDividerPointerDown(event: React.PointerEvent<HTMLButtonElement>) {
     event.currentTarget.setPointerCapture(event.pointerId);
-    setResizingOutput(true);
-    setOutputHeightFromPointer(event.clientY);
+    setResizingTerminal(true);
+    setTerminalHeightFromPointer(event.clientY);
   }
 
   function handlePanelDividerPointerMove(event: React.PointerEvent<HTMLButtonElement>) {
-    if (resizingOutput) setOutputHeightFromPointer(event.clientY);
+    if (resizingTerminal) setTerminalHeightFromPointer(event.clientY);
   }
 
   function handlePanelDividerPointerUp(event: React.PointerEvent<HTMLButtonElement>) {
     if (event.currentTarget.hasPointerCapture(event.pointerId)) {
       event.currentTarget.releasePointerCapture(event.pointerId);
     }
-    setResizingOutput(false);
+    setResizingTerminal(false);
   }
 
   function handlePanelDividerKeyDown(event: React.KeyboardEvent<HTMLButtonElement>) {
     if (event.key === "ArrowUp") {
       event.preventDefault();
-      setOutputHeight((height) => clampOutputHeight((height ?? 260) - 24));
+      setTerminalHeight((height) => clampTerminalHeight((height ?? 260) - 24));
     } else if (event.key === "ArrowDown") {
       event.preventDefault();
-      setOutputHeight((height) => clampOutputHeight((height ?? 260) + 24));
+      setTerminalHeight((height) => clampTerminalHeight((height ?? 260) + 24));
     }
   }
 
@@ -146,7 +189,7 @@ export function App() {
         className={
           resizing
             ? "workbench is-resizing-horizontal"
-            : resizingOutput
+            : resizingTerminal
               ? "workbench is-resizing-vertical"
               : "workbench"
         }
@@ -179,15 +222,22 @@ export function App() {
           id="runner-sidebar"
           aria-label="Run results and documentation"
           ref={sidebarRef}
-          style={outputHeight === null ? undefined : { gridTemplateRows: `${outputHeight}px 10px minmax(220px, 1fr)` }}
+          style={terminalHeight === null ? undefined : { gridTemplateRows: `${terminalHeight}px 10px minmax(220px, 1fr)` }}
         >
-          <OutputPanel running={running} response={response} error={error} />
+          <TerminalPanel
+            running={running}
+            response={response}
+            error={error}
+            transcript={terminalTranscript}
+            onSubmitInput={handleTerminalInput}
+            onClear={handleClearTerminal}
+          />
           <button
-            aria-controls="output-panel docs-panel"
-            aria-label="Resize output and documentation"
+            aria-controls="terminal-panel docs-panel"
+            aria-label="Resize terminal and documentation"
             aria-orientation="horizontal"
             aria-valuemin={140}
-            aria-valuenow={Math.round(outputHeight ?? 260)}
+            aria-valuenow={Math.round(terminalHeight ?? 260)}
             className="runner-divider"
             onKeyDown={handlePanelDividerKeyDown}
             onPointerDown={handlePanelDividerPointerDown}

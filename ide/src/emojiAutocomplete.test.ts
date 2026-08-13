@@ -96,6 +96,13 @@ describe("emoji autocomplete helpers", () => {
     expect(getEmojiSuggestions("return").some((item) => item.emoji === "↩️")).toBe(true);
   });
 
+  it("suggests typed input syntax", () => {
+    expect(getEmojiSuggestions("input").some((item) => item.emoji === "⌨️")).toBe(true);
+    expect(getEmojiSuggestions("text").some((item) => item.emoji === "🔤")).toBe(true);
+    expect(getEmojiSuggestions("float").some((item) => item.emoji === "🔣")).toBe(true);
+    expect(getEmojiSuggestions("boolean").some((item) => item.emoji === "☑️")).toBe(true);
+  });
+
   it("replaces the entire colon token", () => {
     const line = "📢 :happy";
     const range = findColonPrefixBeforeCursor(line, line.length + 1);

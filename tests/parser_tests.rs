@@ -41,6 +41,30 @@ fn parses_negative_integer_and_float_values() {
 }
 
 #[test]
+fn parses_typed_input_expressions() {
+    let program = parse("📝 🟰 ⌨️ 🔤 🔚 🐶 🟰 ⌨️ 🔢 🔚 🦊 🟰 ⌨️ 🔣 🔚 🐱 🟰 ⌨️ ☑️ 🔚");
+    let expected = [
+        peps::InputKind::Text,
+        peps::InputKind::Integer,
+        peps::InputKind::Float,
+        peps::InputKind::Bool,
+    ];
+    for (statement, expected_kind) in program.statements.iter().zip(expected) {
+        let Stmt::Assign { expr, .. } = statement else {
+            panic!("expected assignment");
+        };
+        assert!(matches!(expr, Expr::Input { kind, .. } if *kind == expected_kind));
+    }
+}
+
+#[test]
+fn rejects_input_without_a_type_marker() {
+    let tokens = lexer::lex("🐶 🟰 ⌨️ 🐱 🔚").expect("lexing should succeed");
+    let diagnostics = parser::parse(tokens).expect_err("missing input type should fail");
+    assert!(diagnostics[0].message.contains("expected input type"));
+}
+
+#[test]
 fn errors_on_ascii_variable_definition() {
     let tokens = lexer::lex("counter 🟰 5️⃣ 🔚").expect("lexing should succeed");
     let diagnostics = parser::parse(tokens).expect_err("ascii variable should fail");

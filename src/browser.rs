@@ -2,7 +2,11 @@
 
 use serde::Serialize;
 
-use crate::{diagnostic::Diagnostic, run_source_with_step_limit, vm::IDE_STEP_LIMIT};
+use crate::{
+    diagnostic::Diagnostic,
+    run_source_with_inputs_and_step_limit,
+    vm::{IDE_STEP_LIMIT, INPUT_REQUIRED_PREFIX},
+};
 
 /// JSON-compatible result returned to the browser IDE.
 #[derive(Debug, Serialize, PartialEq, Eq)]
@@ -13,6 +17,9 @@ pub struct RunResponse {
     pub output: Vec<String>,
     /// Compiler or runtime diagnostics formatted for the IDE.
     pub diagnostics: Vec<IdeDiagnostic>,
+    /// Input type requested when the queued terminal input has been exhausted.
+    #[serde(rename = "inputRequest")]
+    pub input_request: Option<String>,
 }
 
 /// Diagnostic shape consumed by the browser IDE.
@@ -31,18 +38,31 @@ pub struct IdeDiagnostic {
 }
 
 /// Compile and run browser-submitted source with the IDE safety limit.
-pub fn run_source_for_browser(source: &str) -> RunResponse {
-    match run_source_with_step_limit(source, IDE_STEP_LIMIT) {
+pub fn run_source_for_browser(source: &str, inputs: &[String]) -> RunResponse {
+    match run_source_with_inputs_and_step_limit(source, inputs.iter().cloned(), IDE_STEP_LIMIT) {
         Ok(output) => RunResponse {
             ok: true,
             output,
             diagnostics: Vec::new(),
+            input_request: None,
         },
-        Err(error) => RunResponse {
-            ok: false,
-            output: error.output,
-            diagnostics: error.diagnostics.iter().map(IdeDiagnostic::from).collect(),
-        },
+        Err(error) => {
+            let input_request = error
+                .diagnostics
+                .first()
+                .and_then(|diagnostic| diagnostic.message.strip_prefix(INPUT_REQUIRED_PREFIX))
+                .map(str::to_string);
+            RunResponse {
+                ok: false,
+                output: error.output,
+                diagnostics: if input_request.is_some() {
+                    Vec::new()
+                } else {
+                    error.diagnostics.iter().map(IdeDiagnostic::from).collect()
+                },
+                input_request,
+            }
+        }
     }
 }
 

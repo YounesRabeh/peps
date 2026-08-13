@@ -2,7 +2,7 @@ use num_bigint::BigInt;
 
 use peps::{
     bytecode::{Instruction, Value},
-    run_source, vm, RunError,
+    run_source, run_source_with_inputs, vm, RunError,
 };
 
 #[test]
@@ -103,6 +103,26 @@ fn runs_negative_values_in_expressions_lists_and_ranges() {
         output,
         vec!["-5", "-1.5", "-2", "📚 -2 -1 0 📚", "-2", "-1", "0", "1"]
     );
+}
+
+#[test]
+fn reads_text_integer_float_and_boolean_input() {
+    let output = run_source_with_inputs(
+        "📝 🟰 ⌨️ 🔤 🔚 🐶 🟰 ⌨️ 🔢 🔚 🦊 🟰 ⌨️ 🔣 🔚 🐱 🟰 ⌨️ ☑️ 🔚 📢 📝 🔚 📢 🐶 ➕ 1️⃣ 🔚 📢 🦊 ➕ 0️⃣.5️⃣ 🔚 📢 🐱 🔚",
+        ["hello Peps", "41", "2.5", "✅"],
+    )
+    .expect("typed input should run");
+    assert_eq!(output, vec!["hello Peps", "42", "3", "✅"]);
+}
+
+#[test]
+fn reports_exhausted_and_invalid_input() {
+    let exhausted = run_source("🐶 🟰 ⌨️ 🔢 🔚").expect_err("input should be required");
+    assert_eq!(exhausted.diagnostics[0].message, "input required: integer");
+
+    let invalid = run_source_with_inputs("🐶 🟰 ⌨️ 🔢 🔚", ["not-a-number"])
+        .expect_err("invalid integer should fail");
+    assert!(invalid.diagnostics[0].message.contains("valid integer"));
 }
 
 #[test]

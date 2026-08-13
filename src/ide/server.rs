@@ -24,6 +24,9 @@ const MISSING_FRONTEND_HTML: &str = include_str!("missing_frontend.html");
 pub struct RunRequest {
     /// Source code to compile and execute.
     pub source: String,
+    /// Terminal input lines queued for this execution.
+    #[serde(default)]
+    pub inputs: Vec<String>,
 }
 
 /// Start the local IDE server and serve the built frontend from `ide/dist`.
@@ -101,7 +104,7 @@ pub fn router(dist_dir: PathBuf) -> Router {
 
 /// Compile and execute Peps source submitted by the browser IDE.
 pub async fn run_handler(Json(request): Json<RunRequest>) -> Json<RunResponse> {
-    Json(run_source_for_browser(&request.source))
+    Json(run_source_for_browser(&request.source, &request.inputs))
 }
 
 /// Return the fallback HTML shown when frontend assets are missing.
@@ -118,6 +121,7 @@ mod tests {
     async fn api_run_success() {
         let response = run_handler(Json(RunRequest {
             source: "🐶 🟰 5️⃣ 🔚\n📢 🐶 🔚".to_string(),
+            inputs: Vec::new(),
         }))
         .await
         .0;
@@ -131,6 +135,7 @@ mod tests {
     async fn api_run_diagnostics() {
         let response = run_handler(Json(RunRequest {
             source: "🐶 🟰 1️⃣ 🔚 🐶 🟰 ✅ 🔚 🐶 🟰 🐶 ➕ 1️⃣ 🔚".to_string(),
+            inputs: Vec::new(),
         }))
         .await
         .0;
@@ -143,12 +148,42 @@ mod tests {
     async fn api_run_enforces_the_ide_step_limit() {
         let response = run_handler(Json(RunRequest {
             source: "🔁 ✅ 🔓 🔒".to_string(),
+            inputs: Vec::new(),
         }))
         .await
         .0;
 
         assert!(!response.ok);
         assert!(response.diagnostics[0].message.contains("step limit"));
+    }
+
+    #[tokio::test]
+    async fn api_run_accepts_typed_terminal_input() {
+        let response = run_handler(Json(RunRequest {
+            source: "🐶 🟰 ⌨️ 🔢 🔚 📢 🐶 🔚".to_string(),
+            inputs: vec!["42".to_string()],
+        }))
+        .await
+        .0;
+
+        assert!(response.ok);
+        assert_eq!(response.output, vec!["42".to_string()]);
+        assert_eq!(response.input_request, None);
+    }
+
+    #[tokio::test]
+    async fn api_run_requests_missing_terminal_input() {
+        let response = run_handler(Json(RunRequest {
+            source: "🐶 🟰 ⌨️ 🔢 🔚 📢 🐶 🔚".to_string(),
+            inputs: Vec::new(),
+        }))
+        .await
+        .0;
+
+        assert!(!response.ok);
+        assert!(response.output.is_empty());
+        assert!(response.diagnostics.is_empty());
+        assert_eq!(response.input_request.as_deref(), Some("integer"));
     }
 
     #[tokio::test]

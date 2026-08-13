@@ -38,6 +38,24 @@ fn compiles_negative_integer_and_float_constants() {
 }
 
 #[test]
+fn compiles_typed_input_expressions() {
+    assert_eq!(
+        compile_source("📝 🟰 ⌨️ 🔤 🔚 🐶 🟰 ⌨️ 🔢 🔚 🦊 🟰 ⌨️ 🔣 🔚 🐱 🟰 ⌨️ ☑️ 🔚")
+            .expect("source should compile"),
+        vec![
+            Instruction::Input(peps::InputKind::Text),
+            Instruction::StoreVar("📝".to_string()),
+            Instruction::Input(peps::InputKind::Integer),
+            Instruction::StoreVar("🐶".to_string()),
+            Instruction::Input(peps::InputKind::Float),
+            Instruction::StoreVar("🦊".to_string()),
+            Instruction::Input(peps::InputKind::Bool),
+            Instruction::StoreVar("🐱".to_string()),
+        ]
+    );
+}
+
+#[test]
 fn compiles_reassignment_to_the_existing_storage_name() {
     assert_eq!(
         compile_source("🐶 🟰 1️⃣ 🔚 🐶 🟰 🐶 ➕ 1️⃣ 🔚").expect("source should compile"),

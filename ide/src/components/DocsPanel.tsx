@@ -99,6 +99,17 @@ const executionExample = `// 🔚 is optional; comments run to the end of the li
 📢 🐶
 `;
 
+const inputExample = `📝 🟰 ⌨️ 🔤
+🐶 🟰 ⌨️ 🔢
+🦊 🟰 ⌨️ 🔣
+🐱 🟰 ⌨️ ☑️
+
+📢 📝
+📢 🐶 ➕ 1️⃣
+📢 🦊
+📢 🐱
+`;
+
 type DocsPanelProps = {
   onLoadExample: (source: string) => void;
 };
@@ -200,6 +211,17 @@ const guides: Guide[] = [
       "The browser IDE stops execution after 100,000 instructions for safety."
     ],
     example: executionExample
+  },
+  {
+    number: 9,
+    title: "Input",
+    description: "Read typed values from the CLI or IDE terminal with ⌨️.",
+    points: [
+      "Use 🔤 for text, 🔢 for integers, 🔣 for floats, and ☑️ for booleans.",
+      "The IDE terminal asks for each value when the program reaches it.",
+      "Boolean input accepts ✅, ❌, true, or false."
+    ],
+    example: inputExample
   }
 ];
 
@@ -214,7 +236,7 @@ export function DocsPanel({ onLoadExample }: DocsPanelProps) {
           <h2>Docs</h2>
           <p>Learn Peps step by step.</p>
         </div>
-        <span className="docs-progress">{guide.number}/8</span>
+        <span className="docs-progress">{guide.number}/{guides.length}</span>
       </div>
 
       <nav className="docs-nav" aria-label="Documentation guides">
