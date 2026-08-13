@@ -24,6 +24,23 @@ fn parses_float_literal() {
 }
 
 #[test]
+fn parses_negative_integer_and_float_values() {
+    let program = parse("🐶 🟰 ➖5️⃣ 🔚 🐱 🟰 ➖1️⃣.5️⃣ 🔚");
+    for statement in &program.statements {
+        let Stmt::Assign { expr, .. } = statement else {
+            panic!("expected assignment");
+        };
+        assert!(matches!(
+            expr,
+            Expr::Unary {
+                op: peps::UnaryOp::Negate,
+                ..
+            }
+        ));
+    }
+}
+
+#[test]
 fn errors_on_ascii_variable_definition() {
     let tokens = lexer::lex("counter 🟰 5️⃣ 🔚").expect("lexing should succeed");
     let diagnostics = parser::parse(tokens).expect_err("ascii variable should fail");

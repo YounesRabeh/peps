@@ -94,6 +94,18 @@ fn runs_float_and_mixed_numeric_operations() {
 }
 
 #[test]
+fn runs_negative_values_in_expressions_lists_and_ranges() {
+    let output = run_source(
+        "🐶 🟰 2️⃣ 🔚 📢 ➖5️⃣ 🔚 📢 ➖1️⃣.5️⃣ 🔚 📢 ➖🐶 🔚 🐱 🟰 ➖2️⃣ 🔚 🐼 🟰 ➖1️⃣ 🔚 🍎 🟰 📚 🐱 🐼 0️⃣ 📚 🔚 📢 🍎 🔚 🔁 🐾 🧭 🔢 ➖2️⃣ ➡️ 2️⃣ 🔓 📢 🐾 🔚 🔒",
+    )
+    .expect("negative values should run");
+    assert_eq!(
+        output,
+        vec!["-5", "-1.5", "-2", "📚 -2 -1 0 📚", "-2", "-1", "0", "1"]
+    );
+}
+
+#[test]
 fn reports_float_division_by_zero() {
     let error = run_source("📢 1️⃣.0️⃣ ➗ 0️⃣.0️⃣ 🔚").expect_err("float division by zero should fail");
     assert!(error.diagnostics[0].message.contains("division by zero"));

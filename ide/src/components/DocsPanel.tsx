@@ -14,11 +14,13 @@ const variablesExample = `// Declare, update, and change a variable's type.
 const expressionsExample = `🐶 🟰 2️⃣ ➕ 3️⃣ ✖️ 4️⃣
 🐱 🟰 🐶 ▶️ 1️⃣0️⃣
 🦊 🟰 1️⃣.5️⃣ ➕ 2️⃣
+🐼 🟰 ➖1️⃣.5️⃣
 📝 🟰 💬hello💬 ➕ 💬 peps💬
 
 📢 🐶
 📢 🐱
 📢 🦊
+📢 🐼
 📢 🚫 ❌ 🤝 ✅
 📢 📝
 `;
@@ -127,6 +129,7 @@ const guides: Guide[] = [
     description: "Print values with 📢 and combine values with Peps operators.",
     points: [
       "Integers use emoji digits and have arbitrary precision; 1️⃣.5️⃣ is a float.",
+      "Put ➖ before a number or numeric expression to make it negative.",
       "Use ➕, ➖, ✖️, and ➗ for arithmetic.",
       "Use 🤝, 🔀, and 🚫 for boolean logic."
     ],

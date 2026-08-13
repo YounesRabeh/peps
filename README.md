@@ -41,7 +41,7 @@ Follow the guides in order. Every guide has a matching runnable program in
 | 🟰 | assign | `🐶 🟰 5️⃣` |
 | `.` | float decimal separator | `1️⃣.5️⃣` |
 | ➕ | add / text concat | `1️⃣ ➕ 2️⃣`, `💬hi💬 ➕ 💬there💬` |
-| ➖ | subtract | `5️⃣ ➖ 2️⃣` |
+| ➖ | subtract / negate | `5️⃣ ➖ 2️⃣`, `➖5️⃣`, `➖1️⃣.5️⃣` |
 | ✖️ | multiply | `2️⃣ ✖️ 3️⃣` |
 | ➗ | divide | `6️⃣ ➗ 2️⃣` |
 | ▶️ / ◀️ | greater / less than | `5️⃣ ▶️ 3️⃣`, `2️⃣ ◀️ 4️⃣` |

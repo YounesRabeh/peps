@@ -27,6 +27,13 @@ fn infers_float_and_mixed_numeric_expressions() {
 }
 
 #[test]
+fn infers_negative_integer_and_float_values() {
+    let checked = check("🐶 🟰 ➖5️⃣ 🔚 🐱 🟰 ➖1️⃣.5️⃣ 🔚").expect("negative values should check");
+    assert_eq!(checked.symbols.get("🐶"), Some(&Type::Num));
+    assert_eq!(checked.symbols.get("🐱"), Some(&Type::Float));
+}
+
+#[test]
 fn rejects_float_ranges_and_list_indexes() {
     assert!(first_error("🔁 🐾 🧭 🔢 0️⃣.5️⃣ ➡️ 2️⃣ 🔓 📢 🐾 🔚 🔒")
         .contains("range bounds must be integers"));

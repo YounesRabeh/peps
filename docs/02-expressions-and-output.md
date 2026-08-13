@@ -10,6 +10,8 @@ for a floating-point value: `1️⃣2️⃣.3️⃣4️⃣` means `12.34`.
 📢 8️⃣ ➗ 2️⃣
 📢 1️⃣.5️⃣ ➕ 2️⃣
 📢 1️⃣.0️⃣ ➗ 3️⃣
+📢 ➖5️⃣
+📢 ➖1️⃣.5️⃣
 ```
 
 Integer-only arithmetic keeps arbitrary precision, and integer-only division
@@ -17,6 +19,12 @@ uses integer division. If either operand is a float, Peps promotes the operation
 to a 64-bit floating-point calculation. Promotion reports a runtime error when
 an integer cannot be represented exactly as a float. Numeric ranges and list
 indexes still require integers.
+
+Put `➖` directly before an integer, float, variable, or numeric expression to
+negate it. Negative values work in arithmetic, comparisons, lists, function
+arguments, and integer ranges. Because list items have no comma, store adjacent
+negative values in variables before placing them in the same list so `➖` is
+not read as subtraction.
 
 Comparisons produce `✅` or `❌`. Combine boolean values with `🤝` (and), `🔀`
 (or), and `🚫` (not).

@@ -25,6 +25,19 @@ fn compiles_float_literal() {
 }
 
 #[test]
+fn compiles_negative_integer_and_float_constants() {
+    assert_eq!(
+        compile_source("🐶 🟰 ➖5️⃣ 🔚 🐱 🟰 ➖1️⃣.5️⃣ 🔚").expect("source should compile"),
+        vec![
+            Instruction::LoadConst(Value::Num(BigInt::from(-5))),
+            Instruction::StoreVar("🐶".to_string()),
+            Instruction::LoadConst(Value::Float(-1.5)),
+            Instruction::StoreVar("🐱".to_string()),
+        ]
+    );
+}
+
+#[test]
 fn compiles_reassignment_to_the_existing_storage_name() {
     assert_eq!(
         compile_source("🐶 🟰 1️⃣ 🔚 🐶 🟰 🐶 ➕ 1️⃣ 🔚").expect("source should compile"),
