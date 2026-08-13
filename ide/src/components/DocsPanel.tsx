@@ -132,6 +132,17 @@ const mapsExample = `📖 🟰 🗺️
 📢 📖
 `;
 
+const textOperationsExample = `📝 🟰 💬A👨‍👩‍👧‍👦é💬
+
+📢 📏 📝
+📢 📝 🔎 0️⃣
+📢 📝 🔎 1️⃣
+📢 📝 🔎 2️⃣
+
+📢 📏 💬Peps 🚀💬
+📢 💬Peps 🚀💬 🔎 5️⃣
+`;
+
 type DocsPanelProps = {
   onLoadExample: (source: string) => void;
 };
@@ -267,6 +278,17 @@ const guides: Guide[] = [
       "📥 merges another map, updating existing keys and inserting new ones."
     ],
     example: mapsExample
+  },
+  {
+    number: 12,
+    title: "Text operations",
+    description: "Measure and index Unicode text with the existing collection operators.",
+    points: [
+      "📏 counts user-visible Unicode characters.",
+      "🔎 reads one character using a zero-based integer index.",
+      "Composed emoji remain intact, and out-of-bounds indexes produce a runtime diagnostic."
+    ],
+    example: textOperationsExample
   }
 ];
 

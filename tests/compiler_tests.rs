@@ -188,6 +188,25 @@ fn compiles_string_concatenation() {
 }
 
 #[test]
+fn compiles_text_length_and_indexing() {
+    assert_eq!(
+        compile_source("📝 🟰 💬Peps 🚀💬 🔚 📢 📏 📝 🔚 📢 📝 🔎 5️⃣ 🔚")
+            .expect("source should compile"),
+        vec![
+            Instruction::LoadConst(Value::Str("Peps 🚀".to_string())),
+            Instruction::StoreVar("📝".to_string()),
+            Instruction::LoadVar("📝".to_string()),
+            Instruction::ListLen,
+            Instruction::Print,
+            Instruction::LoadVar("📝".to_string()),
+            Instruction::LoadConst(Value::Num(BigInt::from(5))),
+            Instruction::ListGet,
+            Instruction::Print,
+        ]
+    );
+}
+
+#[test]
 fn compiles_comparison() {
     assert_eq!(
         compile_source("🐶 🟰 5️⃣ ▶️ 3️⃣ 🔚").expect("source should compile"),

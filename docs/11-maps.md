@@ -41,3 +41,5 @@ merge are expressions, so maps work with variables, blocks, and functions.
 Try [the map example](../examples/basic/11-maps.peps).
 ___
 Back to: [Type conversion](10-type-conversion.md).
+
+Next: [Text operations](12-text-operations.md).

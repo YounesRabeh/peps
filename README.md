@@ -19,6 +19,7 @@ Follow the guides in order. Every guide has a matching runnable program in
 9. [Input](docs/09-input.md)
 10. [Type conversion](docs/10-type-conversion.md)
 11. [Maps](docs/11-maps.md)
+12. [Text operations](docs/12-text-operations.md)
 
 ## Examples
 
@@ -55,8 +56,8 @@ Follow the guides in order. Every guide has a matching runnable program in
 | ▶️ / ◀️ | greater / less than | `5️⃣ ▶️ 3️⃣`, `2️⃣ ◀️ 4️⃣` |
 | ▶️🟰 / ◀️🟰 | greater-or-equal / less-or-equal | `5️⃣ ▶️🟰 5️⃣` |
 | 🟰🟰 / ❌🟰 | equal / not equal | `✅ 🟰🟰 ✅` |
-| 📏 | collection size | `📏 🍎`, `📏 📖` |
-| 🔎 | list index / map lookup | `🍎 🔎 1️⃣`, `📖 🔎 💬name💬` |
+| 📏 | text length / collection size | `📏 📝`, `📏 🍎`, `📏 📖` |
+| 🔎 | text/list index or map lookup | `📝 🔎 0️⃣`, `🍎 🔎 1️⃣`, `📖 🔎 💬name💬` |
 | 📥 | list append / map merge | `🍎 📥 4️⃣`, `📖 📥 🗺️ 💬users💬 ➡️ 4️⃣2️⃣ 🗺️` |
 | 🔓 / 🔒 | block start / end | `🤔 ✅ 🔓 ... 🔒` |
 | 💬 | string delimiter | `🐶 🟰 💬hello💬` |

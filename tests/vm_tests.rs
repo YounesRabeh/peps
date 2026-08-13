@@ -262,6 +262,15 @@ fn runs_string_concatenation() {
 }
 
 #[test]
+fn runs_unicode_text_length_and_indexing() {
+    let output = run_source(
+        "📝 🟰 💬A👨‍👩‍👧‍👦é💬 🔚 📢 📏 📝 🔚 📢 📝 🔎 0️⃣ 🔚 📢 📝 🔎 1️⃣ 🔚 📢 📝 🔎 2️⃣ 🔚 📢 📏 💬🚀💬 🔚",
+    )
+    .expect("Unicode text operations should run");
+    assert_eq!(output, vec!["3", "A", "👨‍👩‍👧‍👦", "é", "1"]);
+}
+
+#[test]
 fn runs_emoji_literal_assignment_print() {
     let output = run_source("📦 🟰 🥊 🔚 📢 📦 🔚").expect("source should run");
     assert_eq!(output, vec!["🥊".to_string()]);
@@ -398,6 +407,15 @@ fn reports_list_index_out_of_bounds() {
     let error = run_source("🍎 🟰 📚 1️⃣ 2️⃣ 📚 🔚 📢 🍎 🔎 2️⃣ 🔚")
         .expect_err("source should fail at runtime");
     assert!(error.diagnostics[0].message.contains("out of bounds"));
+}
+
+#[test]
+fn reports_text_index_out_of_bounds() {
+    let error = run_source("📝 🟰 💬Peps💬 🔚 📢 📝 🔎 4️⃣ 🔚")
+        .expect_err("out-of-bounds text index should fail");
+    assert!(error.diagnostics[0]
+        .message
+        .contains("text index 4 is out of bounds"));
 }
 
 #[test]

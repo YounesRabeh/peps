@@ -14,6 +14,8 @@ export const OVERVIEW_SAMPLE = `// Peps overview: values, collections, control f
 📢 🐱
 📢 📦
 📢 🦊
+📢 📏 🐱
+📢 🐱 🔎 0️⃣
 
 🤔 🦊 🔓
     📢 🍎 🔎 1️⃣

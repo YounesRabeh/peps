@@ -187,12 +187,26 @@ fn rejects_logical_type_error() {
 
 #[test]
 fn rejects_list_op_type_errors() {
-    assert!(first_error("🐶 🟰 📏 5️⃣ 🔚").contains("collection length"));
-    assert!(first_error("🐶 🟰 5️⃣ 🔎 0️⃣ 🔚").contains("list value on the left"));
+    assert!(first_error("🐶 🟰 📏 5️⃣ 🔚").contains("length requires text"));
+    assert!(first_error("🐶 🟰 5️⃣ 🔎 0️⃣ 🔚").contains("lookup requires text"));
     assert!(first_error("🍎 🟰 📚 1️⃣ 2️⃣ 📚 🔚 🐶 🟰 🍎 🔎 ✅ 🔚").contains("integer index"));
     assert!(first_error("🍎 🟰 📚 1️⃣ 2️⃣ 📚 🔚 🐶 🟰 🍎 📥 ✅ 🔚").contains("element type"));
     assert!(first_error("🍎 🟰 📚 1️⃣ 2️⃣ 📚 🔚 🍎 📥 📚 ✅ 📚 🔚").contains("element type"));
     assert!(first_error("🍎 📥 1️⃣ 🔚").contains("not declared"));
+}
+
+#[test]
+fn infers_unicode_text_length_and_indexing() {
+    let checked = check("📝 🟰 💬Peps 🚀💬 🔚 🐶 🟰 📏 📝 🔚 🐱 🟰 📝 🔎 5️⃣ 🔚 🦊 🟰 📏 💬hi💬 🔚")
+        .expect("text operations should check");
+    assert_eq!(checked.symbols.get("🐶"), Some(&Type::Num));
+    assert_eq!(checked.symbols.get("🐱"), Some(&Type::Str));
+    assert_eq!(checked.symbols.get("🦊"), Some(&Type::Num));
+}
+
+#[test]
+fn rejects_non_integer_text_indexes() {
+    assert!(first_error("📝 🟰 💬Peps💬 🔚 📢 📝 🔎 ✅ 🔚").contains("integer index"));
 }
 
 #[test]

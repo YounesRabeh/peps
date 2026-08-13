@@ -4,6 +4,7 @@ use std::collections::{HashMap, VecDeque};
 
 use num_bigint::BigInt;
 use num_traits::{FromPrimitive, ToPrimitive, Zero};
+use unicode_segmentation::UnicodeSegmentation;
 
 use crate::{
     ast::{ConversionKind, InputKind},
@@ -314,7 +315,8 @@ impl Vm<'_> {
                     let length = match value {
                         RuntimeValue::List(elements) => elements.len(),
                         RuntimeValue::Map(entries) => entries.len(),
-                        _ => return self.fail("collection length requires a list or map value"),
+                        RuntimeValue::Str(text) => text.graphemes(true).count(),
+                        _ => return self.fail("length requires text, a list, or a map value"),
                     };
                     self.stack.push(RuntimeValue::Num(BigInt::from(length)));
                     self.ip += 1;
@@ -345,7 +347,19 @@ impl Vm<'_> {
                         (RuntimeValue::Map(_), _) => {
                             return self.fail("map lookup requires a text key");
                         }
-                        _ => return self.fail("lookup requires a list or map value"),
+                        (RuntimeValue::Str(text), RuntimeValue::Num(index)) => {
+                            let Some(index_value) = index.to_usize() else {
+                                return self.fail(format!("text index {} is out of bounds", index));
+                            };
+                            let Some(value) = text.graphemes(true).nth(index_value) else {
+                                return self.fail(format!("text index {} is out of bounds", index));
+                            };
+                            RuntimeValue::Str(value.to_string())
+                        }
+                        (RuntimeValue::Str(_), _) => {
+                            return self.fail("text index requires an integer value");
+                        }
+                        _ => return self.fail("lookup requires text, a list, or a map value"),
                     };
                     self.stack.push(value);
                     self.ip += 1;

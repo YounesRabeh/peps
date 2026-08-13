@@ -428,12 +428,12 @@ impl Checker {
                     }
                 }
                 UnaryOp::Len => {
-                    let ty = self.infer_expr(expr)?;
-                    if matches!(ty, Type::List(_) | Type::Map(_) | Type::Unknown) {
+                    let ty = self.infer_expr_allow_raw_strings(expr)?;
+                    if matches!(ty, Type::Str | Type::List(_) | Type::Map(_) | Type::Unknown) {
                         Some(Type::Num)
                     } else {
                         self.diagnostics.push(Diagnostic::at(
-                            "collection length requires a list or map operand",
+                            "length requires text, a list, or a map",
                             *span,
                         ));
                         None
@@ -489,7 +489,7 @@ impl Checker {
     ) -> Option<Type> {
         match op {
             BinaryOp::Index => {
-                let left_ty = self.infer_expr(left)?;
+                let left_ty = self.infer_expr_allow_raw_strings(left)?;
                 let right_ty = if matches!(left_ty, Type::Map(_) | Type::Unknown) {
                     self.infer_expr_allow_raw_strings(right)?
                 } else {
@@ -498,6 +498,7 @@ impl Checker {
                 match (left_ty, right_ty) {
                     (Type::List(element_type), Type::Num | Type::Unknown) => Some(*element_type),
                     (Type::Map(value_type), Type::Str | Type::Unknown) => Some(*value_type),
+                    (Type::Str, Type::Num | Type::Unknown) => Some(Type::Str),
                     (Type::Unknown, Type::Num | Type::Str | Type::Unknown) => Some(Type::Unknown),
                     (Type::List(_), _) => {
                         self.diagnostics
@@ -509,9 +510,14 @@ impl Checker {
                             .push(Diagnostic::at("map lookup requires a text key", span));
                         None
                     }
+                    (Type::Str, _) => {
+                        self.diagnostics
+                            .push(Diagnostic::at("text index requires an integer index", span));
+                        None
+                    }
                     _ => {
                         self.diagnostics.push(Diagnostic::at(
-                            "list index requires a list value on the left",
+                            "lookup requires text, a list, or a map on the left",
                             span,
                         ));
                         None
@@ -801,11 +807,11 @@ impl Checker {
                 }
                 UnaryOp::Len => {
                     let ty = self.infer_expr_allow_raw_strings(expr)?;
-                    if matches!(ty, Type::List(_) | Type::Map(_) | Type::Unknown) {
+                    if matches!(ty, Type::Str | Type::List(_) | Type::Map(_) | Type::Unknown) {
                         Some(Type::Num)
                     } else {
                         self.diagnostics.push(Diagnostic::at(
-                            "collection length requires a list or map operand",
+                            "length requires text, a list, or a map",
                             *span,
                         ));
                         None
