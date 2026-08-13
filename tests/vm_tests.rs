@@ -85,6 +85,30 @@ fn runs_arithmetic_and_comparison() {
 }
 
 #[test]
+fn runs_float_and_mixed_numeric_operations() {
+    let output = run_source(
+        "📢 1️⃣.5️⃣ ➕ 2️⃣ 🔚 📢 5️⃣ ➖ 2️⃣.5️⃣ 🔚 📢 1️⃣.5️⃣ ✖️ 2️⃣ 🔚 📢 1️⃣.0️⃣ ➗ 4️⃣ 🔚 📢 2️⃣.5️⃣ ▶️ 2️⃣ 🔚 📢 2️⃣ 🟰🟰 2️⃣.0️⃣ 🔚",
+    )
+    .expect("float operations should run");
+    assert_eq!(output, vec!["3.5", "2.5", "3", "0.25", "✅", "✅"]);
+}
+
+#[test]
+fn reports_float_division_by_zero() {
+    let error = run_source("📢 1️⃣.0️⃣ ➗ 0️⃣.0️⃣ 🔚").expect_err("float division by zero should fail");
+    assert!(error.diagnostics[0].message.contains("division by zero"));
+}
+
+#[test]
+fn rejects_lossy_integer_to_float_promotion() {
+    let error = run_source("📢 9️⃣0️⃣0️⃣7️⃣1️⃣9️⃣9️⃣2️⃣5️⃣4️⃣7️⃣4️⃣0️⃣9️⃣9️⃣3️⃣ ➕ 0️⃣.5️⃣ 🔚")
+        .expect_err("lossy promotion should fail");
+    assert!(error.diagnostics[0]
+        .message
+        .contains("cannot represent this integer exactly as a float"));
+}
+
+#[test]
 fn runs_arithmetic_beyond_i64_limits() {
     let output = run_source("📢 9️⃣2️⃣2️⃣3️⃣3️⃣7️⃣2️⃣0️⃣3️⃣6️⃣8️⃣5️⃣4️⃣7️⃣7️⃣5️⃣8️⃣0️⃣8️⃣ ➕ 1️⃣ 🔚")
         .expect("source should run");

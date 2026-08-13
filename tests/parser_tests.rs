@@ -15,6 +15,15 @@ fn parses_assignment() {
 }
 
 #[test]
+fn parses_float_literal() {
+    let program = parse("🐶 🟰 1️⃣.5️⃣ 🔚");
+    let Stmt::Assign { expr, .. } = &program.statements[0] else {
+        panic!("expected assignment");
+    };
+    assert!(matches!(expr, Expr::Float { value, .. } if *value == 1.5));
+}
+
+#[test]
 fn errors_on_ascii_variable_definition() {
     let tokens = lexer::lex("counter 🟰 5️⃣ 🔚").expect("lexing should succeed");
     let diagnostics = parser::parse(tokens).expect_err("ascii variable should fail");

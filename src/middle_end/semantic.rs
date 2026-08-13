@@ -280,7 +280,7 @@ impl Checker {
                     Some(Type::Num)
                 } else {
                     self.diagnostics
-                        .push(Diagnostic::at("range bounds must be num", *span));
+                        .push(Diagnostic::at("range bounds must be integers", *span));
                     None
                 }
             }
@@ -344,6 +344,7 @@ impl Checker {
     fn infer_expr(&mut self, expr: &Expr) -> Option<Type> {
         match expr {
             Expr::Number { .. } => Some(Type::Num),
+            Expr::Float { .. } => Some(Type::Float),
             Expr::String { span, .. } => {
                 self.diagnostics.push(Diagnostic::at(
                     "Raw string literals can only be assigned to variables in Peps v0.",
@@ -395,11 +396,11 @@ impl Checker {
             Expr::Unary { op, expr, span } => match op {
                 UnaryOp::Negate => {
                     let ty = self.infer_expr(expr)?;
-                    if matches!(ty, Type::Num | Type::Unknown) {
-                        Some(Type::Num)
+                    if is_numeric(&ty) {
+                        Some(ty)
                     } else {
                         self.diagnostics.push(Diagnostic::at(
-                            "numeric negation requires a num operand",
+                            "numeric negation requires a numeric operand",
                             *span,
                         ));
                         None
@@ -452,7 +453,7 @@ impl Checker {
                     (Type::Unknown, Type::Num | Type::Unknown) => Some(Type::Unknown),
                     (Type::List(_), _) => {
                         self.diagnostics
-                            .push(Diagnostic::at("list index requires a num index", span));
+                            .push(Diagnostic::at("list index requires an integer index", span));
                         None
                     }
                     _ => {
@@ -509,8 +510,12 @@ impl Checker {
                 };
                 if left_ty == Type::Unknown || right_ty == Type::Unknown {
                     Some(Type::Unknown)
-                } else if left_ty == Type::Num && right_ty == Type::Num {
-                    Some(Type::Num)
+                } else if is_numeric(&left_ty) && is_numeric(&right_ty) {
+                    if left_ty == Type::Float || right_ty == Type::Float {
+                        Some(Type::Float)
+                    } else {
+                        Some(Type::Num)
+                    }
                 } else if op == BinaryOp::Add && left_ty == Type::Str && right_ty == Type::Str {
                     Some(Type::Str)
                 } else if op == BinaryOp::Add && (left_ty == Type::Str || right_ty == Type::Str) {
@@ -522,7 +527,7 @@ impl Checker {
                 } else {
                     self.diagnostics.push(Diagnostic::at(
                         format!(
-                            "arithmetic operator {} requires num operands",
+                            "arithmetic operator {} requires numeric operands",
                             op_symbol(op)
                         ),
                         span,
@@ -533,13 +538,11 @@ impl Checker {
             BinaryOp::Lt | BinaryOp::Gt | BinaryOp::LtEq | BinaryOp::GtEq => {
                 let left_ty = self.infer_expr(left)?;
                 let right_ty = self.infer_expr(right)?;
-                if matches!(left_ty, Type::Num | Type::Unknown)
-                    && matches!(right_ty, Type::Num | Type::Unknown)
-                {
+                if is_numeric(&left_ty) && is_numeric(&right_ty) {
                     Some(Type::Bool)
                 } else {
                     self.diagnostics.push(Diagnostic::at(
-                        "ordering comparison requires num operands",
+                        "ordering comparison requires numeric operands",
                         span,
                     ));
                     None
@@ -556,7 +559,7 @@ impl Checker {
                         span,
                     ));
                     None
-                } else if left_ty == right_ty {
+                } else if left_ty == right_ty || (is_numeric(&left_ty) && is_numeric(&right_ty)) {
                     Some(Type::Bool)
                 } else {
                     self.diagnostics.push(Diagnostic::at(
@@ -636,6 +639,7 @@ impl Checker {
         match expr {
             Expr::String { .. } => Some(Type::Str),
             Expr::Number { .. } => Some(Type::Num),
+            Expr::Float { .. } => Some(Type::Float),
             Expr::Bool { .. } => Some(Type::Bool),
             Expr::Emoji { .. } => Some(Type::Emoji),
             Expr::Variable { name, span } => match self.lookup(name) {
@@ -650,11 +654,11 @@ impl Checker {
             Expr::Unary { op, expr, span } => match op {
                 UnaryOp::Negate => {
                     let ty = self.infer_expr_allow_raw_strings(expr)?;
-                    if matches!(ty, Type::Num | Type::Unknown) {
-                        Some(Type::Num)
+                    if is_numeric(&ty) {
+                        Some(ty)
                     } else {
                         self.diagnostics.push(Diagnostic::at(
-                            "numeric negation requires a num operand",
+                            "numeric negation requires a numeric operand",
                             *span,
                         ));
                         None
@@ -781,6 +785,11 @@ fn statement_definitely_returns(statement: &Stmt) -> bool {
         // itself prove that a function returns a value.
         _ => false,
     }
+}
+
+/// Whether a static type can participate in numeric operations.
+fn is_numeric(ty: &Type) -> bool {
+    matches!(ty, Type::Num | Type::Float | Type::Unknown)
 }
 
 /// Return the display symbol used in diagnostics for a binary operator.

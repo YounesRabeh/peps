@@ -33,6 +33,28 @@ fn lexes_multi_digit_emoji_number() {
 }
 
 #[test]
+fn lexes_float_with_emoji_digits() {
+    assert_eq!(
+        kinds("🐶 🟰 1️⃣2️⃣.3️⃣4️⃣ 🔚"),
+        vec![
+            TokenKind::Identifier("🐶".to_string()),
+            TokenKind::Assign,
+            TokenKind::Float(12.34),
+            TokenKind::StatementEnd,
+            TokenKind::Eof,
+        ]
+    );
+}
+
+#[test]
+fn rejects_ascii_digits_in_float_literals() {
+    let diagnostics = lexer::lex("1.5").expect_err("ASCII digits should fail");
+    assert!(diagnostics
+        .iter()
+        .any(|diagnostic| diagnostic.message.contains("ASCII digits")));
+}
+
+#[test]
 fn lexes_integer_larger_than_i64() {
     assert_eq!(
         kinds("9️⃣2️⃣2️⃣3️⃣3️⃣7️⃣2️⃣0️⃣3️⃣6️⃣8️⃣5️⃣4️⃣7️⃣7️⃣5️⃣8️⃣0️⃣8️⃣")[0],

@@ -487,6 +487,10 @@ impl Parser {
                 value,
                 span: token.span,
             }),
+            TokenKind::Float(value) => Ok(Expr::Float {
+                value,
+                span: token.span,
+            }),
             TokenKind::StringLiteral(value) => Ok(Expr::String {
                 value,
                 span: token.span,
@@ -613,6 +617,7 @@ impl Parser {
             token.kind,
             TokenKind::Identifier(_)
                 | TokenKind::Number(_)
+                | TokenKind::Float(_)
                 | TokenKind::StringLiteral(_)
                 | TokenKind::Bool(_)
                 | TokenKind::Minus

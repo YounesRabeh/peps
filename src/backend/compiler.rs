@@ -327,6 +327,9 @@ impl Compiler {
             Expr::Number { value, .. } => self
                 .instructions
                 .push(Instruction::LoadConst(Value::Num(value.clone()))),
+            Expr::Float { value, .. } => self
+                .instructions
+                .push(Instruction::LoadConst(Value::Float(*value))),
             Expr::String { value, .. } => self
                 .instructions
                 .push(Instruction::LoadConst(Value::Str(value.clone()))),
@@ -362,6 +365,9 @@ impl Compiler {
                 if let Expr::Number { value, .. } = expr.as_ref() {
                     self.instructions
                         .push(Instruction::LoadConst(Value::Num(-value.clone())));
+                } else if let Expr::Float { value, .. } = expr.as_ref() {
+                    self.instructions
+                        .push(Instruction::LoadConst(Value::Float(-value)));
                 } else {
                     self.instructions
                         .push(Instruction::LoadConst(Value::Num(BigInt::from(0_u8))));

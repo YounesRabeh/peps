@@ -39,6 +39,7 @@ Follow the guides in order. Every guide has a matching runnable program in
 | 🧭 | in (for loops) | `🔁 🐾 🧭 🍎 🔓` |
 | 🔢 | range | `🔁 🐾 🧭 🔢 0️⃣ ➡️ 3️⃣ 🔓` |
 | 🟰 | assign | `🐶 🟰 5️⃣` |
+| `.` | float decimal separator | `1️⃣.5️⃣` |
 | ➕ | add / text concat | `1️⃣ ➕ 2️⃣`, `💬hi💬 ➕ 💬there💬` |
 | ➖ | subtract | `5️⃣ ➖ 2️⃣` |
 | ✖️ | multiply | `2️⃣ ✖️ 3️⃣` |

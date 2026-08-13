@@ -103,6 +103,10 @@ pub enum Expr {
         value: BigInt,
         span: Span,
     },
+    Float {
+        value: f64,
+        span: Span,
+    },
     String {
         value: String,
         span: Span,
@@ -145,6 +149,7 @@ impl Expr {
     pub fn span(&self) -> Span {
         match self {
             Expr::Number { span, .. }
+            | Expr::Float { span, .. }
             | Expr::String { span, .. }
             | Expr::Bool { span, .. }
             | Expr::Emoji { span, .. }

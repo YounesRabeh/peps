@@ -5,8 +5,10 @@
 pub enum Type {
     /// A value whose concrete type is only known when a function runs.
     Unknown,
-    /// Numeric values.
+    /// Arbitrary-precision integer values.
     Num,
+    /// Floating-point values.
+    Float,
     /// Text values.
     Str,
     /// Boolean values.

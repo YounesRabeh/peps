@@ -39,6 +39,7 @@ pub enum Instruction {
 #[derive(Debug, Clone, PartialEq)]
 pub enum Value {
     Num(BigInt),
+    Float(f64),
     Str(String),
     Bool(bool),
     Emoji(String),

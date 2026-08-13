@@ -25,8 +25,10 @@ impl Token {
 pub enum TokenKind {
     /// One user-visible identifier grapheme.
     Identifier(String),
-    /// Numeric literal.
+    /// Arbitrary-precision integer literal.
     Number(BigInt),
+    /// Floating-point literal.
+    Float(f64),
     /// Text literal.
     StringLiteral(String),
     /// Boolean literal.

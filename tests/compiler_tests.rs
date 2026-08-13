@@ -14,6 +14,17 @@ fn compiles_assignment() {
 }
 
 #[test]
+fn compiles_float_literal() {
+    assert_eq!(
+        compile_source("🐶 🟰 1️⃣.5️⃣ 🔚").expect("source should compile"),
+        vec![
+            Instruction::LoadConst(Value::Float(1.5)),
+            Instruction::StoreVar("🐶".to_string()),
+        ]
+    );
+}
+
+#[test]
 fn compiles_reassignment_to_the_existing_storage_name() {
     assert_eq!(
         compile_source("🐶 🟰 1️⃣ 🔚 🐶 🟰 🐶 ➕ 1️⃣ 🔚").expect("source should compile"),

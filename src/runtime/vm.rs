@@ -3,7 +3,7 @@
 use std::collections::HashMap;
 
 use num_bigint::BigInt;
-use num_traits::{ToPrimitive, Zero};
+use num_traits::{FromPrimitive, ToPrimitive, Zero};
 
 use crate::{
     bytecode::{Instruction, Value},
@@ -27,6 +27,8 @@ pub enum ExecutionLimit {
 pub enum RuntimeValue {
     /// Integer numeric value.
     Num(BigInt),
+    /// Floating-point numeric value.
+    Float(f64),
     /// Text value.
     Str(String),
     /// Boolean value.
@@ -110,6 +112,11 @@ struct CallFrame {
     locals: HashMap<String, RuntimeValue>,
 }
 
+enum NumberValue {
+    Integer(BigInt),
+    Float(f64),
+}
+
 impl Vm<'_> {
     /// Run instructions until completion, an error, or the step limit.
     fn run(&mut self) -> Result<Vec<String>, RunError> {
@@ -162,23 +169,39 @@ impl Vm<'_> {
                     self.ip += 1;
                 }
                 Instruction::Add => self.add_values()?,
-                Instruction::Sub => self.binary_num("subtract", |left, right| left - right)?,
-                Instruction::Mul => self.binary_num("multiply", |left, right| left * right)?,
-                Instruction::Div => {
-                    let right = self.pop_num("divide")?;
-                    let left = self.pop_num("divide")?;
-                    if right.is_zero() {
-                        return self.fail("division by zero");
-                    }
-                    self.stack.push(RuntimeValue::Num(left / right));
-                    self.ip += 1;
-                }
+                Instruction::Sub => self.binary_number(
+                    "subtract",
+                    |left, right| left - right,
+                    |left, right| left - right,
+                )?,
+                Instruction::Mul => self.binary_number(
+                    "multiply",
+                    |left, right| left * right,
+                    |left, right| left * right,
+                )?,
+                Instruction::Div => self.divide_numbers()?,
                 Instruction::Eq => self.equality(false)?,
                 Instruction::NotEq => self.equality(true)?,
-                Instruction::Lt => self.compare_num("compare", |left, right| left < right)?,
-                Instruction::Gt => self.compare_num("compare", |left, right| left > right)?,
-                Instruction::LtEq => self.compare_num("compare", |left, right| left <= right)?,
-                Instruction::GtEq => self.compare_num("compare", |left, right| left >= right)?,
+                Instruction::Lt => self.compare_num(
+                    "compare",
+                    |left, right| left < right,
+                    |left, right| left < right,
+                )?,
+                Instruction::Gt => self.compare_num(
+                    "compare",
+                    |left, right| left > right,
+                    |left, right| left > right,
+                )?,
+                Instruction::LtEq => self.compare_num(
+                    "compare",
+                    |left, right| left <= right,
+                    |left, right| left <= right,
+                )?,
+                Instruction::GtEq => self.compare_num(
+                    "compare",
+                    |left, right| left >= right,
+                    |left, right| left >= right,
+                )?,
                 Instruction::MakeList(count) => {
                     if self.stack.len() < count {
                         return self.fail("not enough values on the stack to build list");
@@ -289,14 +312,25 @@ impl Vm<'_> {
     }
 
     /// Apply a numeric binary operation to the top two stack values.
-    fn binary_num(
+    fn binary_number(
         &mut self,
         operation: &'static str,
-        apply: impl FnOnce(BigInt, BigInt) -> BigInt,
+        apply_integer: impl FnOnce(BigInt, BigInt) -> BigInt,
+        apply_float: impl FnOnce(f64, f64) -> f64,
     ) -> Result<(), RunError> {
-        let right = self.pop_num(operation)?;
-        let left = self.pop_num(operation)?;
-        self.stack.push(RuntimeValue::Num(apply(left, right)));
+        let right = self.pop_number(operation)?;
+        let left = self.pop_number(operation)?;
+        let result = match (left, right) {
+            (NumberValue::Integer(left), NumberValue::Integer(right)) => {
+                RuntimeValue::Num(apply_integer(left, right))
+            }
+            (left, right) => {
+                let (left, right) = self.numbers_as_floats(left, right, operation)?;
+                let result = apply_float(left, right);
+                self.checked_float(result, operation)?
+            }
+        };
+        self.stack.push(result);
         self.ip += 1;
         Ok(())
     }
@@ -309,11 +343,25 @@ impl Vm<'_> {
             (RuntimeValue::Num(left), RuntimeValue::Num(right)) => {
                 self.stack.push(RuntimeValue::Num(left + right));
             }
+            (RuntimeValue::Float(left), RuntimeValue::Float(right)) => {
+                let result = self.checked_float(left + right, "add")?;
+                self.stack.push(result);
+            }
+            (RuntimeValue::Num(left), RuntimeValue::Float(right)) => {
+                let left = self.integer_as_float(&left, "add")?;
+                let result = self.checked_float(left + right, "add")?;
+                self.stack.push(result);
+            }
+            (RuntimeValue::Float(left), RuntimeValue::Num(right)) => {
+                let right = self.integer_as_float(&right, "add")?;
+                let result = self.checked_float(left + right, "add")?;
+                self.stack.push(result);
+            }
             (RuntimeValue::Str(left), RuntimeValue::Str(right)) => {
                 self.stack
                     .push(RuntimeValue::Str(format!("{}{}", left, right)));
             }
-            _ => return self.fail("add requires matching num or text values"),
+            _ => return self.fail("add requires matching numeric or text values"),
         }
         self.ip += 1;
         Ok(())
@@ -323,11 +371,19 @@ impl Vm<'_> {
     fn compare_num(
         &mut self,
         operation: &'static str,
-        apply: impl FnOnce(BigInt, BigInt) -> bool,
+        apply_integer: impl FnOnce(BigInt, BigInt) -> bool,
+        apply_float: impl FnOnce(f64, f64) -> bool,
     ) -> Result<(), RunError> {
-        let right = self.pop_num(operation)?;
-        let left = self.pop_num(operation)?;
-        self.stack.push(RuntimeValue::Bool(apply(left, right)));
+        let right = self.pop_number(operation)?;
+        let left = self.pop_number(operation)?;
+        let result = match (left, right) {
+            (NumberValue::Integer(left), NumberValue::Integer(right)) => apply_integer(left, right),
+            (left, right) => {
+                let (left, right) = self.numbers_as_floats(left, right, operation)?;
+                apply_float(left, right)
+            }
+        };
+        self.stack.push(RuntimeValue::Bool(result));
         self.ip += 1;
         Ok(())
     }
@@ -338,6 +394,13 @@ impl Vm<'_> {
         let left = self.pop("compare equality")?;
         let equal = match (left, right) {
             (RuntimeValue::Num(left), RuntimeValue::Num(right)) => left == right,
+            (RuntimeValue::Float(left), RuntimeValue::Float(right)) => left == right,
+            (RuntimeValue::Num(left), RuntimeValue::Float(right)) => {
+                self.integer_as_float(&left, "compare equality")? == right
+            }
+            (RuntimeValue::Float(left), RuntimeValue::Num(right)) => {
+                left == self.integer_as_float(&right, "compare equality")?
+            }
             (RuntimeValue::Str(left), RuntimeValue::Str(right)) => left == right,
             (RuntimeValue::Bool(left), RuntimeValue::Bool(right)) => left == right,
             (RuntimeValue::Emoji(left), RuntimeValue::Emoji(right)) => left == right,
@@ -360,7 +423,88 @@ impl Vm<'_> {
     fn pop_num(&mut self, operation: &'static str) -> Result<BigInt, RunError> {
         match self.pop(operation)? {
             RuntimeValue::Num(value) => Ok(value),
-            _ => Err(self.error(format!("{} requires a num value", operation))),
+            _ => Err(self.error(format!("{} requires an integer value", operation))),
+        }
+    }
+
+    /// Pop either numeric runtime representation.
+    fn pop_number(&mut self, operation: &'static str) -> Result<NumberValue, RunError> {
+        match self.pop(operation)? {
+            RuntimeValue::Num(value) => Ok(NumberValue::Integer(value)),
+            RuntimeValue::Float(value) => Ok(NumberValue::Float(value)),
+            _ => Err(self.error(format!("{} requires a numeric value", operation))),
+        }
+    }
+
+    /// Divide integers exactly as before, or promote a mixed operation to float.
+    fn divide_numbers(&mut self) -> Result<(), RunError> {
+        let right = self.pop_number("divide")?;
+        let left = self.pop_number("divide")?;
+        let result = match (left, right) {
+            (NumberValue::Integer(left), NumberValue::Integer(right)) => {
+                if right.is_zero() {
+                    return self.fail("division by zero");
+                }
+                RuntimeValue::Num(left / right)
+            }
+            (left, right) => {
+                let (left, right) = self.numbers_as_floats(left, right, "divide")?;
+                if right == 0.0 {
+                    return self.fail("division by zero");
+                }
+                self.checked_float(left / right, "divide")?
+            }
+        };
+        self.stack.push(result);
+        self.ip += 1;
+        Ok(())
+    }
+
+    fn numbers_as_floats(
+        &self,
+        left: NumberValue,
+        right: NumberValue,
+        operation: &'static str,
+    ) -> Result<(f64, f64), RunError> {
+        Ok((
+            self.number_as_float(left, operation)?,
+            self.number_as_float(right, operation)?,
+        ))
+    }
+
+    fn number_as_float(
+        &self,
+        value: NumberValue,
+        operation: &'static str,
+    ) -> Result<f64, RunError> {
+        match value {
+            NumberValue::Integer(value) => self.integer_as_float(&value, operation),
+            NumberValue::Float(value) => Ok(value),
+        }
+    }
+
+    fn integer_as_float(&self, value: &BigInt, operation: &'static str) -> Result<f64, RunError> {
+        let Some(converted) = value.to_f64() else {
+            return Err(self.error(format!(
+                "{} cannot convert this integer to a finite float",
+                operation
+            )));
+        };
+        if BigInt::from_f64(converted).as_ref() == Some(value) {
+            Ok(converted)
+        } else {
+            Err(self.error(format!(
+                "{} cannot represent this integer exactly as a float",
+                operation
+            )))
+        }
+    }
+
+    fn checked_float(&self, value: f64, operation: &'static str) -> Result<RuntimeValue, RunError> {
+        if value.is_finite() {
+            Ok(RuntimeValue::Float(value))
+        } else {
+            Err(self.error(format!("{} produced a non-finite float", operation)))
         }
     }
 
@@ -399,6 +543,7 @@ fn same_runtime_type(left: &RuntimeValue, right: &RuntimeValue) -> bool {
     matches!(
         (left, right),
         (RuntimeValue::Num(_), RuntimeValue::Num(_))
+            | (RuntimeValue::Float(_), RuntimeValue::Float(_))
             | (RuntimeValue::Str(_), RuntimeValue::Str(_))
             | (RuntimeValue::Bool(_), RuntimeValue::Bool(_))
             | (RuntimeValue::Emoji(_), RuntimeValue::Emoji(_))
@@ -411,6 +556,7 @@ impl From<Value> for RuntimeValue {
     fn from(value: Value) -> Self {
         match value {
             Value::Num(value) => RuntimeValue::Num(value),
+            Value::Float(value) => RuntimeValue::Float(value),
             Value::Str(value) => RuntimeValue::Str(value),
             Value::Bool(value) => RuntimeValue::Bool(value),
             Value::Emoji(value) => RuntimeValue::Emoji(value),
@@ -422,6 +568,7 @@ impl From<Value> for RuntimeValue {
 fn format_runtime_value(value: &RuntimeValue) -> String {
     match value {
         RuntimeValue::Num(value) => value.to_string(),
+        RuntimeValue::Float(value) => value.to_string(),
         RuntimeValue::Str(value) => value.clone(),
         RuntimeValue::Bool(true) => "✅".to_string(),
         RuntimeValue::Bool(false) => "❌".to_string(),

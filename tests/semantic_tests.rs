@@ -19,6 +19,23 @@ fn infers_variable_declaration() {
 }
 
 #[test]
+fn infers_float_and_mixed_numeric_expressions() {
+    let checked =
+        check("🐶 🟰 1️⃣.5️⃣ 🔚 🐱 🟰 🐶 ➕ 2️⃣ 🔚").expect("mixed numeric source should check");
+    assert_eq!(checked.symbols.get("🐶"), Some(&Type::Float));
+    assert_eq!(checked.symbols.get("🐱"), Some(&Type::Float));
+}
+
+#[test]
+fn rejects_float_ranges_and_list_indexes() {
+    assert!(first_error("🔁 🐾 🧭 🔢 0️⃣.5️⃣ ➡️ 2️⃣ 🔓 📢 🐾 🔚 🔒")
+        .contains("range bounds must be integers"));
+    assert!(
+        first_error("🍎 🟰 📚 1️⃣ 2️⃣ 📚 🔚 📢 🍎 🔎 1️⃣.5️⃣ 🔚").contains("requires an integer index")
+    );
+}
+
+#[test]
 fn rejects_ascii_variable_declaration() {
     assert!(first_error("count 🟰 5️⃣ 🔚").contains("exactly one emoji"));
 }
@@ -83,7 +100,7 @@ fn allows_reassignment_with_a_different_type() {
 
 #[test]
 fn rejects_arithmetic_type_error() {
-    assert!(first_error("🐶 🟰 ✅ ➕ 1️⃣ 🔚").contains("requires num operands"));
+    assert!(first_error("🐶 🟰 ✅ ➕ 1️⃣ 🔚").contains("requires numeric operands"));
     assert!(first_error("🐶 🟰 💬 hi 💬 ➕ 1️⃣ 🔚").contains("requires both operands to be text"));
 }
 
@@ -102,7 +119,7 @@ fn rejects_logical_type_error() {
 fn rejects_list_op_type_errors() {
     assert!(first_error("🐶 🟰 📏 5️⃣ 🔚").contains("list length"));
     assert!(first_error("🐶 🟰 5️⃣ 🔎 0️⃣ 🔚").contains("list value on the left"));
-    assert!(first_error("🍎 🟰 📚 1️⃣ 2️⃣ 📚 🔚 🐶 🟰 🍎 🔎 ✅ 🔚").contains("num index"));
+    assert!(first_error("🍎 🟰 📚 1️⃣ 2️⃣ 📚 🔚 🐶 🟰 🍎 🔎 ✅ 🔚").contains("integer index"));
     assert!(first_error("🍎 🟰 📚 1️⃣ 2️⃣ 📚 🔚 🐶 🟰 🍎 📥 ✅ 🔚").contains("element type"));
     assert!(first_error("🍎 🟰 📚 1️⃣ 2️⃣ 📚 🔚 🍎 📥 📚 ✅ 📚 🔚").contains("element type"));
     assert!(first_error("🍎 📥 1️⃣ 🔚").contains("not declared"));

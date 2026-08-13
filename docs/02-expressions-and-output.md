@@ -1,13 +1,22 @@
 # 2. Expressions and output
 
-Use `📢` to print a value. Numbers are written with keycap emoji digits and
-have arbitrary precision: `1️⃣2️⃣3️⃣` means `123`.
+Use `📢` to print a value. Integers are written with keycap emoji digits and
+have arbitrary precision: `1️⃣2️⃣3️⃣` means `123`. Put `.` between emoji digits
+for a floating-point value: `1️⃣2️⃣.3️⃣4️⃣` means `12.34`.
 
 ```peps
 📢 2️⃣ ➕ 3️⃣ ✖️ 4️⃣
 📢 8️⃣ ➖ 3️⃣
 📢 8️⃣ ➗ 2️⃣
+📢 1️⃣.5️⃣ ➕ 2️⃣
+📢 1️⃣.0️⃣ ➗ 3️⃣
 ```
+
+Integer-only arithmetic keeps arbitrary precision, and integer-only division
+uses integer division. If either operand is a float, Peps promotes the operation
+to a 64-bit floating-point calculation. Promotion reports a runtime error when
+an integer cannot be represented exactly as a float. Numeric ranges and list
+indexes still require integers.
 
 Comparisons produce `✅` or `❌`. Combine boolean values with `🤝` (and), `🔀`
 (or), and `🚫` (not).

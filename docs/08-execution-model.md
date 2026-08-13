@@ -9,10 +9,11 @@ separator. `//` begins a line comment.
 📢 🐶
 ```
 
-Numbers are arbitrary-precision integers, so they do not overflow at `i64`
-limits. Together with mutable variables, conditionals, and unrestricted while
-loops, Peps can simulate a two-counter Minsky machine and is Turing complete
-under the usual unbounded-memory assumption.
+Integers have arbitrary precision, so they do not overflow at `i64` limits.
+Floats use finite 64-bit IEEE 754 values; arithmetic rejects division by zero
+and non-finite results. Together with mutable integer variables, conditionals,
+and unrestricted while loops, Peps can simulate a two-counter Minsky machine
+and is Turing complete under the usual unbounded-memory assumption.
 
 The compiler and command-line runner have no instruction limit. The browser
 IDE applies a 100,000-instruction safety limit, so stop or correct an accidental

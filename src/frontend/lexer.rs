@@ -133,7 +133,9 @@ impl Lexer {
             }
 
             if is_emoji_digit(&grapheme.text) {
-                tokens.push(self.lex_number());
+                if let Some(token) = self.lex_number() {
+                    tokens.push(token);
+                }
                 continue;
             }
 
@@ -215,9 +217,10 @@ impl Lexer {
         Some(Token::new(kind, span))
     }
 
-    fn lex_number(&mut self) -> Token {
+    fn lex_number(&mut self) -> Option<Token> {
         let start = self.peek().span;
         let mut value = BigInt::from(0_u8);
+        let mut text = String::new();
         let mut end = start;
 
         while !self.is_at_end() && is_emoji_digit(&self.peek().text) {
@@ -225,9 +228,41 @@ impl Lexer {
             end = grapheme.span;
             let digit = emoji_digit_value(&grapheme.text).expect("checked by is_emoji_digit");
             value = value * 10_u8 + digit;
+            text.push(char::from(b'0' + digit));
         }
 
-        Token::new(TokenKind::Number(value), start.merge(end))
+        if !self.is_at_end()
+            && self.peek().text == "."
+            && self
+                .peek_next()
+                .is_some_and(|grapheme| is_emoji_digit(&grapheme.text))
+        {
+            end = self.advance().span;
+            text.push('.');
+            while !self.is_at_end() && is_emoji_digit(&self.peek().text) {
+                let grapheme = self.advance().clone();
+                end = grapheme.span;
+                let digit = emoji_digit_value(&grapheme.text).expect("checked by is_emoji_digit");
+                text.push(char::from(b'0' + digit));
+            }
+
+            let span = start.merge(end);
+            let Ok(value) = text.parse::<f64>() else {
+                self.diagnostics
+                    .push(Diagnostic::at("invalid float literal", span));
+                return None;
+            };
+            if !value.is_finite() {
+                self.diagnostics.push(Diagnostic::at(
+                    "float literal is outside the supported finite range",
+                    span,
+                ));
+                return None;
+            }
+            Some(Token::new(TokenKind::Float(value), span))
+        } else {
+            Some(Token::new(TokenKind::Number(value), start.merge(end)))
+        }
     }
 
     fn lex_ascii_identifier(&mut self) -> Token {
